@@ -67,6 +67,10 @@ When others use the dataset, request attribution in this form:
 
 > Material data from Perfumers Codex (https://perfumerscodex.com), licensed CC-BY-SA 4.0.
 
+### Third-party ML training data (August 2026)
+
+The structure–odor experiment trains on public labeled datasets (e.g. Leffingwell, GoodScents-derived). Those datasets keep their own licenses, live in the experiment repo, and are neither part of nor relicensed under the CC-BY-SA material dataset. Model *predictions* published in the app are project data; the *training data* is not.
+
 ## Things this decision does not preclude
 
 - Commercializing a hosted SaaS later (the standard "open-source code, paid hosting" model)

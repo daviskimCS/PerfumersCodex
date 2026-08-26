@@ -12,6 +12,9 @@
 | Auth | Supabase Auth via `@supabase/ssr` (email/password + Google OAuth) |
 | Hosting | Vercel (app) + Supabase (DB) |
 | Search | Postgres full-text search + synonym table + pg_trgm |
+| Cheminformatics (pipeline) | RDKit (Python, in `perfumers-codex-data`) — fingerprints, similarity precompute, computed properties |
+| Cheminformatics (client) | RDKit.js (WASM, lazy-loaded) — structure rendering + substructure search |
+| ML experiment | scikit-learn + RDKit fingerprints (in `perfumers-codex-data`) — structure→odor classifier + eval |
 | Rate limiting | Upstash Redis via Vercel Marketplace (`@upstash/ratelimit`) |
 | Transactional email | Resend SMTP (custom domain) wired into Supabase Auth before launch |
 | Testing | Vitest (unit, focused on core logic) |
@@ -21,6 +24,8 @@
 | Analytics | Plausible, $9/mo (added at launch) |
 
 > **Updated June 2026** after a currency review: Next.js 14 → 16, Tailwind v3 → v4, Vercel KV → Upstash (Vercel KV was discontinued Dec 2024), Supabase auth-helpers → `@supabase/ssr`, and Resend pulled forward from v1.1 to pre-launch (see Supabase section below).
+
+> **Updated August 2026:** cheminformatics (RDKit / RDKit.js) and the structure–odor experiment added to v1 scope — see [scope.md](./scope.md) and [cheminformatics.md](./cheminformatics.md). Embeddings/pgvector, an MCP server, and the UMAP odor map are explicitly deferred (table below).
 
 ## Reasoning by choice
 
@@ -75,6 +80,17 @@ Test the parts that benefit from tests: search logic, synonym resolution, data n
 ### Python (separate repo) for data ingestion
 Python's data tooling (pdfplumber, BeautifulSoup, pandas, pydantic) is significantly better than JS for parsing SDS PDFs and PubChem responses. Separating ingestion from the app is the correct architecture.
 
+### RDKit + RDKit.js (added August 2026)
+RDKit (free, mature) does the heavy lifting in the Python data repo: Morgan/ECFP fingerprints, Tanimoto similarity (precomputed top-N per material at seed time), and computed properties — every computed row stamped with the RDKit version. RDKit.js compiles the same core to WASM, so 2D structure rendering and substructure filtering run entirely client-side: zero server cost at this corpus size, and deterministic besides.
+
+**Push:** the RDKit.js WASM bundle is heavy (multiple MB). Lazy-load it on the pages that need it and keep it out of the critical path, or the Lighthouse >90 budget dies.
+
+### Structure–odor experiment tooling (added August 2026)
+Plain scikit-learn on RDKit fingerprints, in the data repo. Deliberately boring tooling — the value is the evaluation discipline (held-out gold set, per-descriptor metrics, honest failure analysis), not model novelty. Training data (Leffingwell / GoodScents-derived public sets) stays in the experiment repo under its own licenses.
+
+### Structured extraction in the data pipeline (added August 2026)
+The pipeline may use an LLM with structured output / constrained decoding to parse unstructured source text (SDS PDFs, supplier pages) into schema-valid JSON. Every extracted record is human-reviewed against the source before commit — extraction assists data entry; it never replaces verification and never writes editorial content.
+
 ## Explicitly dropped / deferred
 
 | Tool | Reason |
@@ -93,6 +109,9 @@ Python's data tooling (pdfplumber, BeautifulSoup, pandas, pydantic) is significa
 | Storybook | Solo project, no design-system consumers |
 | Internationalization | English-only in v1 |
 | PWA / mobile app | Responsive web is enough |
+| pgvector / embeddings retrieval | Deferred — FTS + pg_trgm + synonyms covers a ~50-material corpus; revisit when it doesn't |
+| MCP server | v1.1 — cheap and worth doing, but after launch |
+| UMAP odor map | Stretch goal at launch, otherwise first post-launch feature |
 
 ## Boring quality essentials (these stay)
 

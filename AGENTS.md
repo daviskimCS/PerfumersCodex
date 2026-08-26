@@ -10,7 +10,7 @@ This file defines the rules of this codebase. When in doubt, follow these rules 
 
 ## Project context
 
-A curated, public, open-source aromachemical reference web app for working perfumers. Citation-driven, editorially curated, polished. Solo-built by Davis Kim. Live at perfumerscodex.com (once deployed).
+A curated, public, open-source aromachemical reference web app for working perfumers. Citation-driven, editorially curated, polished. Solo-built by Davis Kim. Live at perfumerscodex.com (once deployed). Deeper design docs live in `/docs`.
 
 ## Stack
 
@@ -25,6 +25,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Vitest for unit tests
 - GitHub Actions for typecheck + tests on PRs
 - Python data ingestion in separate repo: perfumers-codex-data
+- RDKit (Python, in perfumers-codex-data): fingerprints, Tanimoto similarity precompute, computed properties — stamped with rdkit_version
+- RDKit.js (WASM, lazy-loaded, client-side): 2D structure rendering + substructure search — never in the critical path
 
 ## Architectural rules
 
@@ -38,6 +40,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Database constraints (NOT NULL, FK, CHECK) liberally applied. They are documentation the DB enforces.
 - All schema changes are migrations. No ad-hoc DB edits.
 - Soft-delete (deleted_at) for editorial content. Hard-delete for user data (GDPR).
+- Model output (odor predictions) lives in `odor_predictions` with a `model_version`, renders only in a clearly-labeled experimental module, and never mixes with `material_descriptions`.
+- Computed values (logP, similarity) carry `rdkit_version` as provenance — they are deterministic recomputations, not cited facts.
 
 ## Search philosophy
 
@@ -72,7 +76,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Don't write inline SQL in route files.
 - Don't skip RLS policies on new user-data tables.
 - Don't add features marked v2 (formulation logs, stock tracking, session journal, real-time collaboration).
-- Don't generate olfactive descriptions or cited safety data — those are human-written.
+- Don't generate olfactive descriptions or cited safety data — those are human-written. Model odor predictions are the schema-separated, clearly-labeled exception — never present them as editorial content.
+- Don't add pgvector/embeddings retrieval, the MCP server, or the UMAP odor map in v1 without asking — deferred, see docs/cheminformatics.md.
 - Don't add Storybook, GraphQL, Redis, microservices, Docker, or PWA in v1.
 - Don't add E2E tests in v1 (Vitest unit tests only on core logic).
 
@@ -102,7 +107,7 @@ Skip tests for:
 ## Current state
 
 - **Phase:** Phase 0 (pre-flight)
-- **Last completed:** create-next-app scaffold (Next.js 16.2.9, TS strict, Tailwind v4); LICENSE + LICENSE-DATA + CI skeleton added (Aug 2026)
+- **Last completed:** design docs imported into /docs; cheminformatics + structure–odor experiment committed to v1 scope (Aug 2026)
 - **In progress:** remaining Phase 0 — public GitHub remote, Vercel project + perfumerscodex.com attach, Supabase project (region-matched), project email/alias
 - **Blockers:** none
 
@@ -121,6 +126,10 @@ Skip tests for:
 - Optional embedded bench companion
 - Internationalization
 - Native mobile app
+- MCP server (v1.1)
+- IFRA amendment diffing (v1.1)
+- Embeddings / pgvector hybrid retrieval
+- UMAP odor map (stretch — ask before starting)
 
 ## Useful prompts (reusable)
 

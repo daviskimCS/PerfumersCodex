@@ -111,6 +111,8 @@ Before opening signup to the public:
 - [ ] Light + dark mode both look polished
 - [ ] Demo video recorded and embedded somewhere
 - [ ] Launch blog post drafted, reviewed, and ready to publish
+- [ ] All model-generated content (odor predictions) clearly labeled as experimental, with model version shown
+- [ ] RDKit.js lazy-loaded; structure-bearing pages still pass Lighthouse >90
 
 ## How to use this checklist
 

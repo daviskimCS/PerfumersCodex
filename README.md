@@ -7,8 +7,10 @@ properties, usage guidance, and landmark uses of the materials used in modern
 perfumery — built by a working perfumer, for working perfumers.
 
 **Status:** pre-flight (Phase 0). Nothing to see yet — v1 targets 35–50
-hand-curated materials, real search (names, synonyms, CAS numbers), and a
-light personal layer (bookmarks + private notes).
+hand-curated materials, real search (names, synonyms, CAS numbers),
+structure-aware exploration (similarity, substructure search, 2D renders), a
+published structure–odor experiment with honest metrics, and a light
+personal layer (bookmarks + private notes).
 
 Soon at [perfumerscodex.com](https://perfumerscodex.com).
 
@@ -18,12 +20,14 @@ Soon at [perfumerscodex.com](https://perfumerscodex.com).
   schema level, not by convention.
 - **Curated, not aggregated.** Hand-selected materials, descriptions written
   from experience. Quality over coverage.
+- **Structure-aware.** Deterministic cheminformatics (RDKit) — similarity,
+  substructure search, rendered structures — alongside the editorial layer.
 - **Open.** Code is MIT-licensed; material data is CC BY-SA 4.0.
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui ·
-Postgres on Supabase · Drizzle ORM · Supabase Auth · Vercel
+Postgres on Supabase · Drizzle ORM · Supabase Auth · Vercel · RDKit / RDKit.js
 
 ## Documentation
 

@@ -21,6 +21,7 @@ The central table — one row per aromachemical or natural material.
 | material_type | enum NOT NULL | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it |
 | cas_number | text NULLABLE, INDEXED | Some naturals lack CAS; allow null |
 | iupac_name | text NULLABLE | |
+| smiles | text NULLABLE | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search |
 | molecular_formula | text NULLABLE | |
 | molecular_weight | numeric NULLABLE | |
 | created_at | timestamptz NOT NULL DEFAULT now() | |
@@ -164,6 +165,50 @@ Practical usage guidance — backs the "Usage" tab beyond IFRA limits. (The per-
 | notes | text NULLABLE | |
 | source_id | uuid FK → sources NOT NULL | |
 
+## Cheminformatics tables (added August 2026)
+
+Backs the v1 cheminformatics scope ([scope.md](./scope.md), [cheminformatics.md](./cheminformatics.md)). Design notes:
+
+- **`smiles` is nullable** — naturals are mixtures with no single structure; every cheminformatics feature simply skips NULL-SMILES materials.
+- **Substructure search needs no schema** — it runs client-side in RDKit.js over the corpus's SMILES strings.
+- **Provenance for computed rows is the tool version, not a `source_id`** — the values are deterministic recomputations; `rdkit_version` records exactly what produced them.
+- **Model predictions never touch `material_descriptions`** — they live in their own table, carry a `model_version`, and render only inside a clearly-labeled experimental module.
+
+### `material_computed_properties`
+| Column | Type | Notes |
+|---|---|---|
+| material_id | uuid PK, FK → materials | One row per material with SMILES |
+| logp | numeric NULLABLE | Crippen logP |
+| tpsa | numeric NULLABLE | Topological polar surface area |
+| heavy_atom_count | int NULLABLE | |
+| rdkit_version | text NOT NULL | Provenance |
+| computed_at | timestamptz NOT NULL | |
+
+### `material_similarity`
+Precomputed top-N (N≈10) Tanimoto neighbors per material, refreshed by the seed pipeline.
+
+| Column | Type | Notes |
+|---|---|---|
+| material_id | uuid FK → materials | |
+| similar_material_id | uuid FK → materials | CHECK material_id <> similar_material_id |
+| tanimoto | numeric NOT NULL | CHECK 0–1; Morgan/ECFP4 fingerprints |
+| rdkit_version | text NOT NULL | |
+| PRIMARY KEY (material_id, similar_material_id) | | |
+
+### `odor_predictions`
+Output of the structure–odor experiment. Experimental, clearly labeled in the UI, regenerable wholesale.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL | |
+| descriptor | text NOT NULL | The model's label space, e.g. "woody", "musky" |
+| probability | numeric NOT NULL | CHECK 0–1 |
+| model_version | text NOT NULL | e.g. "sor-v0.1" |
+| created_at | timestamptz NOT NULL | |
+
+UNIQUE (material_id, descriptor, model_version).
+
 ## User tables
 
 ### `users`
@@ -288,3 +333,5 @@ These rules belong in `lib/search.ts` with Vitest cases for each. Log every quer
 - **Why versioned IFRA limits:** standards change with each amendment. Old standards must remain queryable. Never overwrite — insert new rows with new amendment version.
 - **Why soft deletes only on editorial content:** users can hard-delete their own data (GDPR); editorial content keeps history for audit and recovery.
 - **Why text array for `key_facets` instead of join table:** facets are tags, not entities. They don't need their own lifecycle. PostgreSQL arrays + GIN indexing handle this cleanly.
+- **Why predictions live apart from descriptions:** the editorial layer is the product's trust anchor. Model output carries its own provenance (`model_version`), renders only as labeled-experimental, and can be regenerated or withdrawn wholesale without touching human-written content.
+- **Why computed properties have `rdkit_version` instead of `source_id`:** they aren't cited facts, they're deterministic recomputations — the honest provenance is the exact tool that produced them.

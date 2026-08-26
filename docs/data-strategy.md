@@ -8,13 +8,14 @@ The data is the project. The code is replaceable; the curated dataset is the moa
 - **Editorial voice.** Olfactive descriptions are written from personal experience, in the maker's voice, citing influences. Not aggregated from sources.
 - **Provenance everywhere.** Every fact-bearing row has a `source_id`. Enforced at the schema level.
 - **Versioned regulatory data.** IFRA limits are stamped with the amendment they were verified against. Re-verification is part of maintenance.
-- **No hidden AI generation.** If a description is AI-assisted, it's reviewed, edited, and owned by the maker. No "ChatGPT wrote this" content.
+- **No hidden AI generation.** If a description is AI-assisted, it's reviewed, edited, and owned by the maker. No "ChatGPT wrote this" content. Structured *extraction* and clearly-labeled model *predictions* (below) are explicitly not editorial content — the boundary is enforced in the schema.
 
 ## Data layers (separation matters)
 
 | Layer | Source | Effort | Legal posture |
 |---|---|---|---|
 | Canonical (CAS, IUPAC, molecular data) | PubChem API, ChemSpider | Low | Free, open, citable |
+| Structural (SMILES, fingerprints, computed properties) | PubChem SMILES + RDKit computation | Low (scripted) | Deterministic, recomputable; stamped with RDKit version |
 | Regulatory (IFRA limits, GHS codes) | IFRA standards site (linked), supplier SDSes | High | Hand-entered, linked, never republished verbatim |
 | Olfactive (descriptions, families, facets) | Maker's own writing, hand-curated | High | Original work, owned by maker |
 | Provenance (landmark uses) | Public interviews, books, perfumer disclosures | Medium | Hand-curated, cited |
@@ -57,6 +58,16 @@ This separation also matters for the open-source story: code + data can be open-
 ### Pricing / supplier data
 - Prices change, suppliers vary, MOQs differ
 - **Treatment:** don't automate. v2 personal layer lets users enter their own supplier prices manually. v1 doesn't include pricing.
+
+### SMILES and computed structural data (added August 2026)
+- SMILES pulled from PubChem alongside CAS/IUPAC; naturals are mixtures and carry none
+- Fingerprints, Tanimoto similarity, and computed properties (logP, TPSA) are deterministic RDKit output — provenance is the recorded RDKit version, not a citation
+- Structure–odor training data (Leffingwell, GoodScents-derived public datasets) lives in the experiment repo under its own licenses; it is **not** merged into the CC-BY-SA dataset
+
+### LLM-assisted structured extraction (added August 2026)
+- The data pipeline may use an LLM under structured output / constrained decoding to parse unstructured source text (SDS PDFs, supplier pages) into schema-valid JSON records
+- Every extracted record is human-reviewed against the original source before it is committed — extraction assists data entry, it never replaces verification
+- The editorial layer is untouched: olfactive descriptions and landmark-use judgments remain human-written; model odor predictions are stored and displayed separately, clearly labeled with a model version
 
 ## V1 starter material list (suggested ~40)
 
@@ -103,3 +114,4 @@ Total: ~100 hours of pure data work across 6 months. About half the project budg
 - "Let me auto-generate descriptions" — destroys the editorial differentiator
 - "I'll add 200 materials in v1" — quality drops, citations get sloppy, project loses its point
 - "I'll skip citations for the obvious facts" — the "every fact cited" promise is the differentiator; don't break it for convenience
+- "The model's prediction looks right, ship it as the description" — predictions never masquerade as editorial content

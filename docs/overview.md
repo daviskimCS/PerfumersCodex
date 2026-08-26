@@ -13,6 +13,7 @@ This project consolidates that information into one searchable, cited, modern re
 ## What makes this different
 
 - **Citation-driven.** Every fact links to its source. No "AI-generated" or scraped-without-attribution content.
+- **Structure-aware.** Real cheminformatics — 2D structures, structural similarity, substructure search — a search axis the free perfumery references don't have.
 - **Curated, not aggregated.** Hand-selected materials, written-from-experience descriptions, judgment-based landmark uses. Quality over coverage.
 - **Modern, polished software.** Real engineering, real polish. Most existing tools in this space are visually and functionally dated.
 - **Open-source code, openly licensed data.** Built for the community, not extracted from it.
