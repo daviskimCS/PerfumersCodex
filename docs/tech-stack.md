@@ -22,6 +22,7 @@
 | Data ingestion | Python scripts in separate repo, output JSON |
 | Error tracking | Sentry (added at launch) |
 | Analytics | Plausible, $9/mo (added at launch) |
+| Blog | MDX route (`/blog`) inside this Next.js app — no separate platform |
 
 > **Updated June 2026** after a currency review: Next.js 14 → 16, Tailwind v3 → v4, Vercel KV → Upstash (Vercel KV was discontinued Dec 2024), Supabase auth-helpers → `@supabase/ssr`, and Resend pulled forward from v1.1 to pre-launch (see Supabase section below).
 
@@ -76,6 +77,13 @@ Three implementation notes (details in [database-schema.md](./database-schema.md
 
 ### Vitest, focused
 Test the parts that benefit from tests: search logic, synonym resolution, data normalization, citation handling. Skip tests for trivial CRUD, plain component renders, and other low-value targets. 30–50 focused tests beats 200 shallow ones.
+
+### Blog as an MDX route
+
+The four milestone posts live at `/blog` in this app, not on Substack/Medium/
+dev.to. Keeps the writing part of the same deployable artifact as the code,
+avoids platform sprawl, and gives full design control so posts inherit the
+site's typography rather than a template's.
 
 ### Python (separate repo) for data ingestion
 Python's data tooling (pdfplumber, BeautifulSoup, pandas, pydantic) is significantly better than JS for parsing SDS PDFs and PubChem responses. Separating ingestion from the app is the correct architecture.
