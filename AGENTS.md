@@ -42,6 +42,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Soft-delete (deleted_at) for editorial content. Hard-delete for user data (GDPR).
 - Model output (odor predictions) lives in `odor_predictions` with a `model_version`, renders only in a clearly-labeled experimental module, and never mixes with `material_descriptions`.
 - Computed values (logP, similarity) carry `rdkit_version` as provenance — they are deterministic recomputations, not cited facts.
+- `smiles` is nullable — naturals are mixtures and carry none. Every cheminformatics feature (similarity, substructure, computed properties, 2D render) skips NULL-SMILES materials rather than erroring.
+- Structure–odor training data (Leffingwell / GoodScents-derived) stays under its own license in the experiment repo. Review the license before use; never redistribute it as project data.
 
 ## Search philosophy
 
@@ -57,8 +59,9 @@ A curated, public, open-source aromachemical reference web app for working perfu
 ## Auth and security
 
 - Supabase Auth handles auth flows. Don't roll custom auth.
+- Server-side, verify the caller with `supabase.auth.getUser()` — never `getSession()`, which trusts unvalidated cookie data.
 - All user-data tables have RLS policies. Test with multiple accounts before merging.
-- Account deletion *actually deletes* data. No soft-deletes for user-owned rows.
+- Account deletion *actually deletes* data. No soft-deletes for user-owned rows. It runs through the Supabase admin API with the secret key in a server action (the logged-in client cannot delete itself); `ON DELETE CASCADE` on user tables does the cleanup — verify it with a throwaway account.
 - Rate limit: signup, login, search.
 - No secrets in client bundle. Verify before deploy.
 

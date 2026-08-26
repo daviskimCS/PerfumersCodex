@@ -11,4 +11,14 @@
 | [licensing.md](./licensing.md) | MIT (code) + CC-BY-SA (data), reasoning |
 | [quality-checklist.md](./quality-checklist.md) | The "boring quality" bar the app is held to |
 
-Personal planning docs (milestones, time budget) live outside the repo.
+These docs are canonical: they describe what the project is and how it's
+built, they're versioned with the code they describe, and they're public on
+purpose. Change them here, not in a copy.
+
+The codebase *rules* — the constraints an agent or contributor works under —
+live one level up in [`AGENTS.md`](../AGENTS.md), loaded automatically via
+`CLAUDE.md`.
+
+Personal planning (time budget, week-by-week milestones, cut-point strategy,
+career framing) is deliberately **not** in this repo. It's private, it changes
+weekly, and none of it is needed to understand or build the project.
