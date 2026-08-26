@@ -1,0 +1,290 @@
+# Database Schema
+
+## Design principles
+
+- **Slugs as URL identifiers, not IDs.** `/materials/iso-e-super` is readable, SEO-friendly, stable.
+- **Citations are structural, not optional.** Every fact-bearing row has a non-nullable `source_id`.
+- **Soft deletes on editorial content.** `deleted_at` columns on materials and descriptions; never lose history.
+- **Constraints liberally applied.** NOT NULL, FOREIGN KEY, CHECK constraints are documentation that the database enforces.
+- **Timestamps everywhere.** `created_at` and `updated_at` on every mutable table.
+
+## Core tables
+
+### `materials`
+The central table — one row per aromachemical or natural material.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| slug | text UNIQUE NOT NULL | URL identifier (e.g. "iso-e-super") |
+| canonical_name | text NOT NULL | The display name |
+| material_type | enum NOT NULL | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it |
+| cas_number | text NULLABLE, INDEXED | Some naturals lack CAS; allow null |
+| iupac_name | text NULLABLE | |
+| molecular_formula | text NULLABLE | |
+| molecular_weight | numeric NULLABLE | |
+| created_at | timestamptz NOT NULL DEFAULT now() | |
+| updated_at | timestamptz NOT NULL DEFAULT now() | |
+| deleted_at | timestamptz NULLABLE | Soft delete |
+
+### `material_synonyms`
+Many synonyms per material — drives search.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL | |
+| name | text NOT NULL | |
+| synonym_type | enum NOT NULL | trade_name / iupac / common_name / abbreviation / supplier_name |
+
+Index: `(material_id)`, full-text index on `name`.
+
+### `families`
+Olfactive families and sub-families.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| name | text UNIQUE NOT NULL | e.g. "Woody", "Amber", "Iso E ambers" |
+| slug | text UNIQUE NOT NULL | |
+| parent_family_id | uuid FK → families NULLABLE | Self-referential for hierarchy |
+
+### `material_families`
+Many-to-many join.
+
+| Column | Type | Notes |
+|---|---|---|
+| material_id | uuid FK → materials | |
+| family_id | uuid FK → families | |
+| PRIMARY KEY (material_id, family_id) | | |
+
+### `usage_categories`
+IFRA's 11 categories. Static reference data, seeded once.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | smallint PK | 1–11 to match IFRA numbering |
+| name | text NOT NULL | e.g. "Category 1: Lip products" |
+| description | text | |
+
+### `material_usage_limits`
+Per-material, per-category IFRA limits.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL | |
+| category_id | smallint FK → usage_categories NOT NULL | |
+| restriction_type | enum NOT NULL DEFAULT 'restriction' | restriction / prohibition / specification — IFRA standards come in three kinds; without this, NULL max_pct ambiguously means both "unrestricted" and "prohibited" |
+| max_pct | numeric NULLABLE | NULL = "no numeric limit"; check constraint: 0 ≤ max_pct ≤ 100; prohibitions carry NULL max_pct + restriction_type='prohibition' |
+| notes | text NULLABLE | |
+| source_id | uuid FK → sources NOT NULL | |
+| ifra_amendment_version | text NOT NULL | e.g. "51st" |
+| verified_at | timestamptz NOT NULL | |
+
+UNIQUE (material_id, category_id, ifra_amendment_version).
+
+### `hazard_codes`
+GHS reference data, static, seeded once.
+
+| Column | Type | Notes |
+|---|---|---|
+| code | text PK | e.g. "H317" |
+| description | text NOT NULL | "May cause an allergic skin reaction" |
+| category | text NOT NULL | "Health hazard" / "Physical hazard" / "Environmental hazard" |
+
+### `material_hazards`
+Join table.
+
+| Column | Type | Notes |
+|---|---|---|
+| material_id | uuid FK → materials | |
+| hazard_code | text FK → hazard_codes | |
+| source_id | uuid FK → sources NOT NULL | |
+| PRIMARY KEY (material_id, hazard_code) | | |
+
+### `sources`
+Citations.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| type | enum NOT NULL | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other |
+| url | text NULLABLE | |
+| title | text NOT NULL | |
+| author | text NULLABLE | |
+| published_at | date NULLABLE | |
+| accessed_at | timestamptz NOT NULL | |
+| notes | text NULLABLE | |
+
+Partial unique index: `UNIQUE (url) WHERE url IS NOT NULL` — otherwise the seed pipeline accumulates duplicate source rows every run.
+
+### `material_descriptions`
+Editorial olfactive descriptions, written by maker.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL | |
+| description | text NOT NULL | 3–6 sentences |
+| tenacity | enum NULLABLE | low / medium / high / very_high |
+| projection | enum NULLABLE | low / medium / high |
+| key_facets | text[] NOT NULL DEFAULT '{}' | e.g. {"velvety","ambery","woody"} |
+| source_id | uuid FK → sources NULLABLE | NULL when written purely from personal experience |
+| created_at | timestamptz NOT NULL | |
+| updated_at | timestamptz NOT NULL | |
+| deleted_at | timestamptz NULLABLE | |
+
+Partial unique index: `UNIQUE (material_id) WHERE deleted_at IS NULL` — one *active* description per material. Without it, the search view (below) silently emits duplicate rows per material, and the detail page has to arbitrarily pick one.
+
+### `material_usage_guidance`
+Practical usage guidance — backs the "Usage" tab beyond IFRA limits. (The per-material data targets in [data-strategy.md](./data-strategy.md) promise typical %, threshold, and dilution guidance; this is where they live.)
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL UNIQUE | One guidance row per material |
+| typical_pct_min | numeric NULLABLE | Typical use range in EDP concentrate; CHECK 0–100 |
+| typical_pct_max | numeric NULLABLE | CHECK 0–100, ≥ typical_pct_min |
+| threshold_note | text NULLABLE | Threshold-of-perception note |
+| dilution_note | text NULLABLE | Common working dilution recommendation |
+| source_id | uuid FK → sources NULLABLE | NULL when from the maker's own bench practice |
+| created_at / updated_at | timestamptz NOT NULL | |
+
+### `landmark_uses`
+"Material X in Perfume Y" cited references.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NOT NULL | |
+| perfume_name | text NOT NULL | |
+| house | text NULLABLE | |
+| year | smallint NULLABLE | |
+| notes | text NULLABLE | |
+| source_id | uuid FK → sources NOT NULL | |
+
+## User tables
+
+### `users`
+Managed by Supabase Auth — schema is theirs. Application reads `auth.users` for ID and email.
+
+### `user_saved_materials`
+Bookmarks. RLS-protected.
+
+| Column | Type | Notes |
+|---|---|---|
+| user_id | uuid FK → auth.users ON DELETE CASCADE | Cascade makes Supabase account deletion actually delete user data (GDPR) |
+| material_id | uuid FK → materials | |
+| created_at | timestamptz NOT NULL | |
+| PRIMARY KEY (user_id, material_id) | | |
+
+RLS policy: SELECT/INSERT/DELETE allowed only when `auth.uid() = user_id`.
+
+### `user_notes`
+Free-text private notes per material.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| user_id | uuid FK → auth.users NOT NULL ON DELETE CASCADE | |
+| material_id | uuid FK → materials NOT NULL | |
+| body | text NOT NULL | |
+| created_at | timestamptz NOT NULL | |
+| updated_at | timestamptz NOT NULL | |
+
+UNIQUE (user_id, material_id) — one note per user per material.
+RLS: same as above.
+
+## Operational tables
+
+These back v1 scope items ([scope.md](./scope.md)) that previously had no schema: the correction form and the admin dashboard's "top searches."
+
+### `correction_submissions`
+The "submit a correction" form. Public insert (rate-limited), maker-only read.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| material_id | uuid FK → materials NULLABLE | NULL for general/site-wide corrections |
+| email | text NULLABLE | Optional contact for follow-up |
+| body | text NOT NULL | The suggested correction |
+| status | enum NOT NULL DEFAULT 'new' | new / accepted / rejected |
+| created_at | timestamptz NOT NULL | |
+
+### `search_queries`
+Drives the admin dashboard's "search count" and "top searches." Privacy-deliberate: no user_id, no IP, no session key — just the query string.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| query | text NOT NULL | Normalized (lowercased, trimmed) |
+| result_count | int NOT NULL | 0 = a miss — the most useful signal for synonym-table gaps |
+| created_at | timestamptz NOT NULL | |
+
+Retention: purge rows older than ~90 days (Supabase scheduled job). Mention search logging in the privacy policy.
+
+## Search infrastructure
+
+### Extension: `pg_trgm`
+`CREATE EXTENSION IF NOT EXISTS pg_trgm;` (one click on Supabase). Trigram GIN indexes on `materials.canonical_name` and `material_synonyms.name` serve ranking rule 3 (prefix) and give typo tolerance ("galoxolide" still finds galaxolide) — FTS alone cannot do either.
+
+### Materialized view: `material_search_view`
+Joins materials + synonyms + descriptions into a unified searchable corpus.
+
+Design notes (each fixes a real failure mode):
+- **`'simple'` config for names/synonyms, `'english'` only for descriptions.** English stemming mangles trade names — they aren't English words and must match verbatim.
+- **CAS numbers are *not* in the vector.** The `'english'`/`'simple'` tokenizers split `54464-57-2` unpredictably; CAS search is an exact-match short-circuit on the indexed `cas_number` column in `lib/search.ts` (rule 0 below).
+- **Synonyms and descriptions aggregate in lateral subqueries**, not a flat `GROUP BY` join — joining both tables directly cross-multiplies rows when a material has several synonyms and more than one description row.
+- **A plain unique index on `id` is mandatory** — `REFRESH MATERIALIZED VIEW CONCURRENTLY` refuses to run without one.
+
+```sql
+CREATE MATERIALIZED VIEW material_search_view AS
+SELECT
+  m.id,
+  m.slug,
+  m.canonical_name,
+  m.cas_number,
+  -- weights: name = A, synonyms = B, description = C
+  setweight(to_tsvector('simple', m.canonical_name), 'A') ||
+  setweight(to_tsvector('simple', coalesce(syn.names, '')), 'B') ||
+  setweight(to_tsvector('english', coalesce(d.description, '')), 'C') AS weighted_vector
+FROM materials m
+LEFT JOIN LATERAL (
+  SELECT string_agg(s.name, ' ') AS names
+  FROM material_synonyms s
+  WHERE s.material_id = m.id
+) syn ON true
+LEFT JOIN LATERAL (
+  SELECT d.description
+  FROM material_descriptions d
+  WHERE d.material_id = m.id AND d.deleted_at IS NULL
+  ORDER BY d.updated_at DESC
+  LIMIT 1
+) d ON true
+WHERE m.deleted_at IS NULL;
+
+CREATE UNIQUE INDEX ON material_search_view (id);  -- required for REFRESH ... CONCURRENTLY
+CREATE INDEX ON material_search_view USING GIN (weighted_vector);
+```
+
+Refresh: editorial data only changes via the seed script in v1, so refresh is one statement at the end of the seed run — no triggers, no debouncing needed yet.
+
+### Search ranking rules
+
+0. Exact match on `cas_number` (normalized) → immediate top, short-circuit
+1. Exact match on `canonical_name` → top
+2. Exact match on a synonym → second
+3. Prefix/trigram match on canonical or synonym (pg_trgm) → third
+4. Full-text match weighted by `setweight` (A > B > C) → remainder
+5. Tie-break: most recently updated material first
+
+These rules belong in `lib/search.ts` with Vitest cases for each. Log every query + result count to `search_queries` — zero-result queries are the to-do list for the synonym table.
+
+## Schema decisions and rationale
+
+- **Why slugs not IDs in URLs:** human-readable, SEO-friendly, stable across DB resets, support natural redirects.
+- **Why mandatory `source_id`:** the entire project's value proposition is "every fact has a citation." Encoding that in the schema rather than convention is good engineering.
+- **Why versioned IFRA limits:** standards change with each amendment. Old standards must remain queryable. Never overwrite — insert new rows with new amendment version.
+- **Why soft deletes only on editorial content:** users can hard-delete their own data (GDPR); editorial content keeps history for audit and recovery.
+- **Why text array for `key_facets` instead of join table:** facets are tags, not entities. They don't need their own lifecycle. PostgreSQL arrays + GIN indexing handle this cleanly.

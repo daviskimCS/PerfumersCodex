@@ -25,6 +25,12 @@ Soon at [perfumerscodex.com](https://perfumerscodex.com).
 Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui ·
 Postgres on Supabase · Drizzle ORM · Supabase Auth · Vercel
 
+## Documentation
+
+Design docs live in [docs/](./docs) — overview, scope, tech stack, data
+strategy, database schema, cheminformatics & ML, licensing, quality
+checklist.
+
 ## Development
 
 ```bash
