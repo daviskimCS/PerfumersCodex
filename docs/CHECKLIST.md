@@ -164,9 +164,9 @@ half, P2-E), and query logging.
 
 ---
 
-### P2-B — Design tokens · **READY**
+### P2-B — Design tokens · **DONE**
 
-- [ ] **Establish the design tokens — typography scale, color tokens (light + dark, both first-class), and spacing — in the Tailwind v4 `@theme` block.**
+- [x] **Establish the design tokens — typography scale, color tokens (light + dark, both first-class), and spacing — in the Tailwind v4 `@theme` block.**
 
 **Starting point.** `app/globals.css` already carries shadcn's *default*
 token set from `shadcn init` (neutral palette, chart/sidebar tokens, light +
