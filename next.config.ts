@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -8,6 +8,6 @@ const nextConfig: NextConfig = {
     // Pin the root so a worktree builds itself and nothing above it.
     root: __dirname,
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig
