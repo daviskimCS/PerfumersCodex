@@ -126,9 +126,9 @@ with P2-E), any `lib/db/` query code.
 
 ## Phase 2 — Search & Polish (Weeks 5–10)
 
-### P2-A — Search normalization + ranking (pure) · **READY**
+### P2-A — Search normalization + ranking (pure) · **DONE**
 
-- [ ] **Implement query normalization and the ranking rules from `docs/database-schema.md` as pure, database-free functions, with a Vitest gold set covering the Week 5 cases.**
+- [x] **Implement query normalization and the ranking rules from `docs/database-schema.md` as pure, database-free functions, with a Vitest gold set covering the Week 5 cases.**
 
 **Acceptance criteria**
 - `normalize.ts` exports `normalizeQuery(raw: string): string` (trim, lowercase,
