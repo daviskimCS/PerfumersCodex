@@ -404,6 +404,21 @@
   html {
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+
+    /* Let the platform ink the glyphs. Stated explicitly because it is a
+       decision, not an omission: Tailwind's `antialiased` utility — a
+       create-next-app default that used to sit on <html> — forces grayscale
+       smoothing, which discards the stem darkening the OS applies and thins
+       every stroke. Small type goes sharp and under-inked, and muted text
+       reads fainter than its contrast ratio promises. Verified in both modes:
+       11px and 12px gain the most, and dark mode benefits too, so smoothing
+       is NOT split per mode.
+
+       This rule cannot enforce itself — `antialiased` is a utility and the
+       utilities layer outranks @layer base — so the class has to stay off the
+       markup. See the note in app/layout.tsx. */
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
   }
 
   body {
