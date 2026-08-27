@@ -16,13 +16,14 @@ A curated, public, open-source aromachemical reference web app for working perfu
 
 - Next.js 16 (App Router, Turbopack), TypeScript strict
 - Tailwind CSS v4 (design tokens in `@theme` in globals.css — no tailwind.config.js) + shadcn/ui (components copied to /components/ui — they are owned, not vendored)
-- Postgres on Supabase + Drizzle ORM (schema in /db/schema.ts)
+- Postgres on Supabase + Drizzle ORM (table definitions in `db/schema.ts`; all access via `lib/db/` — see below)
 - Supabase Auth via `@supabase/ssr` (email/password + Google OAuth) — never use the deprecated auth-helpers packages
 - Supabase API keys: new-style `sb_publishable_` / `sb_secret_` only
 - Row-Level Security on all user-owned tables
 - Vercel deployment (function region matches Supabase region)
 - Upstash Redis (Vercel Marketplace) for rate limiting only — not a cache
-- Vitest for unit tests
+- Vitest for unit tests (node environment, colocated `*.test.ts`)
+- Zod for validation — one schema per form, shared by client and server
 - GitHub Actions for typecheck + tests on PRs
 - Python data ingestion in separate repo: perfumers-codex-data
 - RDKit (Python, in perfumers-codex-data): fingerprints, Tanimoto similarity precompute, computed properties — stamped with rdkit_version
@@ -30,7 +31,11 @@ A curated, public, open-source aromachemical reference web app for working perfu
 
 ## Architectural rules
 
-- All DB access goes through `/lib/db/`. No inline SQL in route handlers or components.
+- All DB access goes through `lib/db/`. No inline SQL in route handlers or components.
+- **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts`. Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
+- **Type contracts:** `lib/types.ts` is contract-locked. It is hand-written from `docs/database-schema.md`, not inferred from Drizzle, so UI and schema work stay decoupled. Conform to it; don't edit it.
+- **Search boundary (docs/architecture.md D2):** SQL returns *evidence* (match flags, similarities, ts_rank), TypeScript assigns *rank*. `lib/search/{normalize,rank}.ts` stay pure and database-free so the gold set runs without Postgres.
+- **Page states (docs/architecture.md D4):** every data-fetching route segment ships `loading.tsx` (skeleton matching final layout) and `error.tsx` (plain language + `reset()`, never a raw error or stack trace). Unknown slugs call `notFound()`. Empty states are content passed to the shared `components/empty-state.tsx`, never new bespoke components. Never catch-and-render-blank — a silent empty section lies about the data.
 - **Data-access boundary:** editorial/public data (materials, families, sources, search) is read through Drizzle. User-owned data (bookmarks, notes) goes through the Supabase client so RLS is enforced — Drizzle connects as the `postgres` role and silently bypasses RLS. Never touch user tables through Drizzle.
 - Drizzle migrations run against the direct connection (5432); the app runs against the pooled connection (6543, `prepare: false`).
 - Server components by default. Client components only when needed (interaction, browser APIs).
@@ -64,6 +69,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Account deletion *actually deletes* data. No soft-deletes for user-owned rows. It runs through the Supabase admin API with the secret key in a server action (the logged-in client cannot delete itself); `ON DELETE CASCADE` on user tables does the cleanup — verify it with a throwaway account.
 - Rate limit: signup, login, search.
 - No secrets in client bundle. Verify before deploy.
+- **Validation (docs/architecture.md D6):** one Zod schema per form/domain in `lib/validation/`, imported by both the client form and the server action — "server matches client" holds by construction. Server actions always re-parse with `safeParse`; a parse failure returns field-keyed errors, never a thrown 500.
+- Environment variables are read only through `lib/env.ts` (Zod-parsed once at module load). No raw `process.env` elsewhere — a missing var should fail loudly at boot.
 
 ## Aesthetic
 

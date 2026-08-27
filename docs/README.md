@@ -7,6 +7,7 @@
 | [tech-stack.md](./tech-stack.md) | Locked stack with reasoning and cut points |
 | [data-strategy.md](./data-strategy.md) | Sourcing, licensing, ethical/legal handling |
 | [database-schema.md](./database-schema.md) | Tables, relationships, design decisions |
+| [architecture.md](./architecture.md) | Code-level decisions: module layout, search boundary, type contracts, page states, tests, validation |
 | [cheminformatics.md](./cheminformatics.md) | RDKit features, the structure–odor experiment, evaluation methodology |
 | [licensing.md](./licensing.md) | MIT (code) + CC-BY-SA (data), reasoning |
 | [quality-checklist.md](./quality-checklist.md) | The "boring quality" bar the app is held to |

@@ -1,0 +1,226 @@
+# Implementation Checklist — Phases 1–2
+
+Dispatchable work items derived from the milestone plan (Weeks 1–10), filtered
+to what an agent can actually do and build against. Design rationale lives in
+[architecture.md](./architecture.md), [database-schema.md](./database-schema.md),
+and [tech-stack.md](./tech-stack.md); this file is the work queue.
+
+**Orchestrator-owned. Subagents read it; only the orchestrator ticks boxes.**
+
+## Legend
+
+| Marker | Meaning |
+| --- | --- |
+| `- [ ]` **READY** | Dispatchable now — no external dependency |
+| `- [ ]` **BLOCKED: phase-0** | Needs a live Supabase project + connection strings before it can be built or proven |
+| `- [ ]` **BLOCKED: <ID>** | Waits on another checklist item |
+| **MAKER** | Not agent work — account setup, editorial writing, or human verification. Listed for completeness; never dispatched. |
+
+## Orchestrator-owned files — subagents must never modify these
+
+```
+package.json          package-lock.json     tsconfig.json
+next.config.ts        vitest.config.ts      drizzle.config.ts
+postcss.config.mjs    eslint.config.mjs     components.json
+.github/**            docs/**               AGENTS.md    CLAUDE.md
+lib/types.ts          lib/env.ts
+```
+
+Dependency installs, config changes, and CI edits are orchestrator steps. If an
+item needs a package, the orchestrator installs it before dispatch.
+
+## Standing constraints — apply to every item
+
+1. **Never write editorial content.** Olfactive descriptions, cited safety
+   data, usage guidance, and landmark uses are human-written
+   ([data-strategy.md](./data-strategy.md)). Placeholder or fixture data must be
+   obviously synthetic (`"Lorem material"`), never plausible-looking perfumery facts.
+2. **Respect the RLS boundary.** Editorial/public data through Drizzle;
+   user-owned data through the Supabase client only. Drizzle bypasses RLS.
+3. **Conform to `lib/types.ts`.** It is contract-locked — read it, never edit it.
+4. **Follow `AGENTS.md`.** It outranks general best practice.
+5. **No new dependencies.** If an item seems to need one, stop and report it.
+6. **`smiles` is nullable.** Every cheminformatics path skips NULL-SMILES
+   materials rather than erroring.
+
+---
+
+## Phase 1 — Schema & Foundation (Weeks 1–4)
+
+### P1-A — Drizzle schema translation · **READY**
+
+- [ ] **Implement the schema per `docs/database-schema.md`: all tables with proper constraints (NOT NULL, FK, CHECK), slugs as URL identifiers, mandatory `source_id` on fact-bearing rows, and soft-delete columns where specified.**
+
+**Acceptance criteria**
+- Every table in `database-schema.md` is declared: `materials`, `material_synonyms`,
+  `families`, `material_families`, `usage_categories`, `material_usage_limits`,
+  `hazard_codes`, `material_hazards`, `sources`, `material_descriptions`,
+  `material_usage_guidance`, `landmark_uses`, `material_computed_properties`,
+  `material_similarity`, `odor_predictions`, `user_saved_materials`, `user_notes`,
+  `correction_submissions`, `search_queries`.
+- Enums declared with `pgEnum`: material_type, synonym_type, source type,
+  restriction_type, tenacity, projection, correction status.
+- Nullability matches the doc exactly — in particular `materials.smiles`,
+  `materials.cas_number`, and `material_descriptions.source_id` are nullable;
+  every `source_id` on a fact-bearing row (`material_usage_limits`,
+  `material_hazards`, `landmark_uses`) is NOT NULL.
+- CHECK constraints: `max_pct` 0–100; `tanimoto` 0–1; `probability` 0–1;
+  `typical_pct_min`/`max` 0–100 with max ≥ min; `material_id <> similar_material_id`.
+- Unique constraints: `materials.slug`, `families.name`, `families.slug`,
+  `(material_id, category_id, ifra_amendment_version)`,
+  `(user_id, material_id)` on notes, `(material_id, descriptor, model_version)`.
+- Partial unique indexes: `sources(url) WHERE url IS NOT NULL`;
+  `material_descriptions(material_id) WHERE deleted_at IS NULL`.
+- `ON DELETE CASCADE` on both user tables' `user_id`.
+- Indexes on `materials.cas_number` and `material_synonyms.material_id`.
+- Composite PKs where the doc specifies them.
+- File is declarations only — no queries, no client instantiation, no connection code.
+
+**Files** — create/modify exactly: `db/schema.ts`
+
+**Depends on** — nothing. *Orchestrator prerequisite: install `drizzle-orm`.*
+
+**Proves it is done** — `npm run typecheck`
+
+**Out of scope** — migrations (needs `drizzle.config.ts` + a live DB), the
+`material_search_view` materialized view and `pg_trgm` extension (raw SQL, lands
+with P2-E), any `lib/db/` query code.
+
+---
+
+### P1-B — Drizzle client, config, and env access · **BLOCKED: phase-0**
+- [ ] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`), `drizzle.config.ts` against `DIRECT_URL` (5432), Zod-validated `lib/env.ts`.
+  *Blocked: needs both connection strings. `drizzle.config.ts` and `lib/env.ts` are orchestrator-owned.*
+
+### P1-C — First migration round-trip · **BLOCKED: phase-0**
+- [ ] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. *The budgeted 90-minute Week 1 trap.*
+
+### P1-D — Supabase clients + token-refresh middleware · **BLOCKED: phase-0**
+- [ ] `lib/supabase/{browser,server}.ts` + root `middleware.ts` per current `@supabase/ssr` docs.
+
+### P1-E — Auth flows + protected routes · **BLOCKED: P1-D**
+- [ ] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
+  *Google OAuth console setup is **MAKER**.*
+
+### P1-F — Material routes (structural) · **BLOCKED: P1-B**
+- [ ] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
+
+### P1-G — Seed script · **BLOCKED: P1-C**
+- [ ] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
+
+### **MAKER** — Phase 1 items that are not agent work
+- Phase 0 accounts: GitHub remote, Vercel project + domain, Supabase project (region-matched), project email
+- Schema design review — *"Don't let Claude Code drive this week"* (milestone plan, Week 2). P1-A is mechanical translation of an already-decided design; review it against `database-schema.md` before it merges.
+- The 5 hand-cited materials (Iso E Super, hedione, ambroxan, vanillin, ethyl maltol) and the `perfumers-codex-data` Python repo
+- Blog post 1
+
+---
+
+## Phase 2 — Search & Polish (Weeks 5–10)
+
+### P2-A — Search normalization + ranking (pure) · **READY**
+
+- [ ] **Implement query normalization and the ranking rules from `docs/database-schema.md` as pure, database-free functions, with a Vitest gold set covering the Week 5 cases.**
+
+**Acceptance criteria**
+- `normalize.ts` exports `normalizeQuery(raw: string): string` (trim, lowercase,
+  collapse internal whitespace) and `isCasNumber(q: string): boolean` matching
+  the CAS form `\d{2,7}-\d{2}-\d`.
+- `rank.ts` exports a pure `rankCandidates(candidates: SearchCandidate[], normalizedQuery: string): SearchResult[]`
+  implementing tiers 1–4 from `database-schema.md`: canonical-name exact (1),
+  synonym exact (2), prefix/trigram (3), full-text (4).
+- Sort order is (tier asc, score desc, `updatedAt` desc); results are deduped to
+  the best tier per material; `matchedSynonym` is populated on tier-2 hits.
+- Tier 0 (CAS exact) is *represented in the type* but assigned by the pipeline,
+  not by `rankCandidates` — the short-circuit is a DB lookup and lands with P2-E.
+- `SearchCandidate` is defined in `lib/search/types.ts` (pipeline-internal, not
+  in `lib/types.ts`) and carries the evidence fields: exact-synonym flag,
+  trigram similarity, `ts_rank`, `updatedAt`.
+- `gold-set.ts` exports a typed `{ query, expectSlug, maxRank }[]` seeded with the
+  five Week 5 cases: `"iso e"`, `"OTNE"`, `"54464-57-2"`, `"ambermax"`,
+  `"amber wood"` — each expecting `iso-e-super`.
+- Tests iterate the gold set against synthetic candidates and assert expected
+  rank; plus edge cases for empty query, whitespace-only, and mixed case.
+- Zero database imports anywhere in these files.
+
+**Files** — create/modify exactly:
+`lib/search/normalize.ts`, `lib/search/rank.ts`, `lib/search/types.ts`,
+`lib/search/gold-set.ts`, `lib/search/normalize.test.ts`, `lib/search/rank.test.ts`
+
+**Depends on** — `lib/types.ts` (read-only: `SearchResult`, `MatchTier`)
+
+**Proves it is done** — `npm test -- lib/search` and `npm run typecheck`
+
+**Out of scope** — `lib/db/search.ts`, `lib/search/index.ts` (both need the DB
+half, P2-E), and query logging.
+
+---
+
+### P2-B — Design tokens · **READY**
+
+- [ ] **Establish the design tokens — typography scale, color tokens (light + dark, both first-class), and spacing — in the Tailwind v4 `@theme` block.**
+
+**Acceptance criteria**
+- Tokens defined in `@theme` in `app/globals.css`. No `tailwind.config.js`
+  (Tailwind v4 is CSS-first).
+- A deliberate type scale with a serif or high-contrast display face for material
+  names and a readable body face — *editorial, Apple developer docs, not a
+  startup landing page*.
+- Semantic color tokens (background, surface, foreground, muted, border, accent),
+  each defined for light **and** dark. Both modes are first-class, not an
+  afterthought; contrast targets WCAG AA.
+- A consistent spacing scale. No one-off values.
+- Brief comments explaining the intent of each token group, so later work uses
+  them rather than inventing new values.
+- Existing scaffold styles that conflict are replaced, not layered over.
+
+**Files** — create/modify exactly: `app/globals.css`
+
+**Depends on** — nothing
+
+**Proves it is done** — `npm run typecheck` *(orchestrator runs `npm run build` after the wave)*
+
+**Out of scope** — layout, components, shadcn install (orchestrator runs
+`shadcn init`), any `app/layout.tsx` change.
+
+---
+
+### P2-C — Global layout + site chrome · **BLOCKED: P2-B**
+- [ ] Header (wordmark + search slot), main content region, minimal footer carrying the CC-BY-SA data-license line; real root metadata (title template, description, Open Graph).
+  **Files:** `app/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
+  **Proves:** `npm run typecheck`
+
+### P2-D — Shared page-state primitives · **BLOCKED: P2-B**
+- [ ] Shared `empty-state.tsx` (title, description, optional action) per architecture D4, and a global `not-found.tsx`.
+  **Files:** `components/empty-state.tsx`, `app/not-found.tsx`
+  **Proves:** `npm run typecheck`
+
+### P2-E — Search query layer + search view migration · **BLOCKED: phase-0**
+- [ ] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
+
+### P2-F — Search UX · **BLOCKED: P2-E, P2-C**
+- [ ] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
+
+### P2-G — Material detail page · **BLOCKED: P1-F, P2-C**
+- [ ] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
+
+### P2-H — Browse & discovery · **BLOCKED: P1-F, P2-C**
+- [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
+
+### **MAKER** — Phase 2 items that are not agent work
+- 15 further hand-cited materials (Week 9)
+- Aesthetic direction sign-off on P2-B before it propagates into P2-C/P2-G
+- `EXPLAIN ANALYZE` review and index tuning once real data exists
+- Blog post 2
+
+---
+
+## Suggested wave grouping
+
+File sets verified disjoint.
+
+| Wave | Items | Why together |
+| --- | --- | --- |
+| 1 | **P1-A**, **P2-A**, **P2-B** | `db/`, `lib/search/`, `app/globals.css` — no overlap, no cross-dependencies |
+| 2 | **P2-C**, **P2-D** | Both consume P2-B's tokens; `app/layout.tsx` + `components/site-*` vs `components/empty-state.tsx` + `app/not-found.tsx` |
+| 3+ | P1-B … P2-H | Gated on Phase 0 credentials |

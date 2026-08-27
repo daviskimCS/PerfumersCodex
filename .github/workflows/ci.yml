@@ -15,5 +15,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit
-      # vitest run — added in Week 1 step 8 once Vitest is installed
+      - run: npm run typecheck
+      - run: npm test
