@@ -7,6 +7,13 @@ and [tech-stack.md](./tech-stack.md); this file is the work queue.
 
 **Orchestrator-owned. Subagents read it; only the orchestrator ticks boxes.**
 
+> **Updated Aug 26, 2026** after reconciling the main checkout's uncommitted
+> June work onto this branch. Week 1 scaffolding (Supabase clients + proxy
+> middleware, pooled Drizzle client, `drizzle.config.ts`, `.env.example`,
+> shadcn init with six primitives) already exists — P1-B and P1-D are done
+> but unverified against a live database. `db/schema.ts` remains a deliberate
+> placeholder awaiting the maker's Week 2 design pass.
+
 ## Legend
 
 | Marker | Meaning |
@@ -88,21 +95,22 @@ with P2-E), any `lib/db/` query code.
 
 ---
 
-### P1-B — Drizzle client, config, and env access · **BLOCKED: phase-0**
-- [ ] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`), `drizzle.config.ts` against `DIRECT_URL` (5432), Zod-validated `lib/env.ts`.
-  *Blocked: needs both connection strings. `drizzle.config.ts` and `lib/env.ts` are orchestrator-owned.*
+### P1-B — Drizzle client + config · **DONE (unverified)**
+- [x] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`) in `lib/db/index.ts`, `drizzle.config.ts` against `DIRECT_URL` (5432), `.env.example` documenting both.
+  *Written June 2026, adopted onto this branch Aug 26. Code is correct and carries the RLS-boundary comment; **not yet run against a live database** — that verification is P1-C. `lib/env.ts` (Zod-validated env, architecture D6) is still outstanding and orchestrator-owned.*
 
 ### P1-C — First migration round-trip · **BLOCKED: phase-0**
 - [ ] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. *The budgeted 90-minute Week 1 trap.*
 
-### P1-D — Supabase clients + token-refresh middleware · **BLOCKED: phase-0**
-- [ ] `lib/supabase/{browser,server}.ts` + root `middleware.ts` per current `@supabase/ssr` docs.
+### P1-D — Supabase clients + token-refresh middleware · **DONE (unverified)**
+- [x] `lib/supabase/{client,server,admin,proxy}.ts` + root `proxy.ts` (Next 16's middleware entry point) per `@supabase/ssr`.
+  *Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project.*
 
-### P1-E — Auth flows + protected routes · **BLOCKED: P1-D**
+### P1-E — Auth flows + protected routes · **BLOCKED: phase-0**
 - [ ] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
   *Google OAuth console setup is **MAKER**.*
 
-### P1-F — Material routes (structural) · **BLOCKED: P1-B**
+### P1-F — Material routes (structural) · **BLOCKED: phase-0, P1-A**
 - [ ] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
 ### P1-G — Seed script · **BLOCKED: P1-C**
@@ -160,9 +168,19 @@ half, P2-E), and query logging.
 
 - [ ] **Establish the design tokens — typography scale, color tokens (light + dark, both first-class), and spacing — in the Tailwind v4 `@theme` block.**
 
+**Starting point.** `app/globals.css` already carries shadcn's *default*
+token set from `shadcn init` (neutral palette, chart/sidebar tokens, light +
+dark blocks). This item replaces that generic palette with the project's own
+identity — it is a customisation pass, not a greenfield file. Do not delete
+the shadcn token contract the primitives in `components/ui/` depend on
+(`--background`, `--foreground`, `--primary`, `--muted`, `--border`, `--ring`,
+etc.); re-value them. Unused chart/sidebar tokens may be removed.
+
 **Acceptance criteria**
-- Tokens defined in `@theme` in `app/globals.css`. No `tailwind.config.js`
-  (Tailwind v4 is CSS-first).
+- Tokens defined in `@theme` / `:root` / `.dark` in `app/globals.css`. No
+  `tailwind.config.js` (Tailwind v4 is CSS-first).
+- Every token name currently consumed by `components/ui/*` still resolves —
+  verified by `npm run build` succeeding and the primitives rendering.
 - A deliberate type scale with a serif or high-contrast display face for material
   names and a readable body face — *editorial, Apple developer docs, not a
   startup landing page*.
@@ -180,8 +198,8 @@ half, P2-E), and query logging.
 
 **Proves it is done** — `npm run typecheck` *(orchestrator runs `npm run build` after the wave)*
 
-**Out of scope** — layout, components, shadcn install (orchestrator runs
-`shadcn init`), any `app/layout.tsx` change.
+**Out of scope** — layout, components, adding or removing shadcn primitives,
+any `app/layout.tsx` change.
 
 ---
 
