@@ -2,50 +2,45 @@
 
 A curated, citation-driven aromachemical reference for working perfumers.
 
-One searchable, cited, modern source of truth for the safety data, olfactive
-properties, usage guidance, and landmark uses of the materials used in modern
-perfumery — built by a working perfumer, for working perfumers.
+Working perfumers typically keep 5–8 tabs open during a formulation session — IFRA standards, supplier pages, SDS PDFs, scent databases. Perfumers Codex consolidates that into one searchable, cited, modern reference: safety data, olfactive properties, usage guidance, and landmark uses for the materials of modern perfumery.
 
-**Status:** pre-flight (Phase 0). Nothing to see yet — v1 targets 35–50
-hand-curated materials, real search (names, synonyms, CAS numbers),
-structure-aware exploration (similarity, substructure search, 2D renders), a
-published structure–odor experiment with honest metrics, and a light
-personal layer (bookmarks + private notes).
-
-Soon at [perfumerscodex.com](https://perfumerscodex.com).
+**Status:** in development. Public launch planned for spring 2027.
 
 ## Principles
 
-- **Citation-driven.** Every fact links to its source — enforced at the
-  schema level, not by convention.
-- **Curated, not aggregated.** Hand-selected materials, descriptions written
-  from experience. Quality over coverage.
-- **Structure-aware.** Deterministic cheminformatics (RDKit) — similarity,
-  substructure search, rendered structures — alongside the editorial layer.
-- **Open.** Code is MIT-licensed; material data is CC BY-SA 4.0.
+- **Citation-driven.** Every fact-bearing row links to a primary source — enforced at the database schema level, not by convention.
+- **Curated, not aggregated.** Hand-selected materials, descriptions written from bench experience. Quality over coverage.
+- **Versioned regulatory data.** IFRA limits are stamped with the amendment they were verified against and never overwritten.
+- **Open.** MIT-licensed code, CC BY-SA 4.0 data.
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui ·
-Postgres on Supabase · Drizzle ORM · Supabase Auth · Vercel · RDKit / RDKit.js
-
-## Documentation
-
-Design docs live in [docs/](./docs) — overview, scope, tech stack, data
-strategy, database schema, cheminformatics & ML, licensing, quality
-checklist.
+Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui · Postgres on Supabase · Drizzle ORM · Supabase Auth (`@supabase/ssr`) · Postgres full-text search + pg_trgm · Vitest · Vercel
 
 ## Development
 
 ```bash
 npm install
+cp .env.example .env.local   # fill in Supabase project values
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server (Turbopack) |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest unit tests |
+| `npm run db:generate` | Generate Drizzle migration from schema |
+| `npm run db:migrate` | Apply migrations (uses `DIRECT_URL`) |
 
-## License
+Note: the app runtime uses the pooled connection (`DATABASE_URL`, port 6543); migrations use the direct connection (`DIRECT_URL`, port 5432). Both are required in `.env.local`.
+
+## Licensing
 
 - **Code:** [MIT](./LICENSE)
-- **Material data:** [CC BY-SA 4.0](./LICENSE-DATA) — attribute and
-  share-alike
+- **Material data:** [CC BY-SA 4.0](./LICENSE-DATA) — attribute and share-alike
+
+## Author
+
+Davis Kim — built by a working perfumer, for working perfumers.
