@@ -13,7 +13,8 @@ standing constraints verbatim, plus this wave's additions below.
       routes (P1-F), and the search query layer (P2-E) are on the branch, the
       full suite passes, and the orchestrator has smoke-tested search and auth
       against the live database.
-- [ ] **shadcn primitives added by the orchestrator** (pre-dispatch):
+- [x] **shadcn primitives added by the orchestrator** — _done 2026-08-28:
+      `tabs.tsx` + `skeleton.tsx` landed, `package.json` verified unchanged_:
       `npx shadcn@latest add tabs skeleton`. W4-C needs Tabs; every `loading.tsx`
       since Wave 2 has hand-rolled what Skeleton should provide. `radix-ui` is
       already installed, so this should add no dependency — the orchestrator
@@ -36,6 +37,13 @@ standing constraints verbatim, plus this wave's additions below.
 
 **Partial dispatch:** W4-A needs boxes 1 and 3. W4-B needs box 1. W4-C needs
 boxes 1, 2, and 4.
+
+**Early dispatch (2026-08-28):** W4-A's validation half — the input format,
+Zod schemas, tests, and synthetic fixtures — is DB-free and was dispatched
+ahead of the entry criteria; it also unblocks the maker's own data authoring
+(the five-materials JSON needs the format to exist). `scripts/seed.ts`
+remains gated on the maker schema (P1-A) and the runner decision, and is the
+only W4-A file still outstanding.
 
 ## Wave shape
 
