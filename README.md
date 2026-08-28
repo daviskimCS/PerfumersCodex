@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Perfumers Codex
 
-## Getting Started
+A curated, citation-driven aromachemical reference for working perfumers.
 
-First, run the development server:
+Working perfumers typically keep 5–8 tabs open during a formulation session — IFRA standards, supplier pages, SDS PDFs, scent databases. Perfumers Codex consolidates that into one searchable, cited, modern reference: safety data, olfactive properties, usage guidance, and landmark uses for the materials of modern perfumery.
+
+**Status:** in development. Public launch planned for spring 2027.
+
+## Principles
+
+- **Citation-driven.** Every fact-bearing row links to a primary source — enforced at the database schema level, not by convention.
+- **Curated, not aggregated.** Hand-selected materials, descriptions written from bench experience. Quality over coverage.
+- **Versioned regulatory data.** IFRA limits are stamped with the amendment they were verified against and never overwritten.
+- **Open.** MIT-licensed code, CC BY-SA 4.0 data.
+
+## Stack
+
+Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui · Postgres on Supabase · Drizzle ORM · Supabase Auth (`@supabase/ssr`) · Postgres full-text search + pg_trgm · Vitest · Vercel
+
+## Development
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in Supabase project values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server (Turbopack) |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest unit tests |
+| `npm run db:generate` | Generate Drizzle migration from schema |
+| `npm run db:migrate` | Apply migrations (uses `DIRECT_URL`) |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Note: the app runtime uses the pooled connection (`DATABASE_URL`, port 6543); migrations use the direct connection (`DIRECT_URL`, port 5432). Both are required in `.env.local`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Licensing
 
-## Learn More
+- **Code:** [MIT](./LICENSE)
+- **Material data:** [CC BY-SA 4.0](./LICENSE-DATA) — attribute and share-alike
 
-To learn more about Next.js, take a look at the following resources:
+## Author
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Davis Kim — built by a working perfumer, for working perfumers.

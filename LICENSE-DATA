@@ -1,0 +1,29 @@
+Perfumers Codex — Data License
+
+The material data in this project (aromachemical entries, synonyms, olfactive
+descriptions, usage guidance, landmark-use records, and citations) is licensed
+under the Creative Commons Attribution-ShareAlike 4.0 International license
+(CC BY-SA 4.0).
+
+Copyright (c) 2026 Davis Kim
+
+You are free to:
+- Share — copy and redistribute the data in any medium or format
+- Adapt — remix, transform, and build upon the data for any purpose,
+  including commercially
+
+Under the following terms:
+- Attribution — you must give appropriate credit, provide a link to the
+  license, and indicate if changes were made.
+- ShareAlike — if you remix, transform, or build upon the data, you must
+  distribute your contributions under the same license.
+
+Requested attribution format:
+
+  Material data from Perfumers Codex (https://perfumerscodex.com),
+  licensed CC BY-SA 4.0.
+
+Full license text: https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+Note: the application source code in this repository is separately licensed
+under the MIT License — see the LICENSE file.

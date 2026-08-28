@@ -1,26 +1,454 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   Perfumers Codex — design tokens
+
+   One file, four blocks:
+     1. @theme         literal primitives (type, spacing, radii, shadow)
+     2. @theme inline  semantic colour names -> the raw values below
+     3. :root / .dark  the two colour modes, both authored deliberately
+     4. @layer base    the handful of element defaults the tokens imply
+
+   House style: minimalist and editorial — Apple developer docs, Linear,
+   Stripe docs. Contrast comes from type weight and scale, not from colour.
+   Radii are small, borders are hairlines, shadow is used sparingly.
+
+   Everything downstream (layout, page states, material pages) should reach
+   for a token here rather than invent a value. If a value is missing, add it
+   to this file instead of hard-coding it at the call site.
+   ========================================================================== */
+
+@theme {
+  /* ------------------------------------------------------------------------
+     TYPEFACES
+
+     Three roles, deliberately distinct:
+       display — material names, page titles, headings. A serif, for the
+                 reference-work feel. Currently a *system* serif stack
+                 (New York on Apple, Charter/Georgia elsewhere) because the
+                 webfonts are wired up in app/layout.tsx, which this file
+                 does not own. Swapping in a real display face later means
+                 prepending one variable here — nothing else changes.
+       sans    — body, UI, controls. Geist, loaded by next/font in layout.
+       mono    — CAS numbers, SMILES, molecular formulae, code. Geist Mono.
+
+     Always reference these via the font-display / font-sans / font-mono
+     utilities; never name a family at a call site.
+     ------------------------------------------------------------------------ */
+  --font-display:
+    ui-serif, 'Iowan Old Style', 'Charter', 'Source Serif 4', Georgia,
+    'Times New Roman', serif;
+  /* The var() fallbacks matter: an undefined custom property invalidates the
+     whole declaration, so without them a missing next/font variable would
+     drop the entire stack and the UI would silently render in the browser's
+     default serif. */
+  --font-sans:
+    var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    var(--font-geist-mono, 'Geist Mono'), ui-monospace, 'SF Mono',
+    SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* shadcn's primitives use `font-heading` (see components/ui/card.tsx).
+     Headings are display type here, so the two are the same thing. */
+  --font-heading: var(--font-display);
+
+  /* ------------------------------------------------------------------------
+     TYPE SCALE
+
+     Sizes are a deliberate ladder, not a geometric progression; every
+     line-height is a multiple of 0.25rem so text lands on the 4px baseline
+     grid that the spacing scale uses. Tracking tightens as size grows, which
+     is what keeps large display type from looking loose.
+
+       2xs   11px  citation superscripts, table micro-labels
+       xs    12px  metadata, badges, captions
+       sm    14px  UI text, controls, dense tables
+       base  16px  body copy — generous 28px leading for long-form reading
+       lg    18px  lead paragraphs, section intros
+       xl    20px  small headings
+       2xl   24px  card / section headings
+       3xl   30px  material names, page titles
+       4xl   36px  page titles on wide viewports
+       5xl   48px  hero / landing
+       6xl   60px  hero maximum
+
+     The ladder stops at 6xl on purpose — 7xl through 9xl are cleared so
+     nothing reaches past the scale. Need something bigger? Widen the scale
+     here rather than using an arbitrary size.
+     ------------------------------------------------------------------------ */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.02em;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-xs--letter-spacing: 0.01em;
+
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-sm--letter-spacing: 0em;
+
+  --text-base: 1rem;
+  --text-base--line-height: 1.75rem;
+  --text-base--letter-spacing: 0em;
+
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 2rem;
+  --text-lg--letter-spacing: -0.005em;
+
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-xl--letter-spacing: -0.01em;
+
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.014em;
+
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-3xl--letter-spacing: -0.018em;
+
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-4xl--letter-spacing: -0.021em;
+
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 3.25rem;
+  --text-5xl--letter-spacing: -0.024em;
+
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 4rem;
+  --text-6xl--letter-spacing: -0.026em;
+
+  --text-7xl: initial;
+  --text-8xl: initial;
+  --text-9xl: initial;
+
+  /* ------------------------------------------------------------------------
+     SPACING
+
+     4px base unit. Tailwind generates the whole numeric scale from this, but
+     the house rhythm is the even steps: 1 2 3 4 6 8 12 16 24 (4px … 96px).
+     Odd/half steps exist for optical nudges inside controls — not for layout.
+
+     The named steps below are the layout rhythm. Use them so the gutter and
+     the vertical spacing between major blocks stay identical across pages
+     instead of being re-guessed on each one.
+     ------------------------------------------------------------------------ */
+  --spacing: 0.25rem;
+
+  --spacing-gutter: 1.5rem; /* page side padding, small viewports */
+  --spacing-gutter-lg: 2.5rem; /* page side padding, md and up */
+  --spacing-section: 4rem; /* gap between major page sections */
+  --spacing-section-lg: 6rem; /* same, on wide viewports */
+
+  /* ------------------------------------------------------------------------
+     MEASURE
+
+     Reading width is a design decision, so it is a token. `measure` is the
+     long-form column (~72 characters at 16px) used for descriptions and
+     editorial copy; `page` is the outer shell every page centres on.
+     ------------------------------------------------------------------------ */
+  --container-measure: 42rem;
+  --container-page: 76rem;
+
+  /* ------------------------------------------------------------------------
+     RADII
+
+     Small and precise. Authored as whole pixels rather than derived from a
+     multiplier so every step is exact; `--radius` in :root stays as the base
+     control radius for any shadcn primitive that reads it directly.
+
+       sm  4px   inline chips, nested elements
+       md  6px   compact controls (button size=xs/sm)
+       lg  8px   default control radius — buttons, inputs
+       xl  12px  cards, panels, popovers
+       2xl 16px  large surfaces (used sparingly)
+       3xl 20px
+       4xl 28px  pill shapes — badges
+     ------------------------------------------------------------------------ */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-4xl: 1.75rem;
+
+  /* ------------------------------------------------------------------------
+     ELEVATION
+
+     Re-valued down from Tailwind's defaults on purpose: heavy drop shadows
+     are the fastest way to make a reference work look like a marketing page.
+     The shadow colour is the warm ink of the palette, not pure black, so
+     shadows sit in the same temperature as everything else.
+
+     Default to no shadow. Reach for xs/sm on hover or for a raised control,
+     md/lg only for genuinely floating layers (popovers, dialogs, command
+     palette). Separation on the page comes from hairlines and whitespace.
+     ------------------------------------------------------------------------ */
+  --shadow-2xs: 0 1px 1px 0 rgb(26 23 19 / 0.04);
+  --shadow-xs: 0 1px 2px 0 rgb(26 23 19 / 0.05);
+  --shadow-sm:
+    0 1px 2px 0 rgb(26 23 19 / 0.05), 0 1px 3px 0 rgb(26 23 19 / 0.05);
+  --shadow-md:
+    0 2px 4px -1px rgb(26 23 19 / 0.06), 0 4px 8px -2px rgb(26 23 19 / 0.06);
+  --shadow-lg:
+    0 4px 8px -2px rgb(26 23 19 / 0.07), 0 8px 16px -4px rgb(26 23 19 / 0.07);
+  --shadow-xl:
+    0 8px 16px -4px rgb(26 23 19 / 0.08), 0 16px 32px -8px rgb(26 23 19 / 0.08);
+  --shadow-2xl: 0 24px 48px -12px rgb(26 23 19 / 0.14);
 }
+
+/* ==========================================================================
+   COLOUR — utility mappings
+
+   `inline` so utilities resolve straight to the :root/.dark values below and
+   the light/dark swap happens through plain CSS custom properties.
+
+   The names in this block are the contract components/ui/* is written
+   against. Do not rename them; re-value them in :root and .dark instead.
+   ========================================================================== */
 
 @theme inline {
+  /* Page and surfaces */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Text and fills of secondary importance */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  /* Interactive surface state (hover / highlight), not the brand hue */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* The one accent hue */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-muted: var(--brand-muted);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+
+  /* Lines */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+
+  /* Status */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ==========================================================================
+   LIGHT MODE
+
+   Warm neutrals — the page is faintly paper-toned rather than pure grey, and
+   cards are crisp white on top of it. That single temperature choice runs
+   through every neutral in both modes; keep new values on hue 70–75 at very
+   low chroma so nothing drifts cool.
+
+   Accent: a deep amber-bronze (resin). One hue, used only for interactive
+   and key actions — links, focus rings, primary buttons, active states.
+   Never decorative, never a second accent.
+
+   Contrast (WCAG 2.1, verified):
+     foreground   / background   17.34:1
+     muted-fg     / background    5.69:1
+     brand        / background    5.90:1
+     brand-fg     / brand         5.92:1   (primary button label)
+     destructive  / background    6.03:1
+     border-strong/ background    3.07:1   (SC 1.4.11, control boundaries)
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Base control radius. The ladder in @theme is authored separately. */
+  --radius: 0.5rem;
+
+  /* Surfaces ------------------------------------------------------------- */
+  --background: oklch(0.9885 0.0025 75); /* #fcfbf9 warm paper */
+  --surface: oklch(1 0 0); /* #ffffff crisp white, raised */
+  --surface-raised: oklch(1 0 0); /* #ffffff floating layers */
+  --foreground: oklch(0.205 0.008 70); /* #1a1713 warm ink */
+
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--foreground);
+
+  /* Recessive text and fills --------------------------------------------- */
+  --muted: oklch(0.965 0.004 75); /* #f5f3f0 quiet fill */
+  --muted-foreground: oklch(0.505 0.012 70); /* #69645d secondary text */
+  --secondary: oklch(0.945 0.005 75); /* #efece9 neutral button fill */
+  --secondary-foreground: oklch(0.265 0.008 70); /* #282521 */
+
+  /* Interactive surface state — the hover/highlight wash shadcn calls
+     "accent". Brand-tinted so hovers feel warm, but it is a surface, not
+     the accent colour itself. Use --brand-* for anything expressive. */
+  --accent: oklch(0.958 0.014 72); /* #f7f0e7 */
+  --accent-foreground: oklch(0.26 0.022 62); /* #2c2219 */
+
+  /* Accent — amber-bronze ------------------------------------------------- */
+  --brand: oklch(0.505 0.115 58); /* #94510e links, primary actions */
+  --brand-foreground: oklch(0.99 0.003 75); /* #fdfbfa text on brand fills */
+  --brand-subtle: oklch(0.962 0.026 70); /* #fef0e0 brand-tinted surface */
+  --brand-muted: oklch(0.885 0.05 66); /* #f1d3b7 brand hairline/underline */
+
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --ring: var(--brand);
+
+  /* Lines ----------------------------------------------------------------- */
+  /* `border` is the editorial hairline: dividers, card edges, table rules.
+     Intentionally quiet (1.37:1) — it is decorative separation.
+     `border-strong` / `input` carry SC 1.4.11 (>=3:1) and are what any
+     control boundary should use so the control stays perceivable. */
+  --border: oklch(0.885 0.005 75); /* #dbd9d5 */
+  --border-strong: oklch(0.655 0.008 72); /* #94908b */
+  --input: var(--border-strong);
+
+  /* Status ---------------------------------------------------------------- */
+  --destructive: oklch(0.515 0.196 27); /* #be1a1e */
+  --destructive-foreground: oklch(0.99 0.003 75); /* #fdfbfa */
+}
+
+/* ==========================================================================
+   DARK MODE
+
+   Authored, not inverted. The page is a deep warm near-black rather than
+   pure black, surfaces step up in lightness instead of relying on shadow,
+   and the accent moves to a brass tone (a small hue shift keeps it reading
+   as the same amber instead of turning peach at high lightness).
+
+   Contrast (WCAG 2.1, verified):
+     foreground   / background   16.48:1
+     muted-fg     / background    7.58:1
+     brand        / background    9.73:1
+     brand-fg     / brand         9.22:1   (primary button label)
+     destructive  / background    6.16:1
+     border-strong/ background    3.36:1   (SC 1.4.11, control boundaries)
+   ========================================================================== */
+
+.dark {
+  color-scheme: dark;
+
+  /* Surfaces ------------------------------------------------------------- */
+  --background: oklch(0.168 0.005 70); /* #100f0d warm near-black */
+  --surface: oklch(0.207 0.005 70); /* #191715 raised */
+  --surface-raised: oklch(0.225 0.005 70); /* #1d1b19 floating layers */
+  --foreground: oklch(0.948 0.004 75); /* #efedeb */
+
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--foreground);
+
+  /* Recessive text and fills --------------------------------------------- */
+  --muted: oklch(0.262 0.006 70); /* #262421 */
+  --muted-foreground: oklch(0.715 0.011 72); /* #a7a29c */
+  --secondary: oklch(0.268 0.006 70); /* #282523 */
+  --secondary-foreground: oklch(0.94 0.004 75); /* #edebe8 */
+
+  --accent: oklch(0.268 0.014 68); /* #2b251f */
+  --accent-foreground: oklch(0.94 0.012 75); /* #f0eae3 */
+
+  /* Accent — brass -------------------------------------------------------- */
+  --brand: oklch(0.79 0.115 68); /* #ebac65 */
+  --brand-foreground: oklch(0.2 0.032 62); /* #201306 text on brand fills */
+  --brand-subtle: oklch(0.272 0.032 62); /* #322316 */
+  --brand-muted: oklch(0.4 0.058 64); /* #5e4125 */
+
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --ring: var(--brand);
+
+  /* Lines ----------------------------------------------------------------- */
+  --border: oklch(0.315 0.007 70); /* #34312e hairline */
+  --border-strong: oklch(0.512 0.009 72); /* #6a6661 control boundary */
+  --input: var(--border-strong);
+
+  /* Status ---------------------------------------------------------------- */
+  --destructive: oklch(0.68 0.175 27); /* #f1655a */
+  --destructive-foreground: oklch(0.18 0.02 27); /* #1f100e */
+}
+
+/* ==========================================================================
+   BASE
+
+   Only the element defaults the tokens above imply. Anything that belongs to
+   a component belongs in that component, not here.
+   ========================================================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+
+    /* Let the platform ink the glyphs. Stated explicitly because it is a
+       decision, not an omission: Tailwind's `antialiased` utility — a
+       create-next-app default that used to sit on <html> — forces grayscale
+       smoothing, which discards the stem darkening the OS applies and thins
+       every stroke. Small type goes sharp and under-inked, and muted text
+       reads fainter than its contrast ratio promises. Verified in both modes:
+       11px and 12px gain the most, and dark mode benefits too, so smoothing
+       is NOT split per mode.
+
+       This rule cannot enforce itself — `antialiased` is a utility and the
+       utilities layer outranks @layer base — so the class has to stay off the
+       markup. See the note in app/layout.tsx. */
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+  }
+
+  body {
+    @apply bg-background text-foreground text-base;
+    font-synthesis-weight: none;
+  }
+
+  /* Headings take the display face. Only family and weight are global —
+     size and tracking stay utility-driven, so each heading picks a step on
+     the type scale and inherits that step's optical letter-spacing. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--brand) 22%, transparent);
+  }
+
+  /* Native focus for links and anything without a component-level ring.
+     Controls in components/ui/* draw their own focus-visible ring. */
+  a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
 }
