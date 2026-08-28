@@ -208,8 +208,9 @@ any `app/layout.tsx` change.
   **Files:** `app/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
   **Proves:** `npm run typecheck`
 
-### P2-D — Shared page-state primitives · **BLOCKED: P2-B**
-- [ ] Shared `empty-state.tsx` (title, description, optional action) per architecture D4, and a global `not-found.tsx`.
+### P2-D — Shared page-state primitives · **DONE**
+- [x] Shared `empty-state.tsx` (title, description, optional action) per architecture D4, and a global `not-found.tsx`.
+  *`loading.tsx` / `error.tsx` — the other half of D4 — are still outstanding.*
   **Files:** `components/empty-state.tsx`, `app/not-found.tsx`
   **Proves:** `npm run typecheck`
 
