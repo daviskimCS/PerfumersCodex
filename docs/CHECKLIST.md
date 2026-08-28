@@ -203,8 +203,9 @@ any `app/layout.tsx` change.
 
 ---
 
-### P2-C — Global layout + site chrome · **BLOCKED: P2-B**
-- [ ] Header (wordmark + search slot), main content region, minimal footer carrying the CC-BY-SA data-license line; real root metadata (title template, description, Open Graph).
+### P2-C — Global layout + site chrome · **DONE**
+- [x] Header (wordmark + search slot), main content region, minimal footer carrying the CC-BY-SA data-license line; real root metadata (title template, description, Open Graph).
+  *Scope amendment (approved): also added the light/dark/system theme toggle — `.dark` was fully authored but nothing set the class, so half the palette was unreachable. A skip link was added too, per the `AGENTS.md` keyboard-navigation bar.*
   **Files:** `app/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
   **Proves:** `npm run typecheck`
 

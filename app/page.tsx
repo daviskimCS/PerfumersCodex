@@ -1,7 +1,7 @@
 export default function Home() {
   return (
     <div className="flex flex-1 items-center justify-center px-6">
-      <main className="max-w-xl text-center">
+      <div className="max-w-xl text-center">
         <h1 className="text-3xl font-semibold tracking-tight">
           Perfumers Codex
         </h1>
@@ -9,7 +9,7 @@ export default function Home() {
           A curated, citation-driven aromachemical reference for working
           perfumers. Under construction — launching spring 2027.
         </p>
-      </main>
+      </div>
     </div>
   )
 }
