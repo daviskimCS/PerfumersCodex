@@ -1,6 +1,6 @@
-# Implementation Checklist — Phases 1–2
+# Implementation Checklist — Phases 1–3
 
-Dispatchable work items derived from the milestone plan (Weeks 1–10), filtered
+Dispatchable work items derived from the milestone plan (Weeks 1–13), filtered
 to what an agent can actually do and build against. Design rationale lives in
 [architecture.md](./architecture.md), [database-schema.md](./database-schema.md),
 and [tech-stack.md](./tech-stack.md); this file is the work queue.
@@ -16,12 +16,13 @@ and [tech-stack.md](./tech-stack.md); this file is the work queue.
 
 ## Legend
 
-| Marker | Meaning |
-| --- | --- |
-| `- [ ]` **READY** | Dispatchable now — no external dependency |
-| `- [ ]` **BLOCKED: phase-0** | Needs a live Supabase project + connection strings before it can be built or proven |
-| `- [ ]` **BLOCKED: <ID>** | Waits on another checklist item |
-| **MAKER** | Not agent work — account setup, editorial writing, or human verification. Listed for completeness; never dispatched. |
+| Marker                       | Meaning                                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `- [ ]` **READY**            | Dispatchable now — no external dependency                                                                            |
+| `- [ ]` **BLOCKED: phase-0** | Needs a live Supabase project + connection strings before it can be built or proven                                  |
+| `- [ ]` **BLOCKED: wave-N**  | Waits on every item of that wave being committed and verified                                                        |
+| `- [ ]` **BLOCKED: <ID>**    | Waits on another checklist item                                                                                      |
+| **MAKER**                    | Not agent work — account setup, editorial writing, or human verification. Listed for completeness; never dispatched. |
 
 ## Orchestrator-owned files — subagents must never modify these
 
@@ -59,6 +60,7 @@ item needs a package, the orchestrator installs it before dispatch.
 - [ ] **Implement the schema per `docs/database-schema.md`: all tables with proper constraints (NOT NULL, FK, CHECK), slugs as URL identifiers, mandatory `source_id` on fact-bearing rows, and soft-delete columns where specified.**
 
 **Acceptance criteria**
+
 - Every table in `database-schema.md` is declared: `materials`, `material_synonyms`,
   `families`, `material_families`, `usage_categories`, `material_usage_limits`,
   `hazard_codes`, `material_hazards`, `sources`, `material_descriptions`,
@@ -85,7 +87,7 @@ item needs a package, the orchestrator installs it before dispatch.
 
 **Files** — create/modify exactly: `db/schema.ts`
 
-**Depends on** — nothing. *Orchestrator prerequisite: install `drizzle-orm`.*
+**Depends on** — nothing. _Orchestrator prerequisite: install `drizzle-orm`._
 
 **Proves it is done** — `npm run typecheck`
 
@@ -96,29 +98,36 @@ with P2-E), any `lib/db/` query code.
 ---
 
 ### P1-B — Drizzle client + config · **DONE (unverified)**
+
 - [x] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`) in `lib/db/index.ts`, `drizzle.config.ts` against `DIRECT_URL` (5432), `.env.example` documenting both.
-  *Written June 2026, adopted onto this branch Aug 26. Code is correct and carries the RLS-boundary comment; **not yet run against a live database** — that verification is P1-C. `lib/env.ts` (Zod-validated env, architecture D6) is still outstanding and orchestrator-owned.*
+      _Written June 2026, adopted onto this branch Aug 26. Code is correct and carries the RLS-boundary comment; **not yet run against a live database** — that verification is P1-C. `lib/env.ts` (Zod-validated env, architecture D6) is still outstanding and orchestrator-owned._
 
 ### P1-C — First migration round-trip · **BLOCKED: phase-0**
-- [ ] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. *The budgeted 90-minute Week 1 trap.*
+
+- [ ] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. _The budgeted 90-minute Week 1 trap._
 
 ### P1-D — Supabase clients + token-refresh middleware · **DONE (unverified)**
+
 - [x] `lib/supabase/{client,server,admin,proxy}.ts` + root `proxy.ts` (Next 16's middleware entry point) per `@supabase/ssr`.
-  *Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project.*
+      _Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project._
 
 ### P1-E — Auth flows + protected routes · **BLOCKED: phase-0**
+
 - [ ] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
-  *Google OAuth console setup is **MAKER**.*
+      _Google OAuth console setup is **MAKER**._
 
 ### P1-F — Material routes (structural) · **BLOCKED: phase-0, P1-A**
+
 - [ ] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
 ### P1-G — Seed script · **BLOCKED: P1-C**
+
 - [ ] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
 
 ### **MAKER** — Phase 1 items that are not agent work
+
 - Phase 0 accounts: GitHub remote, Vercel project + domain, Supabase project (region-matched), project email
-- Schema design review — *"Don't let Claude Code drive this week"* (milestone plan, Week 2). P1-A is mechanical translation of an already-decided design; review it against `database-schema.md` before it merges.
+- Schema design review — _"Don't let Claude Code drive this week"_ (milestone plan, Week 2). P1-A is mechanical translation of an already-decided design; review it against `database-schema.md` before it merges.
 - The 5 hand-cited materials (Iso E Super, hedione, ambroxan, vanillin, ethyl maltol) and the `perfumers-codex-data` Python repo
 - Blog post 1
 
@@ -131,6 +140,7 @@ with P2-E), any `lib/db/` query code.
 - [x] **Implement query normalization and the ranking rules from `docs/database-schema.md` as pure, database-free functions, with a Vitest gold set covering the Week 5 cases.**
 
 **Acceptance criteria**
+
 - `normalize.ts` exports `normalizeQuery(raw: string): string` (trim, lowercase,
   collapse internal whitespace) and `isCasNumber(q: string): boolean` matching
   the CAS form `\d{2,7}-\d{2}-\d`.
@@ -139,7 +149,7 @@ with P2-E), any `lib/db/` query code.
   synonym exact (2), prefix/trigram (3), full-text (4).
 - Sort order is (tier asc, score desc, `updatedAt` desc); results are deduped to
   the best tier per material; `matchedSynonym` is populated on tier-2 hits.
-- Tier 0 (CAS exact) is *represented in the type* but assigned by the pipeline,
+- Tier 0 (CAS exact) is _represented in the type_ but assigned by the pipeline,
   not by `rankCandidates` — the short-circuit is a DB lookup and lands with P2-E.
 - `SearchCandidate` is defined in `lib/search/types.ts` (pipeline-internal, not
   in `lib/types.ts`) and carries the evidence fields: exact-synonym flag,
@@ -168,7 +178,7 @@ half, P2-E), and query logging.
 
 - [x] **Establish the design tokens — typography scale, color tokens (light + dark, both first-class), and spacing — in the Tailwind v4 `@theme` block.**
 
-**Starting point.** `app/globals.css` already carries shadcn's *default*
+**Starting point.** `app/globals.css` already carries shadcn's _default_
 token set from `shadcn init` (neutral palette, chart/sidebar tokens, light +
 dark blocks). This item replaces that generic palette with the project's own
 identity — it is a customisation pass, not a greenfield file. Do not delete
@@ -177,13 +187,14 @@ the shadcn token contract the primitives in `components/ui/` depend on
 etc.); re-value them. Unused chart/sidebar tokens may be removed.
 
 **Acceptance criteria**
+
 - Tokens defined in `@theme` / `:root` / `.dark` in `app/globals.css`. No
   `tailwind.config.js` (Tailwind v4 is CSS-first).
 - Every token name currently consumed by `components/ui/*` still resolves —
   verified by `npm run build` succeeding and the primitives rendering.
 - A deliberate type scale with a serif or high-contrast display face for material
-  names and a readable body face — *editorial, Apple developer docs, not a
-  startup landing page*.
+  names and a readable body face — _editorial, Apple developer docs, not a
+  startup landing page_.
 - Semantic color tokens (background, surface, foreground, muted, border, accent),
   each defined for light **and** dark. Both modes are first-class, not an
   afterthought; contrast targets WCAG AA.
@@ -196,7 +207,7 @@ etc.); re-value them. Unused chart/sidebar tokens may be removed.
 
 **Depends on** — nothing
 
-**Proves it is done** — `npm run typecheck` *(orchestrator runs `npm run build` after the wave)*
+**Proves it is done** — `npm run typecheck` _(orchestrator runs `npm run build` after the wave)_
 
 **Out of scope** — layout, components, adding or removing shadcn primitives,
 any `app/layout.tsx` change.
@@ -204,16 +215,18 @@ any `app/layout.tsx` change.
 ---
 
 ### P2-C — Global layout + site chrome · **DONE**
+
 - [x] Header (wordmark + search slot), main content region, minimal footer carrying the CC-BY-SA data-license line; real root metadata (title template, description, Open Graph).
-  *Scope amendment (approved): also added the light/dark/system theme toggle — `.dark` was fully authored but nothing set the class, so half the palette was unreachable. A skip link was added too, per the `AGENTS.md` keyboard-navigation bar.*
-  **Files:** `app/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
-  **Proves:** `npm run typecheck`
+      _Scope amendment (approved): also added the light/dark/system theme toggle — `.dark` was fully authored but nothing set the class, so half the palette was unreachable. A skip link was added too, per the `AGENTS.md` keyboard-navigation bar._
+      **Files:** `app/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
+      **Proves:** `npm run typecheck`
 
 ### P2-D — Shared page-state primitives · **DONE**
+
 - [x] Shared `empty-state.tsx` (title, description, optional action) per architecture D4, and a global `not-found.tsx`.
-  *`loading.tsx` / `error.tsx` — the other half of D4 — are still outstanding.*
-  **Files:** `components/empty-state.tsx`, `app/not-found.tsx`
-  **Proves:** `npm run typecheck`
+      _`loading.tsx` / `error.tsx` — the other half of D4 — are still outstanding._
+      **Files:** `components/empty-state.tsx`, `app/not-found.tsx`
+      **Proves:** `npm run typecheck`
 
 ### Debt surfaced by Wave 2 (not blocking, fold into the item that touches it)
 
@@ -230,18 +243,23 @@ any `app/layout.tsx` change.
   Wire it when the asset lands (Phase 4, per the OG-imagery open decision).
 
 ### P2-E — Search query layer + search view migration · **BLOCKED: phase-0**
+
 - [ ] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
 ### P2-F — Search UX · **BLOCKED: P2-E, P2-C**
+
 - [ ] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
 
 ### P2-G — Material detail page · **BLOCKED: P1-F, P2-C**
+
 - [ ] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
 
 ### P2-H — Browse & discovery · **BLOCKED: P1-F, P2-C**
+
 - [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
 
 ### **MAKER** — Phase 2 items that are not agent work
+
 - 15 further hand-cited materials (Week 9)
 - Aesthetic direction sign-off on P2-B before it propagates into P2-C/P2-G
 - `EXPLAIN ANALYZE` review and index tuning once real data exists
@@ -249,12 +267,46 @@ any `app/layout.tsx` change.
 
 ---
 
+## Phase 3 — Personal layer, light (Weeks 11–13)
+
+User-owned data starts here. The RLS boundary becomes live: these features go
+through the **Supabase client**, never Drizzle (which bypasses RLS), and no
+item ships until its policies are verified with two real accounts.
+
+### P3-A — Bookmarks · **BLOCKED: wave-4**
+
+- [ ] Save button on material pages (logged-in only), `/saved` page listing
+      the user's saved materials, `user_saved_materials` RLS policies as a
+      migration, all access via the Supabase client. Multi-account RLS
+      verification before merge.
+
+### P3-B — Private notes · **BLOCKED: P3-A** _(shares the detail page)_
+
+- [ ] Per-material private note textarea, auto-save on blur with optimistic
+      UI, `user_notes` RLS policies as a migration, Supabase client only.
+      Rate limiting is the Week 18 pass — deferral recorded here, not dropped.
+
+### P3-C — Account management · **BLOCKED: P3-A** _(Week 13 is calendar order — no file dependency on P3-B; Wave 6 runs P3-B then P3-C sequentially by choice)_
+
+- [ ] Change email, change password, delete account. Deletion runs through
+      the Supabase admin API with the secret key in a server action;
+      `ON DELETE CASCADE` does the cleanup — verified with a throwaway account.
+
+### **MAKER** — Phase 3 items that are not agent work
+
+- Two throwaway test accounts for RLS verification (or approval for the
+  orchestrator to create them via the admin API)
+- 15 further materials (Week 14), polish-pass sign-offs (Week 15),
+  onboarding content (Week 16), blog post 3
+
 ## Suggested wave grouping
 
 File sets verified disjoint.
 
-| Wave | Items | Why together |
-| --- | --- | --- |
-| 1 | **P1-A**, **P2-A**, **P2-B** | `db/`, `lib/search/`, `app/globals.css` — no overlap, no cross-dependencies |
-| 2 | **P2-C**, **P2-D** | Both consume P2-B's tokens; `app/layout.tsx` + `components/site-*` vs `components/empty-state.tsx` + `app/not-found.tsx` |
-| 3 | **P1-E**, **P1-F**, **P2-E** | Prepared and reviewed — see [waves/wave-3.md](./waves/wave-3.md) for entry criteria, prompts, and the partial-dispatch rule (P1-E can go early) |
+| Wave | Items                        | Why together                                                                                                                                                                                                            |
+| ---- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | **P1-A**, **P2-A**, **P2-B** | `db/`, `lib/search/`, `app/globals.css` — no overlap, no cross-dependencies                                                                                                                                             |
+| 2    | **P2-C**, **P2-D**           | Both consume P2-B's tokens; `app/layout.tsx` + `components/site-*` vs `components/empty-state.tsx` + `app/not-found.tsx`                                                                                                |
+| 3    | **P1-E**, **P1-F**, **P2-E** | Prepared and reviewed — see [waves/wave-3.md](./waves/wave-3.md) for entry criteria, prompts, and the partial-dispatch rule (P1-E can go early)                                                                         |
+| 4    | **P1-G**, **P2-F**, **P2-G** | Prepared — see [waves/wave-4.md](./waves/wave-4.md). Gated on Wave 3 + the `@rdkit/rdkit` install decision                                                                                                              |
+| 5    | **P2-H**, **P3-A**           | Prepared — see [waves/wave-5.md](./waves/wave-5.md). Gated on Wave 4; P3-A additionally on RLS test accounts. P3-B/P3-C follow in Wave 6 — P3-B shares the detail page with P3-A; P3-C is held there as a pacing choice |
