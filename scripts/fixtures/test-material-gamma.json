@@ -1,0 +1,11 @@
+{
+  "slug": "test-material-gamma",
+  "canonical_name": "Test Material Gamma",
+  "material_type": "natural",
+  "cas_number": null,
+  "iupac_name": null,
+  "smiles": null,
+  "molecular_formula": null,
+  "molecular_weight": null,
+  "families": ["test-family", "test-subfamily"]
+}

@@ -1,0 +1,40 @@
+{
+  "slug": "test-material-beta",
+  "canonical_name": "Test Material Beta",
+  "material_type": "isolate",
+  "cas_number": "000-00-0",
+  "iupac_name": null,
+  "smiles": "SMILES-TEST-BETA",
+  "molecular_formula": null,
+  "molecular_weight": null,
+  "synonyms": [
+    { "name": "Test Common Name Beta", "synonym_type": "common_name" }
+  ],
+  "families": ["test-subfamily"],
+  "sources": [
+    {
+      "key": "test-source-1",
+      "type": "sds",
+      "title": "Test Source Three (keys are per-file: same key as alpha's, different source)",
+      "url": "https://example.com/test-source-3",
+      "author": null,
+      "published_at": null,
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": null
+    }
+  ],
+  "usage_limits": [],
+  "hazards": [{ "hazard_code": "H001", "source_key": "test-source-1" }],
+  "description": null,
+  "usage_guidance": null,
+  "landmark_uses": [],
+  "computed_properties": null,
+  "similarity": [
+    {
+      "similar_slug": "test-material-alpha",
+      "tanimoto": 0.5,
+      "rdkit_version": "0000.00.0-test"
+    }
+  ],
+  "odor_predictions": []
+}

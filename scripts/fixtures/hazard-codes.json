@@ -1,0 +1,17 @@
+[
+  {
+    "code": "H000",
+    "description": "Test hazard statement zero",
+    "category": "Health hazard"
+  },
+  {
+    "code": "H001",
+    "description": "Test hazard statement one",
+    "category": "Physical hazard"
+  },
+  {
+    "code": "EUH000",
+    "description": "Test hazard statement two",
+    "category": "Environmental hazard"
+  }
+]
