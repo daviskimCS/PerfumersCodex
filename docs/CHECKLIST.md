@@ -257,4 +257,4 @@ File sets verified disjoint.
 | --- | --- | --- |
 | 1 | **P1-A**, **P2-A**, **P2-B** | `db/`, `lib/search/`, `app/globals.css` — no overlap, no cross-dependencies |
 | 2 | **P2-C**, **P2-D** | Both consume P2-B's tokens; `app/layout.tsx` + `components/site-*` vs `components/empty-state.tsx` + `app/not-found.tsx` |
-| 3+ | P1-B … P2-H | Gated on Phase 0 credentials |
+| 3 | **P1-E**, **P1-F**, **P2-E** | Prepared and reviewed — see [waves/wave-3.md](./waves/wave-3.md) for entry criteria, prompts, and the partial-dispatch rule (P1-E can go early) |
