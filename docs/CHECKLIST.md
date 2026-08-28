@@ -215,6 +215,20 @@ any `app/layout.tsx` change.
   **Files:** `components/empty-state.tsx`, `app/not-found.tsx`
   **Proves:** `npm run typecheck`
 
+### Debt surfaced by Wave 2 (not blocking, fold into the item that touches it)
+
+- `app/page.tsx` uses a one-off `px-6` gutter instead of the `px-gutter` /
+  `md:px-gutter-lg` tokens the rest of the app uses. It is the placeholder
+  homepage, so fold the fix into **P2-H** when that replaces it.
+- `loading.tsx` / `error.tsx` — the other half of architecture D4 — are still
+  unwritten. They should reuse the same page wrapper idiom as `not-found.tsx`
+  so all three states sit identically.
+- `title.template` (`'%s · Perfumers Codex'`) is in place but unexercised: no
+  route sets its own title yet. The first page that does (**P2-G** or **P2-H**)
+  should confirm it renders.
+- No `og:image` asset exists, so `openGraph.images` is deliberately unset.
+  Wire it when the asset lands (Phase 4, per the OG-imagery open decision).
+
 ### P2-E — Search query layer + search view migration · **BLOCKED: phase-0**
 - [ ] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 

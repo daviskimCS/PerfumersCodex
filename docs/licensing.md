@@ -58,7 +58,8 @@
 ### For the dataset
 - Separate `LICENSE-DATA` file referencing CC-BY-SA 4.0
 - README explicitly states: "Code is MIT-licensed. Material data is licensed CC-BY-SA 4.0 — attribute and share-alike."
-- Footer of every page on the live site: "Data licensed CC-BY-SA 4.0 — attribute Perfumers Codex / Davis Kim"
+- Footer of every page on the live site: "Material data licensed CC BY-SA 4.0 — attribute Perfumers Codex / Davis Kim"
+  (spelled "CC BY-SA 4.0", matching `LICENSE-DATA`, the README, and Creative Commons' own style; the footer links the licence deed rather than only naming it, which CC BY-SA requires)
 - Each page that displays data could include a small "Cite this page" affordance — useful for academic/journalistic users, and signals seriousness
 
 ### Attribution requested format
