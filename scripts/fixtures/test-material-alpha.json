@@ -1,0 +1,101 @@
+{
+  "slug": "test-material-alpha",
+  "canonical_name": "Test Material Alpha",
+  "material_type": "synthetic",
+  "cas_number": "00-00-0",
+  "iupac_name": "test-iupac-name-alpha",
+  "smiles": "SMILES-TEST-ALPHA",
+  "molecular_formula": "TEST-FORMULA",
+  "molecular_weight": 100,
+  "synonyms": [
+    { "name": "Test Trade Name Alpha", "synonym_type": "trade_name" },
+    { "name": "TMA-TEST", "synonym_type": "abbreviation" }
+  ],
+  "families": ["test-family"],
+  "sources": [
+    {
+      "key": "test-source-1",
+      "type": "book",
+      "title": "Test Source One (a url-less book)",
+      "url": null,
+      "author": "Test Author",
+      "published_at": "2000-01-01",
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": null
+    },
+    {
+      "key": "test-source-2",
+      "type": "other",
+      "title": "Test Source Two",
+      "url": "https://example.com/test-source-2",
+      "author": null,
+      "published_at": null,
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": "Synthetic fixture citation - not a real source"
+    }
+  ],
+  "usage_limits": [
+    {
+      "category_id": 1,
+      "restriction_type": "restriction",
+      "max_pct": 50,
+      "notes": null,
+      "ifra_amendment_version": "test-amendment",
+      "verified_at": "2026-01-01T00:00:00Z",
+      "source_key": "test-source-1"
+    },
+    {
+      "category_id": 2,
+      "restriction_type": "prohibition",
+      "max_pct": null,
+      "notes": "Synthetic prohibition row - exercises max_pct: null",
+      "ifra_amendment_version": "test-amendment",
+      "verified_at": "2026-01-01T00:00:00Z",
+      "source_key": "test-source-1"
+    }
+  ],
+  "hazards": [{ "hazard_code": "H000", "source_key": "test-source-2" }],
+  "description": {
+    "description": "A synthetic test description. It exists only to exercise the seed-input fixtures and describes no real material.",
+    "tenacity": "medium",
+    "projection": "low",
+    "key_facets": ["test-facet-one", "test-facet-two"],
+    "source_key": null
+  },
+  "usage_guidance": {
+    "typical_pct_min": 1,
+    "typical_pct_max": 10,
+    "threshold_note": "Synthetic threshold note.",
+    "dilution_note": null,
+    "source_key": "test-source-1"
+  },
+  "landmark_uses": [
+    {
+      "perfume_name": "Test Perfume One",
+      "house": "Test House",
+      "year": 2000,
+      "notes": null,
+      "source_key": "test-source-2"
+    }
+  ],
+  "computed_properties": {
+    "logp": 1.5,
+    "tpsa": 20,
+    "heavy_atom_count": 10,
+    "rdkit_version": "0000.00.0-test"
+  },
+  "similarity": [
+    {
+      "similar_slug": "test-material-beta",
+      "tanimoto": 0.5,
+      "rdkit_version": "0000.00.0-test"
+    }
+  ],
+  "odor_predictions": [
+    {
+      "descriptor": "test-descriptor",
+      "probability": 0.5,
+      "model_version": "test-model-v0"
+    }
+  ]
+}

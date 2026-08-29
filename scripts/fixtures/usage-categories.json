@@ -1,0 +1,13 @@
+[
+  { "id": 1, "name": "Test Category 1", "description": null },
+  { "id": 2, "name": "Test Category 2", "description": null },
+  { "id": 3, "name": "Test Category 3", "description": null },
+  { "id": 4, "name": "Test Category 4", "description": null },
+  { "id": 5, "name": "Test Category 5", "description": null },
+  { "id": 6, "name": "Test Category 6", "description": null },
+  { "id": 7, "name": "Test Category 7", "description": null },
+  { "id": 8, "name": "Test Category 8", "description": null },
+  { "id": 9, "name": "Test Category 9", "description": null },
+  { "id": 10, "name": "Test Category 10", "description": null },
+  { "id": 11, "name": "Test Category 11", "description": null }
+]

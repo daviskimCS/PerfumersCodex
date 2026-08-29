@@ -1,0 +1,8 @@
+[
+  { "slug": "test-family", "name": "Test Family", "parent_slug": null },
+  {
+    "slug": "test-subfamily",
+    "name": "Test Subfamily",
+    "parent_slug": "test-family"
+  }
+]
