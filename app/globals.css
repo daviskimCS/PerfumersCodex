@@ -285,12 +285,11 @@
 
    Contrast (WCAG 2.1, verified):
      foreground   / background   16.33:1
-     muted-fg     / background    5.36:1
+     muted-fg     / background    6.10:1  (4.86:1 over texture)
      brand        / background    6.32:1
      brand-fg     / brand         6.74:1   (primary button label)
-     destructive  / background    5.68:1
-     border-strong/ background    3.90:1   (3.17:1 worst-case under the
-                                            background texture — SC 1.4.11)
+     destructive  / background    5.68:1  (4.69:1 over texture)
+     border-strong/ background    4.25:1  (3.39:1 over texture)
    ========================================================================== */
 
 :root {
@@ -312,7 +311,9 @@
 
   /* Recessive text and fills --------------------------------------------- */
   --muted: oklch(0.945 0.004 75); /* #eeecea quiet fill */
-  --muted-foreground: oklch(0.505 0.012 70); /* #69645d secondary text */
+  /* Darkened for the Suwa texture rather than flat paper: 4.86:1 over the
+     darkest patch of the ripple, 6.10:1 on the bare background. */
+  --muted-foreground: oklch(0.475 0.012 70); /* #615b55 secondary text */
   --secondary: oklch(0.925 0.005 75); /* #e8e6e3 neutral button fill */
   --secondary-foreground: oklch(0.265 0.008 70); /* #282521 */
 
@@ -339,22 +340,24 @@
      control boundary should use so the control stays perceivable. */
   --border: oklch(0.865 0.005 75); /* #d4d2cf */
   --border-strong: oklch(
-    0.6 0.008 72
-  ); /* #837f7b — SC 1.4.11; 3.17:1 even
-     under the darkest patch of the Suwa noise layer, not just on flat paper */
+    0.56 0.008 72
+  ); /* #77746f — SC 1.4.11: 3.39:1 over
+     the darkest patch of the Suwa texture, 4.25:1 on the bare background */
 
   /* Lake Suwa background layer (see BACKGROUND in @layer base).
      Ice-blue is the one place cool colour is allowed in this warm palette —
      it is beneath everything and never touches text. */
-  --ice-pool: oklch(0.955 0.019 232);
-  --ice-pool-cool: oklch(0.947 0.026 218);
-  --ice-seam: oklch(0.9 0.02 226 / 0.5);
-  --ice-seam-soft: oklch(0.92 0.016 236 / 0.32);
-  --ice-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23s)' opacity='0.09'/%3E%3C/svg%3E");
+  --ice-pool: oklch(0.956 0.026 224);
+  --ice-pool-cool: oklch(0.948 0.032 214);
+  --ice-band-a: oklch(0.958 0.024 228 / 0.55);
+  --ice-band-b: oklch(0.952 0.03 216 / 0.55);
+  /* swell = coarse horizontal rollers; chop = fine ripple over the top */
+  --ice-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.09'/%3E%3C/svg%3E");
+  --ice-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
-  --destructive: oklch(0.515 0.196 27); /* #be1a1e */
+  --destructive: oklch(0.505 0.196 27); /* #bb141a — 4.69:1 over the texture */
   --destructive-foreground: oklch(0.99 0.003 75); /* #fdfbfa */
 }
 
@@ -372,7 +375,7 @@
      brand        / background    9.51:1
      brand-fg     / brand         9.01:1   (primary button label)
      destructive  / background    6.16:1
-     border-strong/ background    3.36:1   (SC 1.4.11, control boundaries)
+     border-strong/ background    5.16:1  (3.46:1 over texture — SC 1.4.11)
    ========================================================================== */
 
 .dark {
@@ -410,15 +413,19 @@
 
   /* Lines ----------------------------------------------------------------- */
   --border: oklch(0.315 0.007 70); /* #34312e hairline */
-  --border-strong: oklch(0.512 0.009 72); /* #6a6661 control boundary */
+  --border-strong: oklch(
+    0.575 0.009 72
+  ); /* #7c7873 — SC 1.4.11: 3.46:1 over
+     the texture, which lightens the dark background rather than darkening it */
 
   /* Suwa layer, dark: the same ice under far less light. Kept present rather
      than removed so the surface reads as one material across both modes. */
-  --ice-pool: oklch(0.26 0.018 234);
-  --ice-pool-cool: oklch(0.24 0.022 220);
-  --ice-seam: oklch(0.34 0.02 228 / 0.34);
-  --ice-seam-soft: oklch(0.3 0.016 238 / 0.22);
-  --ice-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23s)' opacity='0.05'/%3E%3C/svg%3E");
+  --ice-pool: oklch(0.268 0.028 228);
+  --ice-pool-cool: oklch(0.252 0.032 214);
+  --ice-band-a: oklch(0.26 0.024 230 / 0.7);
+  --ice-band-b: oklch(0.238 0.028 216 / 0.6);
+  --ice-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.1'/%3E%3C/svg%3E");
+  --ice-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
@@ -480,64 +487,56 @@
   /* ==========================================================================
      BACKGROUND — Lake Suwa in winter
 
-     A single fixed layer behind everything: the frozen, fissured surface of
-     Lake Suwa, where pressure ridges (the omiwatari) crack the ice into long
-     seams. It exists to take the glare off the page, so it is opaque — it
-     paints the background colour itself rather than veiling the content —
-     and it never sits above anything readable.
+     Reference: the Grand Seiko SBGY007 "Omiwatari" dial, and layered 8-bit
+     water. Both are the same thing — fine HORIZONTAL undulating ripples in
+     pale ice-blue, the way wind dresses snow on a frozen lake. Not cracks,
+     not diagonal seams: banded, wavy, settling.
 
-     Built from three ingredients, all CSS so it costs no component, no
-     JavaScript, and no image request:
-       1. the page colour, so this layer is fully opaque on its own
-       2. broad ice-blue pools that drift, giving the slow undulation of
-          light moving under ice
-       3. fine seams at shallow angles — the fissures — held at very low
-          contrast so they read as texture, never as lines to look at
+     The ripple is one inline SVG turbulence with an ANISOTROPIC base
+     frequency — low across x, high across y. That ratio is what stretches
+     the noise into horizontal bands instead of even mottling, and it is the
+     single value that makes this read as water-ice rather than grain. Two
+     passes at different frequencies give a coarse swell under a fine chop.
 
-     Motion is 60s+ and sub-pixel: the page should feel alive without ever
-     catching the eye while reading. Honours prefers-reduced-motion by
-     holding still, keeping the texture.
+     A fixed layer behind everything, opaque: it paints the page colour
+     itself rather than veiling content, and never sits above anything
+     readable. Pure CSS — no component, no JavaScript, no image request.
+
+     Motion is a slow horizontal drift, because that is how ripple fields
+     move. 120s and sub-pixel, so the page is alive without catching the eye
+     mid-sentence; prefers-reduced-motion holds it still and keeps the
+     texture.
      ========================================================================== */
 
   body::before {
     content: '';
     position: fixed;
-    inset: -10%;
+    inset: -12%;
     z-index: -1;
     pointer-events: none;
     background-color: var(--background);
     background-image:
-      /* fissures — three seam families at shallow, uneven angles */
-      repeating-linear-gradient(
-        102deg,
-        transparent 0 47px,
-        var(--ice-seam) 47px 48px,
-        transparent 48px 96px
+      var(--ice-chop), var(--ice-swell),
+      linear-gradient(
+        176deg,
+        var(--ice-band-a) 0%,
+        transparent 34%,
+        var(--ice-band-b) 58%,
+        transparent 88%
       ),
-      repeating-linear-gradient(
-        84deg,
-        transparent 0 71px,
-        var(--ice-seam-soft) 71px 72px,
-        transparent 72px 150px
-      ),
-      repeating-linear-gradient(
-        119deg,
-        transparent 0 113px,
-        var(--ice-seam-soft) 113px 114px,
-        transparent 114px 240px
-      ),
-      /* fractal noise — breaks the seams out of a regular hatch and gives the
-         ice its mottled body. Inline SVG, so no network request. */
-        var(--ice-noise),
-      /* pools of ice-blue light beneath the seams */
-        radial-gradient(62% 44% at 18% 22%, var(--ice-pool) 0%, transparent 68%),
+      radial-gradient(78% 34% at 26% 26%, var(--ice-pool) 0%, transparent 72%),
       radial-gradient(
-        54% 38% at 82% 70%,
+        68% 30% at 78% 74%,
         var(--ice-pool-cool) 0%,
-        transparent 66%
-      ),
-      radial-gradient(48% 52% at 58% 8%, var(--ice-pool) 0%, transparent 72%);
-    animation: suwa-drift 96s ease-in-out infinite alternate;
+        transparent 70%
+      );
+    background-size:
+      auto,
+      auto,
+      100% 100%,
+      100% 100%,
+      100% 100%;
+    animation: suwa-drift 120s ease-in-out infinite alternate;
   }
 
   @keyframes suwa-drift {
@@ -545,21 +544,17 @@
       background-position:
         0 0,
         0 0,
-        0 0,
-        0 0,
-        0% 0%,
-        100% 100%,
-        50% 0%;
+        0 0%,
+        26% 26%,
+        78% 74%;
     }
     to {
       background-position:
-        60px -40px,
-        -50px 30px,
-        40px 50px,
-        30px -20px,
-        14% 8%,
-        86% 92%,
-        58% 6%;
+        -90px 14px,
+        70px -10px,
+        0 6%,
+        31% 30%,
+        73% 70%;
     }
   }
 
