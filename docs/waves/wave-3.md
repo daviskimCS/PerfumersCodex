@@ -7,25 +7,25 @@ read it, only the orchestrator edits it.
 
 ## Entry criteria — every box, no exceptions
 
-- [ ] **Phase 0 credentials exist**: Supabase project created (region matched
+- [x] **Phase 0 credentials exist** _(2026-08-28)_: Supabase project created (region matched
       to Vercel), both connection strings + `sb_publishable_`/`sb_secret_` keys in
       `.env.local` and Vercel. Until then `proxy.ts` 500s every route and nothing
       here can be proven.
-- [ ] **PR #1 merged** and this branch's history is on `main` (or work
+- [x] **PR #1 merged** _(2026-08-28; default branch is main)_ and this branch's history is on `main` (or work
       continues on this branch by explicit choice). Default branch flipped to
       `main`.
-- [ ] **P1-A merged**: `db/schema.ts` is the maker-reviewed real schema, not
+- [x] **P1-A merged** _(2026-08-28, maker-approved with five best-practice decisions)_: `db/schema.ts` is the maker-reviewed real schema, not
       the placeholder. The maker owns this per the milestone plan's Week 2 rule.
-- [ ] **P1-C proven by the orchestrator** (pre-dispatch step, not a wave
+- [x] **P1-C proven by the orchestrator** _(2026-08-28, live smoke-tested)_ (pre-dispatch step, not a wave
       item): `npm run db:generate` produces the initial migration, `npm run
 db:migrate` applies it against the direct connection, tables visible in the
       Supabase dashboard. (`pg_trgm` is NOT hand-run here — AGENTS.md forbids
       ad-hoc DB edits; the extension ships as the first statement of W3-C's
       migration, and the orchestrator's pre-flight merely verifies it applied.)
-- [ ] **`lib/env.ts` created by the orchestrator** (pre-dispatch, D6,
+- [x] **`lib/env.ts` created by the orchestrator** _(2026-08-28)_ (pre-dispatch, D6,
       orchestrator-owned): Zod-parsed env access so this first
       real-credentials wave doesn't spread raw `process.env` further.
-- [ ] **Supabase email confirmation settled by the maker** (needed by W3-A):
+- [x] **Supabase email confirmation settled by the maker** — _confirmation stays ON; maker still needs to point the confirm-email template at `/auth/confirm` once W3-A ships the route_ (needed by W3-A):
       either keep confirmation ON and update the Supabase confirm-email template
       to point at `/auth/confirm` (the route W3-A ships), or disable
       confirmation in the dashboard until Week 20. Say which.

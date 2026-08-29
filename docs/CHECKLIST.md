@@ -55,9 +55,9 @@ item needs a package, the orchestrator installs it before dispatch.
 
 ## Phase 1 — Schema & Foundation (Weeks 1–4)
 
-### P1-A — Drizzle schema translation · **READY**
+### P1-A — Drizzle schema translation · **DONE**
 
-- [ ] **Implement the schema per `docs/database-schema.md`: all tables with proper constraints (NOT NULL, FK, CHECK), slugs as URL identifiers, mandatory `source_id` on fact-bearing rows, and soft-delete columns where specified.**
+- [x] **Implement the schema per `docs/database-schema.md`: all tables with proper constraints (NOT NULL, FK, CHECK), slugs as URL identifiers, mandatory `source_id` on fact-bearing rows, and soft-delete columns where specified.**
 
 **Acceptance criteria**
 
@@ -102,9 +102,9 @@ with P2-E), any `lib/db/` query code.
 - [x] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`) in `lib/db/index.ts`, `drizzle.config.ts` against `DIRECT_URL` (5432), `.env.example` documenting both.
       _Written June 2026, adopted onto this branch Aug 26. Code is correct and carries the RLS-boundary comment; **not yet run against a live database** — that verification is P1-C. `lib/env.ts` (Zod-validated env, architecture D6) is still outstanding and orchestrator-owned._
 
-### P1-C — First migration round-trip · **BLOCKED: phase-0**
+### P1-C — First migration round-trip · **DONE** _(2026-08-28: 19 tables + 7 enums live; defaults and the 1–11 CHECK smoke-tested with rollback. Note: DIRECT_URL uses the session pooler (5432) — the true direct host is IPv6-only and unreachable from the maker's network.)_
 
-- [ ] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. _The budgeted 90-minute Week 1 trap._
+- [x] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. _The budgeted 90-minute Week 1 trap._
 
 ### P1-D — Supabase clients + token-refresh middleware · **DONE (unverified)**
 
