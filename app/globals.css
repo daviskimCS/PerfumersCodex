@@ -345,15 +345,15 @@
      the darkest patch of the Suwa texture, 4.25:1 on the bare background */
 
   /* Lake Suwa background layer (see BACKGROUND in @layer base).
-     Ice-blue is the one place cool colour is allowed in this warm palette —
-     it is beneath everything and never touches text. */
-  --ice-pool: oklch(0.956 0.026 224);
-  --ice-pool-cool: oklch(0.948 0.032 214);
-  --ice-band-a: oklch(0.958 0.024 228 / 0.55);
-  --ice-band-b: oklch(0.952 0.03 216 / 0.55);
+     Tinted with the same brown as the accent, at very low chroma — the
+     palette stays warm end to end. Beneath everything, never touches text. */
+  --grain-pool: oklch(0.956 0.026 68);
+  --grain-pool-deep: oklch(0.948 0.032 56);
+  --grain-band-a: oklch(0.958 0.024 72 / 0.55);
+  --grain-band-b: oklch(0.952 0.03 58 / 0.55);
   /* swell = coarse horizontal rollers; chop = fine ripple over the top */
-  --ice-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.09'/%3E%3C/svg%3E");
-  --ice-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
+  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.09'/%3E%3C/svg%3E");
+  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
@@ -418,14 +418,14 @@
   ); /* #7c7873 — SC 1.4.11: 3.46:1 over
      the texture, which lightens the dark background rather than darkening it */
 
-  /* Suwa layer, dark: the same ice under far less light. Kept present rather
-     than removed so the surface reads as one material across both modes. */
-  --ice-pool: oklch(0.268 0.028 228);
-  --ice-pool-cool: oklch(0.252 0.032 214);
-  --ice-band-a: oklch(0.26 0.024 230 / 0.7);
-  --ice-band-b: oklch(0.238 0.028 216 / 0.6);
-  --ice-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.1'/%3E%3C/svg%3E");
-  --ice-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
+  /* Same grain, dark: the surface under far less light. Kept present rather
+     than removed so both modes read as one material. */
+  --grain-pool: oklch(0.268 0.028 68);
+  --grain-pool-deep: oklch(0.252 0.032 56);
+  --grain-band-a: oklch(0.26 0.024 72 / 0.7);
+  --grain-band-b: oklch(0.238 0.028 58 / 0.6);
+  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.1'/%3E%3C/svg%3E");
+  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
@@ -485,18 +485,19 @@
   }
 
   /* ==========================================================================
-     BACKGROUND — Lake Suwa in winter
+     BACKGROUND — rippled grain
 
-     Reference: the Grand Seiko SBGY007 "Omiwatari" dial, and layered 8-bit
-     water. Both are the same thing — fine HORIZONTAL undulating ripples in
-     pale ice-blue, the way wind dresses snow on a frozen lake. Not cracks,
-     not diagonal seams: banded, wavy, settling.
+     Texture from the Grand Seiko SBGY007 "Omiwatari" dial and layered 8-bit
+     water: fine HORIZONTAL undulating bands, the way wind dresses a surface.
+     Colour is the project's own brown, not the reference's ice — the palette
+     stays warm end to end, and the grain reads as raked sand, aged paper,
+     or figured wood rather than a lake.
 
      The ripple is one inline SVG turbulence with an ANISOTROPIC base
      frequency — low across x, high across y. That ratio is what stretches
-     the noise into horizontal bands instead of even mottling, and it is the
-     single value that makes this read as water-ice rather than grain. Two
-     passes at different frequencies give a coarse swell under a fine chop.
+     noise into horizontal bands instead of even mottling, and it is the
+     single value that makes this read as a rippled surface rather than
+     grain-as-noise. Two passes give a coarse swell under a fine chop.
 
      A fixed layer behind everything, opaque: it paints the page colour
      itself rather than veiling content, and never sits above anything
@@ -506,6 +507,12 @@
      move. 120s and sub-pixel, so the page is alive without catching the eye
      mid-sentence; prefers-reduced-motion holds it still and keeps the
      texture.
+
+     CONTRAST: every token that sits on this layer was verified against the
+     COMPOSITED worst case — base, darkest band, pool core and both
+     turbulence passes stacked — not against the flat background. A texture
+     silently invalidates contrast checked on a solid colour. Both figures
+     are recorded in the palette blocks below.
      ========================================================================== */
 
   body::before {
@@ -516,18 +523,22 @@
     pointer-events: none;
     background-color: var(--background);
     background-image:
-      var(--ice-chop), var(--ice-swell),
+      var(--grain-chop), var(--grain-swell),
       linear-gradient(
         176deg,
-        var(--ice-band-a) 0%,
+        var(--grain-band-a) 0%,
         transparent 34%,
-        var(--ice-band-b) 58%,
+        var(--grain-band-b) 58%,
         transparent 88%
       ),
-      radial-gradient(78% 34% at 26% 26%, var(--ice-pool) 0%, transparent 72%),
+      radial-gradient(
+        78% 34% at 26% 26%,
+        var(--grain-pool) 0%,
+        transparent 72%
+      ),
       radial-gradient(
         68% 30% at 78% 74%,
-        var(--ice-pool-cool) 0%,
+        var(--grain-pool-deep) 0%,
         transparent 70%
       );
     background-size:
