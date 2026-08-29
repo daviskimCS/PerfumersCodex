@@ -19,11 +19,11 @@ standing constraints verbatim, plus this wave's additions below.
       since Wave 2 has hand-rolled what Skeleton should provide. `radix-ui` is
       already installed, so this should add no dependency — the orchestrator
       verifies `package.json` is unchanged (any change = a maker ask first).
-- [ ] **TypeScript-runner decision made by the maker** (needed by W4-A's
+- [x] **TypeScript-runner decision made by the maker** — _approved and installed 2026-08-28: `tsx` 4.23.12 (dev dependency; alias resolution verified)_ (needed by W4-A's
       live run): executing `scripts/seed.ts` needs a runner (`tsx` as a dev
       dependency is the default recommendation). A new dependency, so
       maker-approved, orchestrator-installed alongside the `db:seed` script.
-- [ ] **`@rdkit/rdkit` install decision made by the maker** (needed by
+- [x] **`@rdkit/rdkit` install decision made by the maker** — _approved and installed 2026-08-28: 2025.3.4-1.0.0. The WASM payload is **6.6 MB**, so W4-C's lazy-load discipline is not optional — it is the whole Lighthouse budget. Verified absent from the client bundle until something imports it._ (needed by
       W4-C's structure module). RDKit.js is locked stack in `AGENTS.md`, but
       installing is still a dependency change. If withheld or deferred, W4-C
       dispatches anyway with the structure module descoped to a slot rendering
