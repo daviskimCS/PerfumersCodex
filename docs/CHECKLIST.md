@@ -242,9 +242,9 @@ any `app/layout.tsx` change.
 - No `og:image` asset exists, so `openGraph.images` is deliberately unset.
   Wire it when the asset lands (Phase 4, per the OG-imagery open decision).
 
-### P2-E — Search query layer + search view migration · **BLOCKED: phase-0**
+### P2-E — Search query layer + search view migration · **DONE**
 
-- [ ] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
+- [x] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
 ### P2-F — Search UX · **BLOCKED: P2-E, P2-C**
 
