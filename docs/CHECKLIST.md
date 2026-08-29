@@ -111,14 +111,14 @@ with P2-E), any `lib/db/` query code.
 - [x] `lib/supabase/{client,server,admin,proxy}.ts` + root `proxy.ts` (Next 16's middleware entry point) per `@supabase/ssr`.
       _Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project._
 
-### P1-E — Auth flows + protected routes · **BLOCKED: phase-0**
+### P1-E — Auth flows + protected routes · **DONE**
 
-- [ ] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
+- [x] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
       _Google OAuth console setup is **MAKER**._
 
-### P1-F — Material routes (structural) · **BLOCKED: phase-0, P1-A**
+### P1-F — Material routes (structural) · **DONE**
 
-- [ ] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
+- [x] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
 ### P1-G — Seed script · **BLOCKED: P1-C**
 
@@ -242,9 +242,9 @@ any `app/layout.tsx` change.
 - No `og:image` asset exists, so `openGraph.images` is deliberately unset.
   Wire it when the asset lands (Phase 4, per the OG-imagery open decision).
 
-### P2-E — Search query layer + search view migration · **BLOCKED: phase-0**
+### P2-E — Search query layer + search view migration · **DONE**
 
-- [ ] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
+- [x] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
 ### P2-F — Search UX · **BLOCKED: P2-E, P2-C**
 

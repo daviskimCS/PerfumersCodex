@@ -8,6 +8,13 @@
       "when": 1787976235493,
       "tag": "0000_funny_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787976595756,
+      "tag": "0001_search-infrastructure",
+      "breakpoints": true
     }
   ]
 }

@@ -3,9 +3,9 @@
 **Status: APPROVED** — drafted and approved Aug 26, 2026. Materialized in `AGENTS.md`, `lib/types.ts`, and the repo tooling; binding on all implementation work.
 
 These are the six code-level decisions that must exist before parallel agentic
-work can start on Phases 1–2. They sit *below* the design docs (what the
+work can start on Phases 1–2. They sit _below_ the design docs (what the
 product and data are — see [database-schema.md](./database-schema.md),
-[tech-stack.md](./tech-stack.md)) and *above* implementation: module layout,
+[tech-stack.md](./tech-stack.md)) and _above_ implementation: module layout,
 contracts, and conventions that keep independently-written code convergent.
 
 On approval: the distilled rules move into `AGENTS.md` (canonical), the
@@ -18,8 +18,8 @@ Until then nothing here is binding.
 
 **Context.** `AGENTS.md` currently says both "schema in `/db/schema.ts`" and
 "all DB access goes through `/lib/db/`". Both are kept, with the ambiguity
-resolved: `db/` is where the database *shape* is declared; `lib/db/` is where
-the database is *accessed*.
+resolved: `db/` is where the database _shape_ is declared; `lib/db/` is where
+the database is _accessed_.
 
 **Decision.**
 
@@ -69,7 +69,7 @@ short-circuit, tier ordering, tie-breaks). Where the line sits decides whether
 ranking is unit-testable without Postgres — i.e. whether Week 5 logic can be
 built and gold-set-tested before Phase 0 credentials exist.
 
-**Decision: SQL returns *evidence*, TypeScript assigns *rank*.**
+**Decision: SQL returns _evidence_, TypeScript assigns _rank_.**
 
 Pipeline in `lib/search/index.ts` — `searchMaterials(query: string)`:
 
@@ -107,7 +107,7 @@ import path stays `@/lib/search` (the milestone plan's `lib/search.ts` becomes
 **Context.** No interfaces exist anywhere in the repo or docs, and parallel
 agents need shapes they must conform to and may not change. These are
 hand-written **view models** derived from
-[database-schema.md](./database-schema.md) — deliberately *not* inferred from
+[database-schema.md](./database-schema.md) — deliberately _not_ inferred from
 Drizzle, so UI work never couples to the schema layer and can proceed in
 parallel with it.
 
@@ -117,127 +117,137 @@ snake_case columns; DB enums become string-literal unions; timestamps are ISO
 strings.
 
 ```ts
-export type MaterialType = 'synthetic' | 'natural' | 'isolate';
+export type MaterialType = 'synthetic' | 'natural' | 'isolate'
 export type SourceType =
-  'ifra' | 'sds' | 'pubchem' | 'gsc' | 'perfumer_blog' | 'book' | 'interview' | 'other';
+  | 'ifra'
+  | 'sds'
+  | 'pubchem'
+  | 'gsc'
+  | 'perfumer_blog'
+  | 'book'
+  | 'interview'
+  | 'other'
 export type SynonymType =
-  'trade_name' | 'iupac' | 'common_name' | 'abbreviation' | 'supplier_name';
-export type RestrictionType = 'restriction' | 'prohibition' | 'specification';
-export type Tenacity = 'low' | 'medium' | 'high' | 'very_high';
-export type Projection = 'low' | 'medium' | 'high';
+  'trade_name' | 'iupac' | 'common_name' | 'abbreviation' | 'supplier_name'
+export type RestrictionType = 'restriction' | 'prohibition' | 'specification'
+export type Tenacity = 'low' | 'medium' | 'high' | 'very_high'
+export type Projection = 'low' | 'medium' | 'high'
 
 export interface Citation {
-  id: string;
-  type: SourceType;
-  title: string;
-  url: string | null;
-  author: string | null;
-  publishedAt: string | null;
-  accessedAt: string;
+  id: string
+  type: SourceType
+  title: string
+  url: string | null
+  author: string | null
+  publishedAt: string | null
+  accessedAt: string
 }
 
-export interface FamilyRef { slug: string; name: string; }
+export interface FamilyRef {
+  slug: string
+  name: string
+}
 
 export interface MaterialSummary {
-  id: string;
-  slug: string;
-  canonicalName: string;
-  materialType: MaterialType;
-  casNumber: string | null;
-  families: FamilyRef[];
+  id: string
+  slug: string
+  canonicalName: string
+  materialType: MaterialType
+  casNumber: string | null
+  families: FamilyRef[]
 }
 
 export interface UsageLimit {
-  categoryId: number;                 // 1–11, IFRA numbering
-  categoryName: string;
-  restrictionType: RestrictionType;
-  maxPct: number | null;              // null = no numeric limit; read with restrictionType
-  notes: string | null;
-  ifraAmendmentVersion: string;       // e.g. "51st" — display prominently (data-strategy)
-  verifiedAt: string;
-  sourceId: string;
+  categoryId: number // 1–11, IFRA numbering
+  categoryName: string
+  restrictionType: RestrictionType
+  maxPct: number | null // null = no numeric limit; read with restrictionType
+  notes: string | null
+  ifraAmendmentVersion: string // e.g. "51st" — display prominently (data-strategy)
+  verifiedAt: string
+  sourceId: string
 }
 
 export interface Hazard {
-  code: string;                       // e.g. "H317"
-  description: string;
-  category: string;
-  sourceId: string;
+  code: string // e.g. "H317"
+  description: string
+  category: string
+  sourceId: string
 }
 
 export interface OlfactiveDescription {
-  description: string;
-  tenacity: Tenacity | null;
-  projection: Projection | null;
-  keyFacets: string[];
-  sourceId: string | null;            // null = written from the maker's own experience
+  description: string
+  tenacity: Tenacity | null
+  projection: Projection | null
+  keyFacets: string[]
+  sourceId: string | null // null = written from the maker's own experience
 }
 
 export interface UsageGuidance {
-  typicalPctMin: number | null;
-  typicalPctMax: number | null;
-  thresholdNote: string | null;
-  dilutionNote: string | null;
-  sourceId: string | null;
+  typicalPctMin: number | null
+  typicalPctMax: number | null
+  thresholdNote: string | null
+  dilutionNote: string | null
+  sourceId: string | null
 }
 
 export interface LandmarkUse {
-  perfumeName: string;
-  house: string | null;
-  year: number | null;
-  notes: string | null;
-  sourceId: string;
+  perfumeName: string
+  house: string | null
+  year: number | null
+  notes: string | null
+  sourceId: string
 }
 
 export interface ComputedProperties {
-  logp: number | null;
-  tpsa: number | null;
-  heavyAtomCount: number | null;
-  rdkitVersion: string;               // provenance — always shown with the values
+  logp: number | null
+  tpsa: number | null
+  heavyAtomCount: number | null
+  rdkitVersion: string // provenance — always shown with the values
 }
 
 export interface SimilarMaterial {
-  slug: string;
-  canonicalName: string;
-  tanimoto: number;                   // 0–1
-  rdkitVersion: string;
+  slug: string
+  canonicalName: string
+  tanimoto: number // 0–1
+  rdkitVersion: string
 }
 
 export interface OdorPrediction {
-  descriptor: string;
-  probability: number;                // 0–1
-  modelVersion: string;               // e.g. "sor-v0.1" — always shown
+  descriptor: string
+  probability: number // 0–1
+  modelVersion: string // e.g. "sor-v0.1" — always shown
 }
 
 export interface MaterialDetail extends MaterialSummary {
-  iupacName: string | null;
-  smiles: string | null;              // null = natural/mixture → hide ALL structure features
-  molecularFormula: string | null;
-  molecularWeight: number | null;
-  synonyms: { name: string; type: SynonymType }[];
-  usageLimits: UsageLimit[];
-  hazards: Hazard[];
-  olfactive: OlfactiveDescription | null;
-  usageGuidance: UsageGuidance | null;
-  landmarkUses: LandmarkUse[];
-  computed: ComputedProperties | null;
-  similar: SimilarMaterial[];
-  odorPredictions: OdorPrediction[];  // renders ONLY in the labeled experimental module
-  sources: Citation[];                // every sourceId above resolves here; superscript
-                                      // number = index in this array + 1
+  iupacName: string | null
+  smiles: string | null // null = natural/mixture → hide ALL structure features
+  molecularFormula: string | null
+  molecularWeight: number | null
+  synonyms: { name: string; type: SynonymType }[]
+  usageLimits: UsageLimit[]
+  hazards: Hazard[]
+  olfactive: OlfactiveDescription | null
+  usageGuidance: UsageGuidance | null
+  landmarkUses: LandmarkUse[]
+  computed: ComputedProperties | null
+  similar: SimilarMaterial[]
+  odorPredictions: OdorPrediction[] // renders ONLY in the labeled experimental module
+  sources: Citation[] // every sourceId above resolves here; superscript
+  // number = index in this array + 1
 }
 
-export type MatchTier = 0 | 1 | 2 | 3 | 4;
+export type MatchTier = 0 | 1 | 2 | 3 | 4
 // 0 CAS exact · 1 canonical-name exact · 2 synonym exact · 3 prefix/trigram · 4 full-text
 
 export interface SearchResult {
-  id: string;
-  slug: string;
-  canonicalName: string;
-  casNumber: string | null;
-  matchTier: MatchTier;
-  matchedSynonym: string | null;      // set when the hit came via a synonym → UI can
-                                      // show “matched: OTNE”
+  id: string
+  slug: string
+  canonicalName: string
+  casNumber: string | null
+  matchTier: MatchTier
+  matchedSynonym: string | null // set when the hit came via a synonym → UI can
+  // show “matched: OTNE”
 }
 ```
 
@@ -261,13 +271,17 @@ divergence the orchestrator would otherwise have to reconcile after the fact.
   a skeleton matching the final layout (no visual jump). Skeletons compose
   the shadcn `Skeleton` primitive once Week 6 lands.
 - **Error:** every such segment ships `error.tsx` (client component): plain
-  language for what happened + a retry via `reset()`. Never render raw error
-  messages or stack traces; log server-side instead.
+  language for what happened + a retry via **`unstable_retry()`**. Never render
+  raw error messages or stack traces; log server-side instead.
+  _(Corrected 2026-08-28: this decision originally said `reset()`. In Next 16.2
+  `reset()` re-renders without re-fetching, so a failed database read re-throws
+  immediately; `unstable_retry()` is the prop Next's own `error.js` convention
+  documents as "re-fetching and re-rendering the segment". Found by W3-B.)_
 - **Not-found:** global `app/not-found.tsx`; unknown slugs call `notFound()` —
   a wrong `/materials/[slug]` is a 404, not an error state.
 - **Empty:** one shared `components/empty-state.tsx` (title, description,
   optional action). Domain empty states — "no results", "no landmark uses
-  recorded yet", "no saved materials" — are *content* passed to this one
+  recorded yet", "no saved materials" — are _content_ passed to this one
   component, never new bespoke components.
 - **Failure posture:** server components let fetch failures throw to
   `error.tsx`. No catch-and-render-blank — a silent empty section lies about
@@ -278,8 +292,8 @@ divergence the orchestrator would otherwise have to reconcile after the fact.
 ## D5 — Test conventions
 
 **Context.** No Vitest, no `test` script, no location convention exists.
-The testing philosophy (AGENTS.md) already says *what* to test; this fixes
-*how and where*.
+The testing philosophy (AGENTS.md) already says _what_ to test; this fixes
+_how and where_.
 
 **Decision.**
 
@@ -291,7 +305,7 @@ The testing philosophy (AGENTS.md) already says *what* to test; this fixes
 - The search gold set is a typed data module, `lib/search/gold-set.ts`:
   `{ query, expectSlug, maxRank }[]`, seeded with the five Week 5 cases.
   Ranking tests iterate it against synthetic candidates. Zero-result
-  production queries get *added* to the gold set as they surface — the
+  production queries get _added_ to the gold set as they surface — the
   maintenance loop the schema doc already prescribes.
 - v1 skips tests on `lib/db/` functions (thin "calls the database" wrappers —
   explicitly on the skip list).
@@ -339,4 +353,4 @@ Conventions:
    - **UI foundation** — design tokens in `app/globals.css`, shadcn
      primitives in `components/ui/`, global layout · proves: `npm run build`
    - **Search pure logic** — `lib/search/{normalize,rank,types,gold-set}.ts`
-     + tests · proves: `vitest run lib/search`
+     - tests · proves: `vitest run lib/search`

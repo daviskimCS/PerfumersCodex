@@ -70,7 +70,7 @@ shared `EmptyState`, not error.
 3. Conform to `lib/types.ts`; never edit it. `lib/db/` returns `lib/types.ts`
    shapes, never raw Drizzle rows (architecture D1).
 4. Every data-fetching segment ships `loading.tsx` (skeleton matching final
-   layout) + `error.tsx` (plain language + `reset()`); unknown slugs call
+   layout) + `error.tsx` (plain language + `unstable_retry()`); unknown slugs call
    `notFound()`; empty states go through `components/empty-state.tsx` (D4).
 5. Zod schema per form in `lib/validation/`, shared by client and server;
    server actions re-parse with `safeParse`, return field-keyed errors (D6).
