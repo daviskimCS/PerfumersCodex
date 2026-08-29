@@ -4,6 +4,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import './globals.css'
 
+import { env } from '@/lib/env'
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
@@ -21,7 +23,7 @@ const SITE_DESCRIPTION =
 // The canonical origin. Read from the environment rather than hard-coded so a
 // preview deployment advertises itself and not production; localhost keeps
 // `new URL()` from throwing when the variable is absent (local dev, CI).
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+const SITE_URL = env.NEXT_PUBLIC_SITE_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
