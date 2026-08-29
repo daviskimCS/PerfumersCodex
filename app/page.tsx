@@ -7,7 +7,7 @@ export default function Home() {
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted-foreground">
           A curated, citation-driven aromachemical reference for working
-          perfumers. Under construction — launching spring 2027.
+          perfumers. Under construction — launching Spring 2027.
         </p>
       </div>
     </div>

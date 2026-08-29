@@ -26,35 +26,51 @@
   /* ------------------------------------------------------------------------
      TYPEFACES
 
-     Three roles, deliberately distinct:
-       display — material names, page titles, headings. A serif, for the
-                 reference-work feel. Currently a *system* serif stack
-                 (New York on Apple, Charter/Georgia elsewhere) because the
-                 webfonts are wired up in app/layout.tsx, which this file
-                 does not own. Swapping in a real display face later means
-                 prepending one variable here — nothing else changes.
-       sans    — body, UI, controls. Geist, loaded by next/font in layout.
-       mono    — CAS numbers, SMILES, molecular formulae, code. Geist Mono.
+     Monospaced throughout (Aug 2026). Every role — display, body, UI — uses
+     Geist Mono; `mono` stays as the semantic name for data that is
+     *inherently* monospaced (CAS numbers, SMILES, molecular formulae), so
+     call sites keep saying what they mean even while the faces coincide.
+
+     Why: a reference work read at the bench is mostly identifiers, numbers
+     and formulae, and mono sets them honestly — figures align in tables, a
+     CAS number cannot be misread, and the page reads as an instrument
+     rather than an article. It is also a deliberate, uncommon choice for a
+     content site, which is the house style (see AGENTS.md).
+
+     PREVIOUS STACKS, kept so this is one edit to undo:
+
+       --font-display (system serif — no webfont was ever wired):
+         ui-serif, 'Iowan Old Style', 'Charter', 'Source Serif 4', Georgia,
+         'Times New Roman', serif
+       --font-sans (Geist Sans, still loaded by next/font in layout.tsx):
+         var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui,
+         -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+
+     Geist Sans remains loaded in app/layout.tsx and `--font-sans-alt` below
+     still points at it, so reverting is: swap the two values back.
 
      Always reference these via the font-display / font-sans / font-mono
      utilities; never name a family at a call site.
      ------------------------------------------------------------------------ */
-  --font-display:
-    ui-serif, 'Iowan Old Style', 'Charter', 'Source Serif 4', Georgia,
-    'Times New Roman', serif;
   /* The var() fallbacks matter: an undefined custom property invalidates the
      whole declaration, so without them a missing next/font variable would
      drop the entire stack and the UI would silently render in the browser's
-     default serif. */
-  --font-sans:
-    var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, -apple-system,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+     default font. */
   --font-mono:
     var(--font-geist-mono, 'Geist Mono'), ui-monospace, 'SF Mono',
     SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
-  /* shadcn's primitives use `font-heading` (see components/ui/card.tsx).
-     Headings are display type here, so the two are the same thing. */
+  /* Display and body both resolve to the mono stack. Named separately so the
+     roles stay meaningful and a future change can split them again. */
+  --font-display: var(--font-mono);
+  --font-sans: var(--font-mono);
+
+  /* Geist Sans, still loaded and available for anything that needs
+     proportional type (long-form prose, if it ever earns an exception). */
+  --font-sans-alt:
+    var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
   --font-heading: var(--font-display);
 
   /* ------------------------------------------------------------------------

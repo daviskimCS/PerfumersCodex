@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { Analytics } from '@vercel/analytics/next'
+
 import './globals.css'
 
 import { env } from '@/lib/env'
@@ -96,6 +98,14 @@ export default function RootLayout({
           {children}
         </main>
         <SiteFooter />
+        {/*
+          Vercel Web Analytics — cookieless, stores no IP addresses, and needs
+          no consent banner, which is why it can sit in the root layout
+          unconditionally. It self-disables outside Vercel, so local dev and
+          CI builds send nothing. Mention it in the privacy policy (Week 18)
+          alongside the search_queries log.
+        */}
+        <Analytics />
       </body>
     </html>
   )
