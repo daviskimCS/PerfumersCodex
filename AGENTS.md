@@ -1,4 +1,5 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
@@ -34,8 +35,8 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - All DB access goes through `lib/db/`. No inline SQL in route handlers or components.
 - **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts`. Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
 - **Type contracts:** `lib/types.ts` is contract-locked. It is hand-written from `docs/database-schema.md`, not inferred from Drizzle, so UI and schema work stay decoupled. Conform to it; don't edit it.
-- **Search boundary (docs/architecture.md D2):** SQL returns *evidence* (match flags, similarities, ts_rank), TypeScript assigns *rank*. `lib/search/{normalize,rank}.ts` stay pure and database-free so the gold set runs without Postgres.
-- **Page states (docs/architecture.md D4):** every data-fetching route segment ships `loading.tsx` (skeleton matching final layout) and `error.tsx` (plain language + `reset()`, never a raw error or stack trace). Unknown slugs call `notFound()`. Empty states are content passed to the shared `components/empty-state.tsx`, never new bespoke components. Never catch-and-render-blank — a silent empty section lies about the data.
+- **Search boundary (docs/architecture.md D2):** SQL returns _evidence_ (match flags, similarities, ts_rank), TypeScript assigns _rank_. `lib/search/{normalize,rank}.ts` stay pure and database-free so the gold set runs without Postgres.
+- **Page states (docs/architecture.md D4):** every data-fetching route segment ships `loading.tsx` (skeleton matching final layout) and `error.tsx` (plain language + `unstable_retry()` — not `reset()`, which re-renders without re-fetching — never a raw error or stack trace). Unknown slugs call `notFound()`. Empty states are content passed to the shared `components/empty-state.tsx`, never new bespoke components. Never catch-and-render-blank — a silent empty section lies about the data.
 - **Data-access boundary:** editorial/public data (materials, families, sources, search) is read through Drizzle. User-owned data (bookmarks, notes) goes through the Supabase client so RLS is enforced — Drizzle connects as the `postgres` role and silently bypasses RLS. Never touch user tables through Drizzle.
 - Drizzle migrations run against the direct connection (5432); the app runs against the pooled connection (6543, `prepare: false`).
 - Server components by default. Client components only when needed (interaction, browser APIs).
@@ -66,7 +67,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Supabase Auth handles auth flows. Don't roll custom auth.
 - Server-side, verify the caller with `supabase.auth.getUser()` — never `getSession()`, which trusts unvalidated cookie data.
 - All user-data tables have RLS policies. Test with multiple accounts before merging.
-- Account deletion *actually deletes* data. No soft-deletes for user-owned rows. It runs through the Supabase admin API with the secret key in a server action (the logged-in client cannot delete itself); `ON DELETE CASCADE` on user tables does the cleanup — verify it with a throwaway account.
+- Account deletion _actually deletes_ data. No soft-deletes for user-owned rows. It runs through the Supabase admin API with the secret key in a server action (the logged-in client cannot delete itself); `ON DELETE CASCADE` on user tables does the cleanup — verify it with a throwaway account.
 - Rate limit: signup, login, search.
 - No secrets in client bundle. Verify before deploy.
 - **Validation (docs/architecture.md D6):** one Zod schema per form/domain in `lib/validation/`, imported by both the client form and the server action — "server matches client" holds by construction. Server actions always re-parse with `safeParse`; a parse failure returns field-keyed errors, never a thrown 500.
@@ -94,12 +95,14 @@ A curated, public, open-source aromachemical reference web app for working perfu
 ## Testing philosophy
 
 Test the parts that benefit from tests:
+
 - Search ranking and synonym resolution
 - Data normalization
 - Citation handling
 - Auth-adjacent business logic
 
 Skip tests for:
+
 - Trivial component renders
 - Plain CRUD endpoints
 - Anything that's just "calls the database and returns it"
