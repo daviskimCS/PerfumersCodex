@@ -111,9 +111,9 @@ with P2-E), any `lib/db/` query code.
 - [x] `lib/supabase/{client,server,admin,proxy}.ts` + root `proxy.ts` (Next 16's middleware entry point) per `@supabase/ssr`.
       _Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project._
 
-### P1-E — Auth flows + protected routes · **BLOCKED: phase-0**
+### P1-E — Auth flows + protected routes · **DONE**
 
-- [ ] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
+- [x] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
       _Google OAuth console setup is **MAKER**._
 
 ### P1-F — Material routes (structural) · **BLOCKED: phase-0, P1-A**
