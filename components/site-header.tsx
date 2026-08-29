@@ -5,8 +5,11 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Input } from '@/components/ui/input'
 
 export function SiteHeader() {
+  // `bg-chrome` is opaque on purpose. This bar sits above the textured canvas
+  // and has to cover whatever scrolls beneath it — a translucent or absent
+  // background lets content ghost through the wordmark.
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background">
+    <header className="sticky top-0 z-40 border-b border-border bg-chrome text-chrome-foreground">
       {/* First tab stop on every page: jump past the chrome to the content. */}
       <a
         href="#main-content"

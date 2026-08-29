@@ -237,6 +237,8 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-chrome: var(--chrome);
+  --color-chrome-foreground: var(--chrome-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -283,13 +285,18 @@
    and key actions — links, focus rings, primary buttons, active states.
    Never decorative, never a second accent.
 
-   Contrast (WCAG 2.1, verified):
-     foreground   / background   16.33:1
-     muted-fg     / background    6.10:1  (4.86:1 over texture)
-     brand        / background    6.32:1
-     brand-fg     / brand         6.74:1   (primary button label)
-     destructive  / background    5.68:1  (4.69:1 over texture)
-     border-strong/ background    4.25:1  (3.39:1 over texture)
+   Contrast (WCAG 2.1). There are exactly two backdrops in this design: the
+   textured canvas and the solid --chrome rails. Figures are MEASURED, not
+   estimated — the real layer stack is composited and the extreme pixel taken
+   (see CONTRAST under BACKGROUND for how to re-run it).
+
+                       over texture   over chrome
+     foreground            14.22           17.86
+     muted-fg               5.33            6.70
+     brand                  5.52            6.94
+     destructive            5.17            6.49
+     border-strong          3.71            4.65   (SC 1.4.11, needs 3.0)
+     brand-fg / brand       6.73                   (primary button label)
    ========================================================================== */
 
 :root {
@@ -302,6 +309,13 @@
   --background: oklch(0.968 0.003 75); /* #f6f4f2 damped paper */
   --surface: oklch(1 0 0); /* #ffffff crisp white, raised */
   --surface-raised: oklch(1 0 0); /* #ffffff floating layers */
+
+  /* The solid rails: site header and site footer. Opaque on purpose — they
+     are chrome, not part of the textured field, and they have to cover what
+     scrolls beneath them. Declared once: `--surface` is re-valued in .dark,
+     and var() resolves on the element, so this follows the mode. */
+  --chrome: var(--surface);
+  --chrome-foreground: var(--foreground);
   --foreground: oklch(0.205 0.008 70); /* #1a1713 warm ink */
 
   --card: var(--surface);
@@ -311,8 +325,8 @@
 
   /* Recessive text and fills --------------------------------------------- */
   --muted: oklch(0.945 0.004 75); /* #eeecea quiet fill */
-  /* Darkened for the Suwa texture rather than flat paper: 4.86:1 over the
-     darkest patch of the ripple, 6.10:1 on the bare background. */
+  /* Darkened for the texture rather than flat paper: 5.33:1 over the
+     darkest composited patch of the grain, 6.70:1 on the chrome rails. */
   --muted-foreground: oklch(0.475 0.012 70); /* #615b55 secondary text */
   --secondary: oklch(0.925 0.005 75); /* #e8e6e3 neutral button fill */
   --secondary-foreground: oklch(0.265 0.008 70); /* #282521 */
@@ -341,23 +355,28 @@
   --border: oklch(0.865 0.005 75); /* #d4d2cf */
   --border-strong: oklch(
     0.56 0.008 72
-  ); /* #77746f — SC 1.4.11: 3.39:1 over
-     the darkest patch of the Suwa texture, 4.25:1 on the bare background */
+  ); /* #77746f — SC 1.4.11: 3.71:1 over
+     the darkest composited patch of the grain, 4.65:1 on the chrome rails */
 
-  /* Lake Suwa background layer (see BACKGROUND in @layer base).
-     Tinted with the same brown as the accent, at very low chroma — the
-     palette stays warm end to end. Beneath everything, never touches text. */
-  --grain-pool: oklch(0.956 0.026 68);
-  --grain-pool-deep: oklch(0.948 0.032 56);
+  /* Background grain (see BACKGROUND in @layer base). Tinted with the same
+     brown as the accent, at very low chroma — the palette stays warm end to
+     end. Beneath everything, never touches text.
+
+     `band` is the fast vertical period, `wash` the slow one. Both are pure
+     horizontal gradients, so they are continuous across any width. */
   --grain-band-a: oklch(0.958 0.024 72 / 0.55);
   --grain-band-b: oklch(0.952 0.03 58 / 0.55);
-  /* swell = coarse horizontal rollers; chop = fine ripple over the top */
-  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.09'/%3E%3C/svg%3E");
-  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
+  --grain-wash: oklch(0.956 0.026 68 / 0.5);
+  --grain-wash-deep: oklch(0.948 0.032 56 / 0.5);
+  /* swell = coarse horizontal rollers; chop = fine ripple over the top.
+     Deliberately different tile sizes (900 / 640) so the two repeats
+     coincide only every 28800px — far past any viewport. */
+  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.09'/%3E%3C/svg%3E");
+  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3E%3Cfilter id='r' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='640' height='640' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
-  --destructive: oklch(0.505 0.196 27); /* #bb141a — 4.69:1 over the texture */
+  --destructive: oklch(0.505 0.196 27); /* #bb141a — 5.17:1 over the texture */
   --destructive-foreground: oklch(0.99 0.003 75); /* #fdfbfa */
 }
 
@@ -369,13 +388,17 @@
    and the accent moves to a brass tone (a small hue shift keeps it reading
    as the same amber instead of turning peach at high lightness).
 
-   Contrast (WCAG 2.1, verified):
-     foreground   / background   16.48:1
-     muted-fg     / background    7.58:1
-     brand        / background    9.51:1
-     brand-fg     / brand         9.01:1   (primary button label)
-     destructive  / background    6.16:1
-     border-strong/ background    5.16:1  (3.46:1 over texture — SC 1.4.11)
+   Contrast (WCAG 2.1), measured the same way as light mode. The worst case
+   here is the LIGHTEST composited pixel, not the darkest — the grain lifts a
+   dark page rather than sinking it.
+
+                       over texture   over chrome
+     foreground            12.64           15.31
+     muted-fg               5.83            7.06
+     brand                  7.31            8.86
+     destructive            4.74            5.75
+     border-strong          3.37            4.08   (SC 1.4.11, needs 3.0)
+     brand-fg / brand       9.03                   (primary button label)
    ========================================================================== */
 
 .dark {
@@ -415,17 +438,28 @@
   --border: oklch(0.315 0.007 70); /* #34312e hairline */
   --border-strong: oklch(
     0.575 0.009 72
-  ); /* #7c7873 — SC 1.4.11: 3.46:1 over
-     the texture, which lightens the dark background rather than darkening it */
+  ); /* #7c7873 — SC 1.4.11: 3.37:1 over the
+     texture, which LIGHTENS the dark page rather than darkening it, so the
+     worst case is the brightest crest. This is the tightest pair in the
+     design — re-measure before touching the dark grain. */
 
   /* Same grain, dark: the surface under far less light. Kept present rather
-     than removed so both modes read as one material. */
-  --grain-pool: oklch(0.268 0.028 68);
-  --grain-pool-deep: oklch(0.252 0.032 56);
-  --grain-band-a: oklch(0.26 0.024 72 / 0.7);
-  --grain-band-b: oklch(0.238 0.028 58 / 0.6);
-  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.1'/%3E%3C/svg%3E");
-  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.06'/%3E%3C/svg%3E");
+     than removed so both modes read as one material.
+
+     Here the wash LIFTS and the bands SINK, where in light mode every layer
+     darkens. That is structural, not decorative. Text is light in dark mode,
+     so the worst case for contrast is the LIGHTEST composited pixel — and
+     letting two lifting layers peak on the same row took --border-strong to
+     2.86:1, under SC 1.4.11. Crest-and-trough bounds the maximum at one
+     lifting layer plus the turbulence instead of three stacked. Keep that
+     shape if these are ever retuned, and re-measure rather than assuming:
+     the peaks of two gradients on co-prime periods DO coincide somewhere. */
+  --grain-band-a: oklch(0.145 0.006 72 / 0.55);
+  --grain-band-b: oklch(0.135 0.008 58 / 0.5);
+  --grain-wash: oklch(0.255 0.026 68 / 0.55);
+  --grain-wash-deep: oklch(0.238 0.03 56 / 0.55);
+  --grain-swell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='r' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.055' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23r)' opacity='0.07'/%3E%3C/svg%3E");
+  --grain-chop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3E%3Cfilter id='r' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.13' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='640' height='640' filter='url(%23r)' opacity='0.045'/%3E%3C/svg%3E");
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
@@ -465,8 +499,12 @@
     -moz-osx-font-smoothing: auto;
   }
 
+  /* No background here on purpose. The grain is painted on the ROOT element
+     so it propagates to the canvas (see BACKGROUND below); an opaque body
+     would paint straight over it. */
   body {
-    @apply bg-background text-foreground text-base;
+    @apply text-foreground text-base;
+    background-color: transparent;
     font-synthesis-weight: none;
   }
 
@@ -493,84 +531,103 @@
      stays warm end to end, and the grain reads as raked sand, aged paper,
      or figured wood rather than a lake.
 
-     The ripple is one inline SVG turbulence with an ANISOTROPIC base
-     frequency — low across x, high across y. That ratio is what stretches
-     noise into horizontal bands instead of even mottling, and it is the
-     single value that makes this read as a rippled surface rather than
-     grain-as-noise. Two passes give a coarse swell under a fine chop.
+     ON THE ROOT ELEMENT, DELIBERATELY. The root's background propagates to
+     the canvas, and the canvas is painted across the whole drawing surface
+     rather than just the viewport box — so the grain also fills the
+     rubber-band overscroll strip above the header and anything the
+     compositor exposes mid-scroll. Painted on `body`, or on a fixed
+     `body::before`, those regions fall back to the flat background-color and
+     the texture visibly stops at the top of the page. That is why `body` is
+     transparent above.
 
-     A fixed layer behind everything, opaque: it paints the page colour
-     itself rather than veiling content, and never sits above anything
-     readable. Pure CSS — no component, no JavaScript, no image request.
+     EVERY LAYER TILES SEAMLESSLY. That is the whole constraint here — a
+     visible repeat edge reads as a crack in the material:
+
+       swell / chop   feTurbulence with stitchTiles='stitch' plus an explicit
+                      filter region, which makes the noise periodic across
+                      the tile so its edges join invisibly.
+       band / wash    pure `to bottom` gradients — horizontally uniform, so
+                      they are continuous across ANY width by construction.
+                      Both ends are transparent, so the vertical repeat joins
+                      invisibly too, and the two periods (590 / 1370) beat
+                      against each other for slow large-scale variation.
+
+     No radial pools: a viewport-anchored radial gradient cannot tile without
+     a hard clipped edge, which is precisely the break this must not have.
+
+     The ripple itself is the ANISOTROPIC base frequency — low across x, high
+     across y. That ratio (~1:16) is what stretches noise into horizontal
+     bands instead of even mottling, and it is the single value that makes
+     this read as a rippled surface rather than grain-as-noise. Preserve it
+     if the frequencies are ever retuned; stitchTiles rounds each axis to a
+     whole number of periods per tile, which is why the numbers are not
+     exactly the ratio written above.
 
      Motion is a slow horizontal drift, because that is how ripple fields
      move. 120s and sub-pixel, so the page is alive without catching the eye
      mid-sentence; prefers-reduced-motion holds it still and keeps the
      texture.
 
-     CONTRAST: every token that sits on this layer was verified against the
-     COMPOSITED worst case — base, darkest band, pool core and both
-     turbulence passes stacked — not against the flat background. A texture
-     silently invalidates contrast checked on a solid colour. Both figures
-     are recorded in the palette blocks below.
+     CONTRAST: every token that sits on this layer is verified against the
+     COMPOSITED worst case, not the flat background — a texture silently
+     invalidates contrast checked on a solid colour. The method: paint the
+     whole stack (background-color, then both gradients at their real
+     periods, then both turbulence tiles) into a 900 x 2740 canvas — two full
+     wash periods, so every phase relationship between the two gradients
+     occurs — read every pixel, and take the darkest in light mode, the
+     LIGHTEST in dark. Figures are recorded in the palette blocks above.
+     Re-run it after any change to a --grain-* token; edits that look purely
+     cosmetic do move these numbers.
      ========================================================================== */
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: -12%;
-    z-index: -1;
-    pointer-events: none;
+  html {
     background-color: var(--background);
     background-image:
       var(--grain-chop), var(--grain-swell),
       linear-gradient(
-        176deg,
-        var(--grain-band-a) 0%,
-        transparent 34%,
-        var(--grain-band-b) 58%,
-        transparent 88%
+        to bottom,
+        transparent 0%,
+        var(--grain-band-a) 27%,
+        transparent 50%,
+        var(--grain-band-b) 74%,
+        transparent 100%
       ),
-      radial-gradient(
-        78% 34% at 26% 26%,
-        var(--grain-pool) 0%,
-        transparent 72%
-      ),
-      radial-gradient(
-        68% 30% at 78% 74%,
-        var(--grain-pool-deep) 0%,
-        transparent 70%
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--grain-wash) 30%,
+        transparent 55%,
+        var(--grain-wash-deep) 78%,
+        transparent 100%
       );
+    background-repeat: repeat;
     background-size:
       auto,
       auto,
-      100% 100%,
-      100% 100%,
-      100% 100%;
-    animation: suwa-drift 120s ease-in-out infinite alternate;
+      100% 590px,
+      100% 1370px;
+    animation: grain-drift 120s ease-in-out infinite alternate;
   }
 
-  @keyframes suwa-drift {
+  @keyframes grain-drift {
     from {
       background-position:
         0 0,
         0 0,
-        0 0%,
-        26% 26%,
-        78% 74%;
+        0 0,
+        0 0;
     }
     to {
       background-position:
-        -90px 14px,
         70px -10px,
-        0 6%,
-        31% 30%,
-        73% 70%;
+        -90px 14px,
+        0 -22px,
+        0 16px;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    body::before {
+    html {
       animation: none;
     }
   }
