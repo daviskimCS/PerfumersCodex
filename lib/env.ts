@@ -22,6 +22,8 @@ import { z } from 'zod'
  * module would defeat.
  */
 
+const SITE_URL_FALLBACK = 'http://localhost:3000'
+
 const schemas = {
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
@@ -49,20 +51,37 @@ const schemas = {
   /**
    * Absolute base for canonical URLs and Open Graph tags.
    *
-   * A bare hostname is accepted and upgraded to https://. Typing
-   * "perfumerscodex.com" into a hosting dashboard is the obvious thing to do,
-   * and this value is read at module scope by app/layout.tsx — so rejecting it
-   * would fail the whole build over a missing scheme, for a value used only to
-   * build metadata URLs. Tolerance is worth more than strictness here.
+   * This one NEVER throws, deliberately — it is the single exception to the
+   * fail-loudly rule above, and it is earned. app/layout.tsx reads it at
+   * module scope, so `next build` evaluates it while collecting page data;
+   * a strict schema here turns a cosmetic metadata value into a failed
+   * deployment. It cost this project five broken builds to learn that.
+   *
+   * Normalizes what people actually type into hosting dashboards: surrounding
+   * quotes, stray whitespace, a bare hostname with no scheme. Anything still
+   * unparseable falls back to the default and warns on the server, so the site
+   * ships with imperfect canonical URLs instead of not shipping.
+   *
+   * DATABASE_URL and the keys above keep throwing: a wrong database is a
+   * correctness problem, a wrong og:url is a cosmetic one.
    */
   NEXT_PUBLIC_SITE_URL: z
-    .string()
-    .trim()
-    .transform((value) =>
-      value === '' || /^https?:\/\//i.test(value) ? value : `https://${value}`
-    )
-    .pipe(z.url())
-    .default('http://localhost:3000'),
+    .preprocess((raw) => {
+      if (typeof raw !== 'string') return undefined
+      const cleaned = raw
+        .trim()
+        .replace(/^['"]|['"]$/g, '')
+        .trim()
+      if (cleaned === '') return undefined
+      return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`
+    }, z.url().default(SITE_URL_FALLBACK))
+    .catch(({ issues }) => {
+      console.warn(
+        `[env] NEXT_PUBLIC_SITE_URL is not a usable URL (${issues[0]?.message}); ` +
+          `falling back to ${SITE_URL_FALLBACK}. Canonical and Open Graph URLs will be wrong until it is fixed.`
+      )
+      return SITE_URL_FALLBACK
+    }),
 } as const
 
 type Schemas = typeof schemas
