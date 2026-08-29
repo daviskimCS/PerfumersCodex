@@ -116,9 +116,9 @@ with P2-E), any `lib/db/` query code.
 - [x] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
       _Google OAuth console setup is **MAKER**._
 
-### P1-F — Material routes (structural) · **BLOCKED: phase-0, P1-A**
+### P1-F — Material routes (structural) · **DONE**
 
-- [ ] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
+- [x] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
 ### P1-G — Seed script · **BLOCKED: P1-C**
 
