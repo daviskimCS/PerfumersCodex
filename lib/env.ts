@@ -46,11 +46,23 @@ const schemas = {
   }),
   // Direct, port 5432 — drizzle-kit migrations only.
   DIRECT_URL: z.string().startsWith('postgresql://'),
+  /**
+   * Absolute base for canonical URLs and Open Graph tags.
+   *
+   * A bare hostname is accepted and upgraded to https://. Typing
+   * "perfumerscodex.com" into a hosting dashboard is the obvious thing to do,
+   * and this value is read at module scope by app/layout.tsx — so rejecting it
+   * would fail the whole build over a missing scheme, for a value used only to
+   * build metadata URLs. Tolerance is worth more than strictness here.
+   */
   NEXT_PUBLIC_SITE_URL: z
     .string()
-    .url()
-    .default('http://localhost:3000')
-    .describe('Absolute base for canonical URLs and Open Graph tags'),
+    .trim()
+    .transform((value) =>
+      value === '' || /^https?:\/\//i.test(value) ? value : `https://${value}`
+    )
+    .pipe(z.url())
+    .default('http://localhost:3000'),
 } as const
 
 type Schemas = typeof schemas
