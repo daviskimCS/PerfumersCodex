@@ -9,11 +9,11 @@ export function SiteHeader() {
   // and has to cover whatever scrolls beneath it — a translucent or absent
   // background lets content ghost through the wordmark.
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-chrome text-chrome-foreground">
+    <header className="site-chrome sticky top-0 z-40 border-b border-border">
       {/* First tab stop on every page: jump past the chrome to the content. */}
       <a
         href="#main-content"
-        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-3 focus-visible:left-gutter focus-visible:z-50 focus-visible:rounded-lg focus-visible:border focus-visible:border-border-strong focus-visible:bg-surface-raised focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:shadow-md md:focus-visible:left-gutter-lg"
+        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-3 focus-visible:left-gutter focus-visible:z-50 focus-visible:rounded-lg focus-visible:border focus-visible:border-border-strong focus-visible:bg-popover focus-visible:text-popover-foreground focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:shadow-md md:focus-visible:left-gutter-lg"
       >
         Skip to content
       </a>

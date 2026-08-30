@@ -285,18 +285,24 @@
    and key actions — links, focus rings, primary buttons, active states.
    Never decorative, never a second accent.
 
-   Contrast (WCAG 2.1). There are exactly two backdrops in this design: the
-   textured canvas and the solid --chrome rails. Figures are MEASURED, not
-   estimated — the real layer stack is composited and the extreme pixel taken
-   (see CONTRAST under BACKGROUND for how to re-run it).
+   Contrast (WCAG 2.1). Figures are MEASURED, not estimated — the real layer
+   stack is composited and the extreme pixel taken (see CONTRAST under
+   BACKGROUND for how to re-run it).
 
-                       over texture   over chrome
+                       over texture   over surface
      foreground            13.66           17.86
      muted-fg               5.12            6.70
      brand                  5.77            7.54
      destructive            4.97            6.49
      border-strong          3.56            4.65   (SC 1.4.11, needs 3.0)
      brand-fg / brand       7.31                   (primary button label)
+
+   The rails are a third backdrop in light mode and run their own token set
+   (--chrome-* below), measured on #4a2d1d:
+
+     chrome-fg             10.93     chrome-brand           6.91
+     chrome-muted-fg        6.75     chrome-border-strong   3.75  (SC 1.4.11)
+     chrome-secondary-fg over chrome-secondary   7.88
    ========================================================================== */
 
 :root {
@@ -312,10 +318,28 @@
 
   /* The solid rails: site header and site footer. Opaque on purpose — they
      are chrome, not part of the textured field, and they have to cover what
-     scrolls beneath them. Declared once: `--surface` is re-valued in .dark,
-     and var() resolves on the element, so this follows the mode. */
-  --chrome: var(--surface);
-  --chrome-foreground: var(--foreground);
+     scrolls beneath them.
+
+     In light mode the rails INVERT: a deep Noctua brown framing the cream
+     field, the way the brown frame of a Noctua fan frames its beige rotor.
+     That means the rails cannot use the page's foreground tokens — dark ink
+     on dark brown is unreadable — so the whole set is declared here and
+     .site-chrome re-points the semantic names inside the rails. Dark mode
+     keeps the raised surface and simply forwards its own tokens. */
+  --chrome: oklch(0.33 0.05 50); /* #4a2d1d */
+  --chrome-foreground: oklch(0.955 0.014 75); /* #f6efe6 */
+  --chrome-muted-foreground: oklch(0.805 0.03 68); /* #cdbcab */
+  --chrome-border: oklch(0.415 0.042 52); /* #5e4537 */
+  --chrome-border-strong: oklch(
+    0.645 0.045 60
+  ); /* #a38872 — SC 1.4.11 on the rail */
+  --chrome-brand: oklch(
+    0.815 0.08 68
+  ); /* #e5b98a — the tan reads as the
+     accent against a brown rail; the page's dark brand would vanish here */
+  --chrome-brand-muted: oklch(0.545 0.055 58); /* #896850 */
+  --chrome-secondary: oklch(0.415 0.045 52); /* #604535 pressed/active fill */
+  --chrome-secondary-foreground: oklch(0.965 0.014 75); /* #f9f2e9 */
   --foreground: oklch(0.205 0.008 70); /* #1a1713 warm ink */
 
   --card: var(--surface);
@@ -392,13 +416,16 @@
    here is the LIGHTEST composited pixel, not the darkest — the grain lifts a
    dark page rather than sinking it.
 
-                       over texture   over chrome
+                       over texture   over surface
      foreground            12.74           15.34
      muted-fg               5.88            7.07
      brand                  7.44            8.95
      destructive            4.78            5.76
      border-strong          3.40            4.09   (SC 1.4.11, needs 3.0)
      brand-fg / brand       9.10                   (primary button label)
+
+   The rails forward these tokens rather than inverting, so chrome == surface
+   here and the right-hand column is also the chrome figure.
    ========================================================================== */
 
 .dark {
@@ -442,6 +469,20 @@
      texture, which LIGHTENS the dark page rather than darkening it, so the
      worst case is the brightest crest. This is the tightest pair in the
      design — re-measure before touching the dark grain. */
+
+  /* Dark mode's rails are already dark, so the chrome set forwards the page
+     tokens rather than inverting. These read the inherited computed values,
+     which is why .site-chrome can redefine --foreground from
+     --chrome-foreground without a custom-property cycle. */
+  --chrome: var(--surface);
+  --chrome-foreground: var(--foreground);
+  --chrome-muted-foreground: var(--muted-foreground);
+  --chrome-border: var(--border);
+  --chrome-border-strong: var(--border-strong);
+  --chrome-brand: var(--brand);
+  --chrome-brand-muted: var(--brand-muted);
+  --chrome-secondary: var(--secondary);
+  --chrome-secondary-foreground: var(--secondary-foreground);
 
   /* Same grain, dark: the surface under far less light. Kept present rather
      than removed so both modes read as one material.
@@ -630,6 +671,41 @@
     html {
       animation: none;
     }
+  }
+
+  /* ==========================================================================
+     SITE CHROME — the header and footer rails
+
+     A class, not utilities, because what it does cannot be expressed as
+     utilities: it re-points the SEMANTIC token names inside the rails so
+     every descendant — the wordmark, the search field, the theme toggle,
+     the licence links — picks up chrome-appropriate colours without each
+     call site growing a variant. `@theme inline` compiles text-foreground
+     to color: var(--foreground), so redefining --foreground here cascades
+     to all of them.
+
+     --popover / --popover-foreground are deliberately NOT re-pointed. The
+     skip link uses them precisely because it floats above the rail and
+     needs the page's own surface, not the rail's.
+     ========================================================================== */
+
+  .site-chrome {
+    background-color: var(--chrome);
+    color: var(--chrome-foreground);
+
+    --foreground: var(--chrome-foreground);
+    --muted-foreground: var(--chrome-muted-foreground);
+    --muted: var(--chrome-border);
+    --border: var(--chrome-border);
+    --border-strong: var(--chrome-border-strong);
+    --input: var(--chrome-border-strong);
+    --brand: var(--chrome-brand);
+    --brand-muted: var(--chrome-brand-muted);
+    --ring: var(--chrome-brand);
+    --secondary: var(--chrome-secondary);
+    --secondary-foreground: var(--chrome-secondary-foreground);
+    --accent: var(--chrome-border);
+    --accent-foreground: var(--chrome-foreground);
   }
 
   ::selection {
