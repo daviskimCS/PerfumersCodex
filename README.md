@@ -4,7 +4,7 @@ A curated, citation-driven aromachemical reference for working perfumers.
 
 Working perfumers typically keep 5–8 tabs open during a formulation session — IFRA standards, supplier pages, SDS PDFs, scent databases. Perfumers Codex consolidates that into one searchable, cited, modern reference: safety data, olfactive properties, usage guidance, and landmark uses for the materials of modern perfumery.
 
-**Status:** in development. Public launch planned for spring 2027.
+**Status:** in development. Public launch planned for Spring 2027.
 
 ## Principles
 
