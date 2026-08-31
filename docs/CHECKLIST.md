@@ -55,7 +55,7 @@ item needs a package, the orchestrator installs it before dispatch.
 
 ## Phase 1 — Schema & Foundation (Weeks 1–4)
 
-### P1-A — Drizzle schema translation · **DONE**
+### P1-A — Drizzle schema translation · **DONE** _(2026-08-30 addendum: RLS enabled on all 19 tables + owner policies on the two user tables, migration `0002_rls-deny-by-default` — pulled forward from Wave 5 because the live site exposes the whole public schema over the Data API with default grants. W5-B's policy-migration deliverable is superseded; its two-account verification protocol still runs before bookmarks merge.)_
 
 - [x] **Implement the schema per `docs/database-schema.md`: all tables with proper constraints (NOT NULL, FK, CHECK), slugs as URL identifiers, mandatory `source_id` on fact-bearing rows, and soft-delete columns where specified.**
 
@@ -97,7 +97,7 @@ with P2-E), any `lib/db/` query code.
 
 ---
 
-### P1-B — Drizzle client + config · **DONE (unverified)**
+### P1-B — Drizzle client + config · **DONE** _(verified in production 2026-08-30 — live site queries through the pooled client)_
 
 - [x] Pooled Drizzle client (`DATABASE_URL`, 6543, `prepare: false`) in `lib/db/index.ts`, `drizzle.config.ts` against `DIRECT_URL` (5432), `.env.example` documenting both.
       _Written June 2026, adopted onto this branch Aug 26. Code is correct and carries the RLS-boundary comment; **not yet run against a live database** — that verification is P1-C. `lib/env.ts` (Zod-validated env, architecture D6) is still outstanding and orchestrator-owned._
@@ -106,7 +106,7 @@ with P2-E), any `lib/db/` query code.
 
 - [x] `drizzle-kit generate` + `migrate` against Supabase; verify tables in dashboard. _The budgeted 90-minute Week 1 trap._
 
-### P1-D — Supabase clients + token-refresh middleware · **DONE (unverified)**
+### P1-D — Supabase clients + token-refresh middleware · **DONE** _(verified in production 2026-08-30 — signup/login/account work on the live site)_
 
 - [x] `lib/supabase/{client,server,admin,proxy}.ts` + root `proxy.ts` (Next 16's middleware entry point) per `@supabase/ssr`.
       _Written June 2026, adopted Aug 26. Build registers the Proxy middleware. Not yet exercised against a live Supabase project._
@@ -120,7 +120,7 @@ with P2-E), any `lib/db/` query code.
 
 - [x] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
-### P1-G — Seed script · **BLOCKED: P1-C**
+### P1-G — Seed script · **READY** _(P1-C done; dispatch once the maker's five-material JSON lands in `perfumers-codex-data`)_
 
 - [ ] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
 
@@ -246,15 +246,15 @@ any `app/layout.tsx` change.
 
 - [x] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
-### P2-F — Search UX · **BLOCKED: P2-E, P2-C**
+### P2-F — Search UX · **READY** _(P2-E and P2-C done 2026-08-29)_
 
 - [ ] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
 
-### P2-G — Material detail page · **BLOCKED: P1-F, P2-C**
+### P2-G — Material detail page · **READY** _(P1-F and P2-C done 2026-08-29)_
 
 - [ ] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
 
-### P2-H — Browse & discovery · **BLOCKED: P1-F, P2-C**
+### P2-H — Browse & discovery · **READY** _(P1-F and P2-C done 2026-08-29)_
 
 - [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
 

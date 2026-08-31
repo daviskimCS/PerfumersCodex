@@ -20,7 +20,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Postgres on Supabase + Drizzle ORM (table definitions in `db/schema.ts`; all access via `lib/db/` — see below)
 - Supabase Auth via `@supabase/ssr` (email/password + Google OAuth) — never use the deprecated auth-helpers packages
 - Supabase API keys: new-style `sb_publishable_` / `sb_secret_` only
-- Row-Level Security on all user-owned tables
+- Row-Level Security on **every** public table (deny-by-default since migration 0002, 2026-08-30) — Supabase grants anon full DML over PostgREST by default, so a table without RLS is world-writable once the site is live. Editorial tables carry no policies (the app reads them through Drizzle, which bypasses RLS); user tables carry owner-scoped policies
 - Vercel deployment (function region matches Supabase region)
 - Upstash Redis (Vercel Marketplace) for rate limiting only — not a cache
 - Vitest for unit tests (node environment, colocated `*.test.ts`)
@@ -119,14 +119,16 @@ Skip tests for:
 
 ## Current state
 
-- **Phase:** Phase 0 (pre-flight)
-- **Last completed:** design docs imported into /docs; cheminformatics + structure–odor experiment committed to v1 scope (Aug 2026)
-- **In progress:** remaining Phase 0 — public GitHub remote, Vercel project + perfumerscodex.com attach, Supabase project (region-matched), project email/alias
+- **Phase:** Phases 1–2 (build). Phase 0 closed 2026-08-29 except repo visibility (below).
+- **Last completed (2026-08-30):** infrastructure review — RLS enabled on all 19 tables with owner policies on user tables (migration 0002, verified against the live Data API); site live at perfumerscodex.com (Vercel + Supabase, auth working in production, CI green); design pass merged (monospaced type, Noctua-brown palette, seamless grain background, inverted light-mode chrome — PRs #1–#5)
+- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo; next agent items now READY: P1-G seed script, P2-F search UX, P2-G material detail, P2-H browse (see docs/waves/)
 - **Blockers:** none
 
 ## Known issues / debt
 
-- (none yet)
+- **Canonical-domain mismatch:** `NEXT_PUBLIC_SITE_URL` and og:url advertise the apex (`perfumerscodex.com`), but Vercel has `www` as the primary domain and 308-redirects apex → www. Fix in the Vercel dashboard (make the apex primary so www redirects to it) — no code change. Until then the site advertises a URL that redirects.
+- **Repo is still private** — the public-from-day-one constraint is unmet. Flip visibility when ready; LICENSE/LICENSE-DATA are already in place.
+- Vercel project email/alias (`hello@perfumerscodex.com`) still pending; nothing blocks on it until Week 20 (Resend).
 
 ## V2 backlog (do not implement now)
 

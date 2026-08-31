@@ -113,10 +113,12 @@ verification before merge."
 
 Acceptance criteria:
 
-- Migration: `ENABLE ROW LEVEL SECURITY` on `user_saved_materials` +
-  policies for SELECT/INSERT/DELETE, each `auth.uid() = user_id` (INSERT via
-  `WITH CHECK`), exactly per `docs/database-schema.md`. No UPDATE policy — a
-  bookmark is created or deleted, never edited.
+- ~~Migration: RLS + policies on `user_saved_materials`~~ **Superseded
+  2026-08-30:** migration `0002_rls-deny-by-default` already enables RLS on
+  every table and creates the owner policies (SELECT/INSERT/DELETE via
+  `auth.uid() = user_id`, INSERT as `WITH CHECK`, no UPDATE — a bookmark is
+  created or deleted, never edited). W5-B therefore ships **no migration**;
+  the verification protocol below is unchanged and still gates the merge.
 - `lib/db/bookmarks.ts`: goes through the **Supabase server client** for
   every touch of `user_saved_materials` — this file must not import the
   Drizzle client or `db/schema.ts`. `getSavedMaterialIds()` (Supabase),
