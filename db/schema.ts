@@ -10,10 +10,21 @@
  * is the only module that imports this file (docs/architecture.md D1).
  *
  * Deliberately NOT here, per the spec and the wave plan:
- * - RLS policies on the user tables — a custom migration in Wave 5.
  * - `pg_trgm` and the `material_search_view` materialized view, including the
  *   full-text index on `material_synonyms.name` — a custom migration in W3-C
  *   (docs/database-schema.md, "Search infrastructure").
+ *
+ * RLS (added 2026-08-30, migration 0002 — pulled forward from Wave 5):
+ * every public table enables RLS. Supabase grants anon/authenticated full DML
+ * on the public schema by default and serves it over PostgREST with the
+ * publishable key, so a table without RLS is world-writable the moment the
+ * site is live — which it now is. Editorial tables carry NO policies:
+ * deny-by-default closes the Data API while the app keeps reading them
+ * through Drizzle (the `postgres` role bypasses RLS). The two user tables
+ * carry owner-scoped policies for the Supabase client (Wave 5 verifies them
+ * with two real accounts before bookmarks/notes ship). `auth.uid()` is
+ * wrapped in a subselect on purpose — Postgres caches it as an InitPlan
+ * instead of re-evaluating per row.
  *
  * Two mapping notes for `lib/db/`: `numeric` columns arrive from postgres.js
  * as strings and must be converted to the `number | null` shapes in
@@ -22,6 +33,7 @@
  */
 
 import { sql } from 'drizzle-orm'
+import { authUid, authenticatedRole } from 'drizzle-orm/supabase'
 import {
   type AnyPgColumn,
   check,
@@ -30,6 +42,7 @@ import {
   integer,
   numeric,
   pgEnum,
+  pgPolicy,
   pgSchema,
   pgTable,
   primaryKey,
@@ -173,7 +186,7 @@ export const materials = pgTable(
     // in front of every query that starts with a CAS-shaped string.
     index('materials_cas_number_idx').on(t.casNumber),
   ]
-)
+).enableRLS()
 
 /** Many synonyms per material — the substrate for search rules 2 and 3. */
 export const materialSynonyms = pgTable(
@@ -191,7 +204,7 @@ export const materialSynonyms = pgTable(
     // by material_id.
     index('material_synonyms_material_id_idx').on(t.materialId),
   ]
-)
+).enableRLS()
 
 /** Olfactive families and sub-families. */
 export const families = pgTable('families', {
@@ -202,7 +215,7 @@ export const families = pgTable('families', {
   parentFamilyId: uuid('parent_family_id').references(
     (): AnyPgColumn => families.id
   ),
-})
+}).enableRLS()
 
 /** Many-to-many join. */
 export const materialFamilies = pgTable(
@@ -221,7 +234,7 @@ export const materialFamilies = pgTable(
       columns: [t.materialId, t.familyId],
     }),
   ]
-)
+).enableRLS()
 
 /**
  * IFRA's 11 categories. Static reference data, seeded once — the id is IFRA's
@@ -241,7 +254,7 @@ export const usageCategories = pgTable(
     // - documentation the DB enforces").
     check('usage_categories_id_range_check', sql`${t.id} BETWEEN 1 AND 11`),
   ]
-)
+).enableRLS()
 
 /** Per-material, per-category IFRA limits. */
 export const materialUsageLimits = pgTable(
@@ -285,7 +298,7 @@ export const materialUsageLimits = pgTable(
       sql`${t.maxPct} BETWEEN 0 AND 100`
     ),
   ]
-)
+).enableRLS()
 
 /** GHS reference data, static, seeded once. The code itself is the identity. */
 export const hazardCodes = pgTable('hazard_codes', {
@@ -293,7 +306,7 @@ export const hazardCodes = pgTable('hazard_codes', {
   description: text('description').notNull(),
   /** "Health hazard" / "Physical hazard" / "Environmental hazard". */
   category: text('category').notNull(),
-})
+}).enableRLS()
 
 /** Join table. */
 export const materialHazards = pgTable(
@@ -316,7 +329,7 @@ export const materialHazards = pgTable(
       columns: [t.materialId, t.hazardCode],
     }),
   ]
-)
+).enableRLS()
 
 /** Citations. Every superscript on the site resolves to a row here. */
 export const sources = pgTable(
@@ -344,7 +357,7 @@ export const sources = pgTable(
       .on(t.url)
       .where(sql`${t.url} IS NOT NULL`),
   ]
-)
+).enableRLS()
 
 /** Editorial olfactive descriptions, hand-written by the maker. */
 export const materialDescriptions = pgTable(
@@ -383,7 +396,7 @@ export const materialDescriptions = pgTable(
       .on(t.materialId)
       .where(sql`${t.deletedAt} IS NULL`),
   ]
-)
+).enableRLS()
 
 /** Practical usage guidance — backs the "Usage" tab beyond IFRA limits. */
 export const materialUsageGuidance = pgTable(
@@ -425,7 +438,7 @@ export const materialUsageGuidance = pgTable(
       sql`${t.typicalPctMax} >= ${t.typicalPctMin}`
     ),
   ]
-)
+).enableRLS()
 
 /** "Material X in Perfume Y" cited references. */
 export const landmarkUses = pgTable('landmark_uses', {
@@ -441,7 +454,7 @@ export const landmarkUses = pgTable('landmark_uses', {
   sourceId: uuid('source_id')
     .notNull()
     .references(() => sources.id),
-})
+}).enableRLS()
 
 /* -------------------------------------------------------------------------
  * Cheminformatics tables (added August 2026)
@@ -469,7 +482,7 @@ export const materialComputedProperties = pgTable(
       .notNull()
       .defaultNow(),
   }
-)
+).enableRLS()
 
 /** Precomputed top-N (N≈10) Tanimoto neighbors, refreshed by the seed pipeline. */
 export const materialSimilarity = pgTable(
@@ -501,7 +514,7 @@ export const materialSimilarity = pgTable(
       sql`${t.tanimoto} BETWEEN 0 AND 1`
     ),
   ]
-)
+).enableRLS()
 
 /**
  * Output of the structure–odor experiment. Experimental, clearly labeled in
@@ -538,7 +551,7 @@ export const odorPredictions = pgTable(
       sql`${t.probability} BETWEEN 0 AND 1`
     ),
   ]
-)
+).enableRLS()
 
 /* -------------------------------------------------------------------------
  * User tables
@@ -568,6 +581,23 @@ export const userSavedMaterials = pgTable(
       name: 'user_saved_materials_pk',
       columns: [t.userId, t.materialId],
     }),
+    // Owner-scoped. No UPDATE policy: a bookmark is its composite key plus a
+    // timestamp — there is nothing to update, so updates stay denied.
+    pgPolicy('user_saved_materials_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${t.userId}`,
+    }),
+    pgPolicy('user_saved_materials_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${authUid} = ${t.userId}`,
+    }),
+    pgPolicy('user_saved_materials_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${t.userId}`,
+    }),
   ]
 )
 
@@ -593,6 +623,29 @@ export const userNotes = pgTable(
   (t) => [
     // One note per user per material — the editor upserts against this.
     unique('user_notes_user_material_uniq').on(t.userId, t.materialId),
+    pgPolicy('user_notes_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${t.userId}`,
+    }),
+    pgPolicy('user_notes_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${authUid} = ${t.userId}`,
+    }),
+    // UPDATE needs both barrels: `using` gates which rows are visible to the
+    // update, `withCheck` stops re-pointing a row at another user.
+    pgPolicy('user_notes_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${t.userId}`,
+      withCheck: sql`${authUid} = ${t.userId}`,
+    }),
+    pgPolicy('user_notes_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${t.userId}`,
+    }),
   ]
 )
 
@@ -612,7 +665,7 @@ export const correctionSubmissions = pgTable('correction_submissions', {
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-})
+}).enableRLS()
 
 /**
  * Drives the admin dashboard's "search count" and "top searches".
@@ -628,4 +681,4 @@ export const searchQueries = pgTable('search_queries', {
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-})
+}).enableRLS()
