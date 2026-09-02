@@ -101,7 +101,15 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <SiteHeader />
-        <main id="main-content" className="flex flex-1 flex-col">
+        {/*
+          tabIndex={-1} is what makes the skip link work. Without it the link
+          only sets location.hash: Chrome then moves the TAB START into main,
+          which half-works, but focus itself never moves — Safari does not
+          follow at all and no screen-reader virtual cursor goes with it.
+          -1 keeps it out of the tab order while making it programmatically
+          focusable, which is exactly the case this attribute exists for.
+        */}
+        <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
           {children}
         </main>
         <SiteFooter />

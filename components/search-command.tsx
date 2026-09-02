@@ -470,7 +470,14 @@ export function SearchCommand() {
                       onKeyDown={onInputKeyDown}
                       placeholder="Search materials"
                       aria-label="Search materials"
-                      aria-controls={listboxId}
+                      // Only while a listbox actually exists. The panel
+                      // renders plain prose for "searching…", "no matches" and
+                      // the opening hint, so an unconditional `aria-controls`
+                      // would point at an id that is not in the document —
+                      // an invalid reference, and one screen readers may
+                      // follow into nothing. `aria-expanded="false"` alone is
+                      // a complete description of a closed popup.
+                      aria-controls={optionCount > 0 ? listboxId : undefined}
                       aria-expanded={optionCount > 0}
                       aria-autocomplete="list"
                       aria-activedescendant={

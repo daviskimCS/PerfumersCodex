@@ -41,8 +41,15 @@ export function Field({ id, label, error, hint, ...inputProps }: FieldProps) {
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         {...inputProps}
       />
+      {/* `role="alert"` because the message is *inserted* on blur, when focus
+          has already moved to the next control — an `aria-describedby` link
+          alone is only read when the field it describes takes focus, so the
+          correction would never reach a screen-reader user who has moved on.
+          An inserted alert is announced by every major screen reader, and it
+          is the same mechanism FormNotice already uses for form-level
+          failures. `aria-describedby` still carries it on re-focus. */}
       {error ? (
-        <p id={errorId} className="text-sm text-destructive">
+        <p id={errorId} role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : hint ? (
