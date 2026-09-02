@@ -6,6 +6,7 @@ import { Suspense, useActionState, useState } from 'react'
 import { z } from 'zod'
 
 import { signIn } from '@/app/(auth)/actions'
+import { GoogleAuth } from '@/components/auth/google-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -172,6 +173,8 @@ export default function LoginPage() {
             {pending ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+
+        <GoogleAuth />
 
         <p className="mt-6 text-sm text-muted-foreground">
           No account yet?{' '}
