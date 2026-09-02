@@ -4,7 +4,7 @@ Everything here is blocked on a human: an account, a dashboard, a payment, a
 judgment call, or editorial writing. Nothing on this list can be dispatched
 to an agent, and several items block work that otherwise looks finished.
 
-Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 — every v1 route now exists, so items 1–3 are the last things standing between this and a verified personal layer).
+Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, so items 1–4 are the last things standing between this and a verified, fully signed-in personal layer).
 
 Companion to [CHECKLIST.md](./CHECKLIST.md), which tracks the agent-side work.
 Personal planning (career framing, time budget, milestone dates) lives in the
@@ -61,7 +61,52 @@ confirm A's shelf is invisible.
 admin API, and it will run the scripted probe and delete them afterwards. It
 has the harness ready but will not create accounts without that sentence.
 
-### 4. `sources` needs a `key` column
+### 4. Configure Google as a sign-in provider
+
+**Why it matters:** the "Continue with Google" button ships in the app but is
+**dormant** until this is done — clicking it returns "Google sign-in isn't
+available right now". The code is finished; this is the switch. Same pattern
+as the email-confirm route, which shipped before its template was pointed at
+it.
+
+Three steps, ~15 minutes, all in dashboards:
+
+1. **Google Cloud Console** → APIs & Services → Credentials → _Create OAuth
+   client ID_ → **Web application**. Under _Authorized redirect URIs_ add
+   exactly:
+
+   ```
+   https://mwqaakwwpbmjejbfzbxj.supabase.co/auth/v1/callback
+   ```
+
+   That is Supabase's callback, not ours — the app's own `/auth/callback` is
+   where Supabase sends the browser afterwards, and Google never sees it.
+   Getting this wrong is the usual cause of `redirect_uri_mismatch`.
+
+2. You will also need an **OAuth consent screen**. While it is in "Testing"
+   only accounts you list can sign in; publishing it is what makes it work
+   for everyone. Scopes: the default `email` and `profile` are enough — do
+   not request more, since the app stores nothing beyond the account.
+
+3. **Supabase dashboard** → Authentication → Providers → **Google** → enable,
+   paste the client ID and client secret, save.
+
+Then confirm **Authentication → URL Configuration** lists the redirects the
+app actually uses, or the callback is rejected:
+
+```
+https://perfumerscodex.com/**
+https://www.perfumerscodex.com/**
+http://localhost:3000/**
+```
+
+**Worth knowing before you enable it:** Supabase links accounts by verified
+email by default, so signing in with Google using an address that already has
+a password account attaches to that same account rather than creating a
+second one. That is the behaviour you want; it is also worth testing once,
+because it is the kind of thing that surprises people at launch.
+
+### 5. `sources` needs a `key` column
 
 **Why it matters:** the seed input format gives every source a stable `key`
 as its idempotency anchor, but the table has nowhere to store it. URL-less
@@ -79,13 +124,13 @@ Say the word and it becomes a migration.
 
 ## 🟡 Do before launch
 
-### 5. Make the apex the primary domain in Vercel
+### 6. Make the apex the primary domain in Vercel
 
 `NEXT_PUBLIC_SITE_URL` and every `og:url` advertise `perfumerscodex.com`, but
 Vercel has `www` as primary and 308-redirects the apex to it. The site
 currently advertises a URL that redirects. Dashboard fix, no code change.
 
-### 6. Decide on the synthetic test materials
+### 7. Decide on the synthetic test materials
 
 Three obviously-fake materials (`Test Material Alpha` / `Beta` / `Gamma`) are
 in the **live** database and publicly visible. They were seeded to verify the
@@ -97,14 +142,14 @@ Clear them whenever you want:
 npm run db:seed -- ./scripts/fixtures --prune
 ```
 
-### 7. Make the repo public
+### 8. Make the repo public
 
 Your own public-from-day-one constraint, still unmet. `LICENSE` and
 `LICENSE-DATA` are in place. One reasonable trigger: flip it the day the
 first real material renders on the live detail page — "public with real
 content" is a stronger first impression than an empty shell.
 
-### 8. Align the Supabase minimum password length
+### 9. Align the Supabase minimum password length
 
 The dashboard allows 6; `lib/validation/auth.ts` requires 8. Our forms
 enforce 8, so this only matters for flows that bypass them. Set the dashboard
