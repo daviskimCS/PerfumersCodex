@@ -1,3 +1,4 @@
+import { SaveButtonSkeleton } from '@/components/save-button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /**
@@ -32,6 +33,12 @@ export default function MaterialLoading() {
           <div className="mt-6 flex flex-wrap gap-2">
             <Skeleton className="h-5 w-24 rounded-4xl" />
             <Skeleton className="h-5 w-20 rounded-4xl" />
+          </div>
+          {/* Save button (W5-B) — the same skeleton the page's own Suspense
+              boundary falls back to, so the hero reserves this box whichever
+              of the two is standing in. */}
+          <div className="mt-8">
+            <SaveButtonSkeleton />
           </div>
         </div>
         {/* Structure plate — same box the viewer reserves, so the hero does

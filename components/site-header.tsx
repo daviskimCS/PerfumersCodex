@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { UserRound } from 'lucide-react'
+import { Bookmark, UserRound } from 'lucide-react'
 
 import { SearchCommand } from '@/components/search-command'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -76,6 +76,22 @@ export async function SiteHeader() {
             has room for the wordmark, search, this, and the theme toggle only
             if one of them is a glyph.
           */}
+          {/*
+            Saved shelf — signed-in only, because it is meaningless otherwise
+            and a link that always bounces to /login is worse than no link.
+            W5-B shipped /saved with no way to reach it; this is that handoff.
+            Icon-only below `sm` for the same width reason as the account
+            link, with the label kept for assistive tech.
+          */}
+          {signedIn ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/saved">
+                <Bookmark aria-hidden="true" className="sm:hidden" />
+                <span className="max-sm:sr-only">Saved</span>
+              </Link>
+            </Button>
+          ) : null}
+
           <Button asChild variant="ghost" size="sm">
             <Link href={signedIn ? '/account' : '/login'}>
               <UserRound aria-hidden="true" className="sm:hidden" />

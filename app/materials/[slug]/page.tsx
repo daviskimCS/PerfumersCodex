@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { cache } from 'react'
+import { cache, Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -15,7 +15,9 @@ import { MaterialStructure } from '@/components/material/structure'
 import { MaterialTabs } from '@/components/material/tabs'
 import { parseMaterialTab } from '@/components/material/tabs-config'
 import { UsagePanel } from '@/components/material/usage-panel'
+import { SaveButton, SaveButtonSkeleton } from '@/components/save-button'
 import { Badge } from '@/components/ui/badge'
+import { getCurrentUserId, isMaterialSaved } from '@/lib/db/bookmarks'
 import { getMaterialBySlug } from '@/lib/db/materials'
 
 // Without this, `next build` statically prerenders the route and the DB query
@@ -116,6 +118,16 @@ export default async function MaterialPage({
                 ))}
               </ul>
             ) : null}
+
+            {/* W5-B mounts here — the reason this hero stayed inline. Its own
+                Suspense boundary keeps the session round-trip off the critical
+                path: the material renders as soon as the database answers, and
+                the button arrives in a box the skeleton already reserved. */}
+            <div className="mt-8">
+              <Suspense fallback={<SaveButtonSkeleton />}>
+                <SaveControl materialId={material.id} />
+              </Suspense>
+            </div>
           </div>
 
           {/* Statically imported; the RDKit chunk and its 6.6 MB WASM load
@@ -174,5 +186,39 @@ export default async function MaterialPage({
           with the human-written description (AGENTS.md). */}
       <OdorPredictionsModule predictions={material.odorPredictions} />
     </article>
+  )
+}
+
+/**
+ * Server-side data wiring for the save button (W5-B).
+ *
+ * Both facts the button renders from are settled here, on the server: whether
+ * there is a session (`getUser()`, validated against the auth server, never
+ * `getSession()`) and whether this material is already on that user's shelf
+ * (read through the Supabase client, so RLS decides what is visible). The
+ * client component is handed the answers; it never asks Supabase anything.
+ */
+async function SaveControl({ materialId }: { materialId: string }) {
+  let signedIn = false
+  let saved = false
+
+  try {
+    signedIn = (await getCurrentUserId()) !== null
+    if (signedIn) saved = await isMaterialSaved(materialId)
+  } catch (error) {
+    // A public reference page must survive an auth-service or bookmark hiccup.
+    // This degrades one control — to the signed-out link, or to an unsaved
+    // button whose save is an idempotent upsert either way — and logs the real
+    // failure, rather than throwing the whole cited material page to
+    // error.tsx over a feature nobody came here for.
+    console.error('[bookmarks] save state unavailable:', error)
+  }
+
+  return (
+    <SaveButton
+      materialId={materialId}
+      signedIn={signedIn}
+      initialSaved={saved}
+    />
   )
 }
