@@ -44,6 +44,27 @@ export interface FamilyRef {
   name: string
 }
 
+/**
+ * A family as a browse surface shows it: the reference plus what browse needs
+ * to render a list of families without a second query per row.
+ *
+ * Separate from FamilyRef on purpose. FamilyRef is the *embedded* shape —
+ * what a material carries about its families — and stays minimal so
+ * MaterialSummary does not drag counts around. Added 2026-08-31 for W5-A
+ * (docs/waves/wave-5.md entry criteria).
+ *
+ * No `description`: the schema has no family description column, so offering
+ * one here would invite a UI slot that can never be filled.
+ */
+export interface FamilySummary {
+  slug: string
+  name: string
+  /** Live, non-soft-deleted materials in this family. */
+  materialCount: number
+  /** null for a top-level family; the taxonomy is one level deep in practice. */
+  parentSlug: string | null
+}
+
 export interface MaterialSummary {
   id: string
   slug: string

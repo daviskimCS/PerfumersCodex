@@ -55,6 +55,14 @@ middleware.ts         Repo root — Supabase token-refresh middleware. The one
 - Nothing outside `lib/db/` imports `db/schema.ts`, the Drizzle client, or a
   Supabase client. Pages and components call `lib/db/` functions and receive
   `lib/types.ts` shapes.
+- **One carve-out, added 2026-08-31 (W4-A):** `scripts/` may import
+  `db/schema.ts` directly. Build tooling is not the application — the seed
+  pipeline writes every table in the schema, and routing that through
+  `lib/db/` would mean adding a write API that no page ever calls, growing
+  the app's data-access surface to serve a script. The rule's purpose is to
+  keep *route and component* code away from raw rows, and that purpose is
+  untouched. `scripts/` still takes its client from `lib/db/` rather than
+  opening its own connection, so there remains exactly one pooled client.
 - `lib/db/` functions return app-facing types (D3), not raw Drizzle rows —
   row types stay internal to `lib/db/`.
 - Imports use the `@/` alias (maps to repo root, already in tsconfig).

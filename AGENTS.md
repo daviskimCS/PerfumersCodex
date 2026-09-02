@@ -33,7 +33,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 ## Architectural rules
 
 - All DB access goes through `lib/db/`. No inline SQL in route handlers or components.
-- **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts`. Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
+- **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts` — except `scripts/` build tooling, which may import `db/schema.ts` directly (it still takes its client from `lib/db/`). Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
 - **Type contracts:** `lib/types.ts` is contract-locked. It is hand-written from `docs/database-schema.md`, not inferred from Drizzle, so UI and schema work stay decoupled. Conform to it; don't edit it.
 - **Search boundary (docs/architecture.md D2):** SQL returns _evidence_ (match flags, similarities, ts_rank), TypeScript assigns _rank_. `lib/search/{normalize,rank}.ts` stay pure and database-free so the gold set runs without Postgres.
 - **Page states (docs/architecture.md D4):** every data-fetching route segment ships `loading.tsx` (skeleton matching final layout) and `error.tsx` (plain language + `unstable_retry()` — not `reset()`, which re-renders without re-fetching — never a raw error or stack trace). Unknown slugs call `notFound()`. Empty states are content passed to the shared `components/empty-state.tsx`, never new bespoke components. Never catch-and-render-blank — a silent empty section lies about the data.
@@ -121,7 +121,8 @@ Skip tests for:
 
 - **Phase:** Phases 1–2 (build). Phase 0 closed 2026-08-29 except repo visibility (below).
 - **Last completed (2026-08-30):** infrastructure review — RLS enabled on all 19 tables with owner policies on user tables (migration 0002, verified against the live Data API); site live at perfumerscodex.com (Vercel + Supabase, auth working in production, CI green); design pass merged (monospaced type, Noctua-brown palette, seamless grain background, inverted light-mode chrome — PRs #1–#5)
-- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo; next agent items now READY: P1-G seed script, P2-F search UX, P2-G material detail, P2-H browse (see docs/waves/)
+- **Waves 4 and 5 complete (2026-09-01):** seed pipeline (P1-G), search UX (P2-F), material detail with lazy RDKit (P2-G), browse/homepage/families (P2-H), bookmarks (P3-A). The app is feature-complete against a seeded corpus of 3 synthetic materials.
+- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo. Next agent work is Wave 6 (P3-B private notes, then P3-C account management).
 - **Blockers:** none
 
 ## Known issues / debt

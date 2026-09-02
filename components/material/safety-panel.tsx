@@ -1,0 +1,185 @@
+import { ShieldAlert, TriangleAlert } from 'lucide-react'
+
+import { EmptyState } from '@/components/empty-state'
+import { Badge } from '@/components/ui/badge'
+import type { Citation, Hazard, UsageLimit } from '@/lib/types'
+
+import { Cite } from './cite'
+import { compareVersions, datePart } from './format'
+import { PanelSection } from './section'
+
+/**
+ * Safety tab: IFRA usage limits and GHS hazards.
+ *
+ * Two rules shape this panel, and both are honesty rules rather than layout
+ * ones:
+ *
+ * 1. `restrictionType` decides what the limit column says. A prohibition with
+ *    a NULL `maxPct` is "Prohibited" — never a dash, never "no limit". The
+ *    numeric column is not the whole fact, and rendering it as if it were
+ *    would invert the meaning of the most consequential row on the page.
+ * 2. The IFRA amendment a limit was verified against is displayed prominently
+ *    (docs/data-strategy.md): the 52nd Amendment lands around launch, rows are
+ *    inserted rather than overwritten, so a reader has to be able to see which
+ *    standard they are reading without hunting for it.
+ */
+
+/** The limit as a phrase, with `restrictionType` carrying its real weight. */
+function limitPhrase(limit: UsageLimit): string {
+  switch (limit.restrictionType) {
+    case 'prohibition':
+      return 'Prohibited'
+    case 'restriction':
+      return limit.maxPct === null ? 'Restricted' : `${limit.maxPct}% maximum`
+    case 'specification':
+      return limit.maxPct === null
+        ? 'Specification'
+        : `${limit.maxPct}% maximum, by specification`
+  }
+}
+
+function AmendmentBadges({ limits }: { limits: UsageLimit[] }) {
+  const versions = [
+    ...new Set(limits.map((limit) => limit.ifraAmendmentVersion)),
+  ].sort(compareVersions)
+  if (versions.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {versions.map((version) => (
+        <Badge key={version} variant="secondary" className="font-mono">
+          IFRA {version} Amendment
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+export function SafetyPanel({
+  usageLimits,
+  hazards,
+  sources,
+}: {
+  usageLimits: UsageLimit[]
+  hazards: Hazard[]
+  sources: Citation[]
+}) {
+  return (
+    <div>
+      <PanelSection
+        title="IFRA usage limits"
+        aside={<AmendmentBadges limits={usageLimits} />}
+      >
+        {usageLimits.length === 0 ? (
+          <EmptyState
+            icon={ShieldAlert}
+            headingLevel={3}
+            title="No IFRA limits recorded yet"
+            description="Category limits are hand-entered from the published standard and stamped with the amendment they were verified against. None have been entered for this material."
+          />
+        ) : (
+          <div className="-mx-gutter overflow-x-auto px-gutter md:mx-0 md:px-0">
+            <table className="w-full min-w-144 border-collapse text-left">
+              <caption className="sr-only">
+                IFRA category limits, with the amendment each was verified
+                against
+              </caption>
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Category
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Limit
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Amendment
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    Verified
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {usageLimits.map((limit) => (
+                  <tr
+                    key={`${limit.categoryId}:${limit.ifraAmendmentVersion}`}
+                    className="border-b border-border/60 align-top"
+                  >
+                    <th
+                      scope="row"
+                      className="py-3 pr-4 font-normal whitespace-nowrap"
+                    >
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {limit.categoryId}
+                      </span>{' '}
+                      {limit.categoryName}
+                    </th>
+                    <td className="py-3 pr-4">
+                      <span
+                        className={
+                          limit.restrictionType === 'prohibition'
+                            ? 'font-medium text-destructive'
+                            : 'font-medium'
+                        }
+                      >
+                        {limitPhrase(limit)}
+                      </span>
+                      <Cite sources={sources} sourceId={limit.sourceId} />
+                      {limit.notes ? (
+                        <span className="mt-1 block text-sm text-muted-foreground">
+                          {limit.notes}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-sm whitespace-nowrap">
+                      {limit.ifraAmendmentVersion}
+                    </td>
+                    <td className="py-3 font-mono text-sm whitespace-nowrap text-muted-foreground">
+                      {datePart(limit.verifiedAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </PanelSection>
+
+      <PanelSection title="GHS hazards">
+        {hazards.length === 0 ? (
+          <EmptyState
+            icon={TriangleAlert}
+            headingLevel={3}
+            title="No hazard codes recorded yet"
+            description="GHS codes are read off supplier safety data sheets and cited to the sheet they came from. None have been entered for this material."
+          />
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {hazards.map((hazard) => (
+              <li key={hazard.code} className="py-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-mono text-sm font-medium">
+                    {hazard.code}
+                  </span>
+                  <span className="min-w-0">
+                    {hazard.description}
+                    <Cite sources={sources} sourceId={hazard.sourceId} />
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {hazard.category}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PanelSection>
+
+      <p className="mt-10 max-w-measure text-sm text-muted-foreground">
+        This page is a reference, not a regulatory authority. Check the current
+        IFRA standard and the supplier&apos;s safety data sheet before you
+        formulate.
+      </p>
+    </div>
+  )
+}

@@ -1,8 +1,12 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  FAMILIES_FILE,
+  HAZARD_CODES_FILE,
+  REFERENCE_FILES,
+  USAGE_CATEGORIES_FILE,
   validateMaterialData,
   type MaterialDataError,
   type MaterialDataFile,
@@ -30,9 +34,9 @@ function loadFixture(filename: string): MaterialDataFile {
 }
 
 const baseline: MaterialDataInput = {
-  families: loadFixture('families.json'),
-  usageCategories: loadFixture('usage-categories.json'),
-  hazardCodes: loadFixture('hazard-codes.json'),
+  families: loadFixture(FAMILIES_FILE),
+  usageCategories: loadFixture(USAGE_CATEGORIES_FILE),
+  hazardCodes: loadFixture(HAZARD_CODES_FILE),
   materials: [loadFixture(ALPHA), loadFixture(BETA), loadFixture(GAMMA)],
 }
 
@@ -79,6 +83,26 @@ describe('validateMaterialData — fixture set', () => {
     expect(result.bundle.hazardCodes).toHaveLength(3)
   })
 
+  /**
+   * `scripts/seed.ts` discovers material files by elimination — every `.json`
+   * in the directory that is not one of these three. If a reference file were
+   * renamed on disk without updating the constant, the seed would not fail:
+   * it would try to seed the taxonomy as a material. This test is that
+   * mismatch's only alarm.
+   */
+  it('names reference files that exist in the fixture directory', () => {
+    const present = readdirSync(FIXTURES_DIR)
+    for (const filename of REFERENCE_FILES) {
+      expect(present, `${filename} is missing from scripts/fixtures`).toContain(
+        filename
+      )
+    }
+    const materialFiles = present.filter(
+      (name) => name.endsWith('.json') && !REFERENCE_FILES.includes(name)
+    )
+    expect(materialFiles.sort()).toEqual([ALPHA, BETA, GAMMA])
+  })
+
   it('applies defaults for omitted collections and singletons', () => {
     const result = validateMaterialData(makeInput())
     expect(result.ok).toBe(true)
@@ -101,6 +125,16 @@ interface FailureCase {
 }
 
 const failureCases: FailureCase[] = [
+  {
+    // The whole idempotency story for `sources` rests on this key existing —
+    // without it a url-less source has no stable identity and every reseed
+    // would stack another copy of the same book.
+    name: 'missing key on a source',
+    mutate: (input) => {
+      delete rows(material(input, ALPHA).sources)[0].key
+    },
+    at: { file: ALPHA, path: 'sources[0].key' },
+  },
   {
     name: 'missing source_key on a fact row',
     mutate: (input) => {

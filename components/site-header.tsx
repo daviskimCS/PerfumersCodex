@@ -1,13 +1,41 @@
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { Bookmark, UserRound } from 'lucide-react'
 
+import { SearchCommand } from '@/components/search-command'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/server'
 
-export function SiteHeader() {
+/**
+ * Whether there is a signed-in caller, verified server-side.
+ *
+ * `getUser()` and never `getSession()` (AGENTS.md): the former validates the
+ * token against the Supabase auth server, the latter trusts whatever is in the
+ * cookie.
+ *
+ * Unlike `/account` — which throws a transient auth-service failure to its
+ * error boundary — this one degrades instead. The header renders on *every*
+ * page, so throwing here would turn a momentary blip at Supabase into a broken
+ * site. "Sign in" is the safe fallback: the link leads to `/login`, which is
+ * where a signed-out visitor should go and where a signed-in one finds out
+ * what is actually wrong.
+ */
+async function isSignedIn(): Promise<boolean> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    return data.user !== null
+  } catch {
+    return false
+  }
+}
+
+export async function SiteHeader() {
   // `bg-chrome` is opaque on purpose. This bar sits above the textured canvas
   // and has to cover whatever scrolls beneath it — a translucent or absent
   // background lets content ghost through the wordmark.
+  const signedIn = await isSignedIn()
+
   return (
     <header className="site-chrome sticky top-0 z-40 border-b border-border">
       {/* First tab stop on every page: jump past the chrome to the content. */}
@@ -27,32 +55,52 @@ export function SiteHeader() {
         </Link>
 
         {/*
-          Search slot — reserves the position and size the real search bar will
-          occupy. The feature itself is P2-F (debounced instant search, Cmd-K
-          focus, arrow-key results), which is gated on the P2-E query layer.
+          Search slot — the position and size P2-C reserved, now holding the
+          real thing (P2-F). SearchCommand renders both affordances and hides
+          the one that does not belong at the current width: a field-shaped
+          trigger from `sm` up, an icon button below it (P2-C's decision was
+          that the *field* is hidden on small screens, not that search is).
 
-          Deliberately inert: a disabled input, not a live-looking box that
-          quietly swallows keystrokes. Disabled also keeps it out of the tab
-          order, so the placeholder never sits between the wordmark and the
-          theme toggle for keyboard users.
+          The palette itself portals to document.body rather than opening
+          inside this element — see the note in components/search-command.tsx
+          about `.site-chrome` re-pointing the colour tokens.
         */}
-        <div className="ml-auto hidden min-w-0 flex-1 sm:block sm:max-w-72">
-          <div className="relative">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              type="search"
-              disabled
-              placeholder="Search"
-              aria-label="Search — not yet available"
-              className="h-9 pl-8"
-            />
-          </div>
+        <div className="ml-auto flex min-w-0 flex-1 justify-end sm:max-w-72">
+          <SearchCommand />
         </div>
 
-        <div className="ml-auto flex items-center sm:ml-0">
+        <div className="ml-auto flex items-center gap-1 sm:ml-0">
+          {/*
+            The auth affordance handed off by W3-A. Below `sm` it is the icon
+            alone with the label kept for assistive tech — at 375px the rail
+            has room for the wordmark, search, this, and the theme toggle only
+            if one of them is a glyph.
+          */}
+          {/*
+            Saved shelf — signed-in only, because it is meaningless otherwise
+            and a link that always bounces to /login is worse than no link.
+            W5-B shipped /saved with no way to reach it; this is that handoff.
+            Icon-only below `sm` for the same width reason as the account
+            link, with the label kept for assistive tech.
+          */}
+          {signedIn ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/saved">
+                <Bookmark aria-hidden="true" className="sm:hidden" />
+                <span className="max-sm:sr-only">Saved</span>
+              </Link>
+            </Button>
+          ) : null}
+
+          <Button asChild variant="ghost" size="sm">
+            <Link href={signedIn ? '/account' : '/login'}>
+              <UserRound aria-hidden="true" className="sm:hidden" />
+              <span className="max-sm:sr-only">
+                {signedIn ? 'Account' : 'Sign in'}
+              </span>
+            </Link>
+          </Button>
+
           <ThemeToggle />
         </div>
       </div>

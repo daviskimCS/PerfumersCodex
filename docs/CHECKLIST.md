@@ -120,9 +120,9 @@ with P2-E), any `lib/db/` query code.
 
 - [x] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
-### P1-G — Seed script · **READY** _(P1-C done; dispatch once the maker's five-material JSON lands in `perfumers-codex-data`)_
+### P1-G — Seed script · **DONE** _(2026-09-01, W4-A. Live-verified twice against synthetic fixtures: second run a no-op, zero duplicates across 14 tables, `updated_at` never bumped, `REFRESH ... CONCURRENTLY` confirmed working over the transaction-mode pooler. Awaits the maker's real five-material JSON for the production run.)_
 
-- [ ] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
+- [x] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
 
 ### **MAKER** — Phase 1 items that are not agent work
 
@@ -246,17 +246,17 @@ any `app/layout.tsx` change.
 
 - [x] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
-### P2-F — Search UX · **READY** _(P2-E and P2-C done 2026-08-29)_
+### P2-F — Search UX · **DONE** _(2026-09-01, W4-B)_
 
-- [ ] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
+- [x] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
 
-### P2-G — Material detail page · **READY** _(P1-F and P2-C done 2026-08-29)_
+### P2-G — Material detail page · **DONE** _(2026-09-01, W4-C. RDKit bundle isolation verified against real build output: zero references in every initial/shared client chunk.)_
 
-- [ ] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
+- [x] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
 
-### P2-H — Browse & discovery · **READY** _(P1-F and P2-C done 2026-08-29)_
+### P2-H — Browse & discovery · **DONE** _(2026-09-01, W5-A. Also fixed the loading-skeleton shadowing W4-C found — diagnosed by measuring streamed HTML byte offsets, not reasoning.)_
 
-- [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
+- [x] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
 
 ### **MAKER** — Phase 2 items that are not agent work
 
@@ -273,9 +273,9 @@ User-owned data starts here. The RLS boundary becomes live: these features go
 through the **Supabase client**, never Drizzle (which bypasses RLS), and no
 item ships until its policies are verified with two real accounts.
 
-### P3-A — Bookmarks · **BLOCKED: wave-4**
+### P3-A — Bookmarks · **DONE (RLS boundary proven; signed-in UI round trip unverified)** _(2026-09-01, W5-B. Policies proven with a discriminating probe pair: a forged insert refused 42501 while the legitimate control passed RLS and hit only the FK. The save/unsave round trip through a real session is untested — creating an account is not an action available to the agent or orchestrator; see MAKER items.)_
 
-- [ ] Save button on material pages (logged-in only), `/saved` page listing
+- [x] Save button on material pages (logged-in only), `/saved` page listing
       the user's saved materials, `user_saved_materials` RLS policies as a
       migration, all access via the Supabase client. Multi-account RLS
       verification before merge.

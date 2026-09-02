@@ -41,6 +41,25 @@ import { z } from 'zod'
  */
 
 /**
+ * The three reference filenames, fixed by this format.
+ *
+ * They live here rather than in `scripts/seed.ts` because the input format is
+ * this module's contract: the seed script discovers material files by
+ * elimination (every other `.json` in the directory), so a name that drifted
+ * out of sync would not fail — it would quietly seed `families.json` as if it
+ * were a material.
+ */
+export const FAMILIES_FILE = 'families.json'
+export const USAGE_CATEGORIES_FILE = 'usage-categories.json'
+export const HAZARD_CODES_FILE = 'hazard-codes.json'
+
+export const REFERENCE_FILES: readonly string[] = [
+  FAMILIES_FILE,
+  USAGE_CATEGORIES_FILE,
+  HAZARD_CODES_FILE,
+]
+
+/**
  * Slug form shared by material slugs, family slugs, and source keys — the
  * same shape AGENTS.md mandates for URLs (`/materials/iso-e-super`).
  */
