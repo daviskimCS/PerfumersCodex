@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 import {
   families,
@@ -51,27 +51,67 @@ function toNumber(value: string | null): number | null {
   return value === null ? null : Number(value)
 }
 
+/* -------------------------------------------------------------------------
+ * Summary lists — the browse surfaces (index, family pages, /saved)
+ * ---------------------------------------------------------------------- */
+
 /**
- * All materials that are not soft-deleted, ordered by canonical name
- * (slug as a stable tie-break for duplicate names).
+ * The orders the browse surfaces offer. These literals travel in the URL
+ * (`/materials?sort=recently-updated`), so they are part of a public contract
+ * and are spelled the way a person would read them, not the way the column is
+ * named.
  */
-export async function listMaterials(): Promise<MaterialSummary[]> {
-  const materialRows = await db
-    .select({
-      id: materials.id,
-      slug: materials.slug,
-      canonicalName: materials.canonicalName,
-      materialType: materials.materialType,
-      casNumber: materials.casNumber,
-    })
-    .from(materials)
-    .where(isNull(materials.deletedAt))
-    .orderBy(asc(materials.canonicalName), asc(materials.slug))
+export type MaterialSort = 'name' | 'recently-updated'
 
-  if (materialRows.length === 0) return []
+export interface ListMaterialsOptions {
+  /** Defaults to `'name'`. */
+  sort?: MaterialSort
+  /** Restrict to one olfactive family by slug. Omit/null = the whole corpus. */
+  familySlug?: string | null
+  /** 1-based. Values below 1 are treated as 1. */
+  page?: number
+  /** Defaults to `DEFAULT_PAGE_SIZE`; clamped to `MAX_PAGE_SIZE`. */
+  pageSize?: number
+}
 
-  // One round-trip for every family assignment of every surviving material,
-  // bucketed in TS — no N+1 across the index page.
+export interface MaterialList {
+  items: MaterialSummary[]
+  /** Rows matching the filter across ALL pages — what "Page 2 of 7" needs. */
+  total: number
+}
+
+/** One screenful of cards at three columns; also the family page's cap. */
+export const DEFAULT_PAGE_SIZE = 24
+/** A ceiling so a hand-edited `pageSize` cannot ask for the whole table. */
+const MAX_PAGE_SIZE = 100
+
+/** The row shape every summary query selects; never leaves this file. */
+const summaryColumns = {
+  id: materials.id,
+  slug: materials.slug,
+  canonicalName: materials.canonicalName,
+  materialType: materials.materialType,
+  casNumber: materials.casNumber,
+} as const
+
+type SummaryRow = {
+  id: string
+  slug: string
+  canonicalName: string
+  materialType: MaterialSummary['materialType']
+  casNumber: string | null
+}
+
+/**
+ * Attach each row's families in ONE extra round-trip, bucketed in TS.
+ *
+ * Every summary list goes through here, which is what keeps the index, the
+ * family pages and `/saved` from drifting apart — and what keeps the fan-out
+ * to `material_families` at one query per page instead of one per row.
+ */
+async function withFamilies(rows: SummaryRow[]): Promise<MaterialSummary[]> {
+  if (rows.length === 0) return []
+
   const familyRows = await db
     .select({
       materialId: materialFamilies.materialId,
@@ -80,8 +120,12 @@ export async function listMaterials(): Promise<MaterialSummary[]> {
     })
     .from(materialFamilies)
     .innerJoin(families, eq(materialFamilies.familyId, families.id))
-    .innerJoin(materials, eq(materialFamilies.materialId, materials.id))
-    .where(isNull(materials.deletedAt))
+    .where(
+      inArray(
+        materialFamilies.materialId,
+        rows.map((row) => row.id)
+      )
+    )
     .orderBy(asc(families.name))
 
   const familiesByMaterial = new Map<string, FamilyRef[]>()
@@ -95,7 +139,7 @@ export async function listMaterials(): Promise<MaterialSummary[]> {
     }
   }
 
-  return materialRows.map((row) => ({
+  return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     canonicalName: row.canonicalName,
@@ -103,6 +147,105 @@ export async function listMaterials(): Promise<MaterialSummary[]> {
     casNumber: row.casNumber,
     families: familiesByMaterial.get(row.id) ?? [],
   }))
+}
+
+/**
+ * One page of the corpus: sorted, optionally filtered to a family, and
+ * counted so the caller can render "Page 2 of 7" without a second call.
+ *
+ * Offset pagination, deliberately. A curated reference is a few thousand rows
+ * at its largest and the browse surface wants *addressable pages* — a URL a
+ * reader can share and a crawler can follow — which keyset pagination does not
+ * give without leaking row cursors into the URL.
+ *
+ * The family filter is a subquery rather than a join so a material in two
+ * families cannot come back twice; `total` then needs no DISTINCT to be right.
+ */
+export async function listMaterials({
+  sort = 'name',
+  familySlug = null,
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+}: ListMaterialsOptions = {}): Promise<MaterialList> {
+  const size = Math.min(Math.max(Math.trunc(pageSize), 1), MAX_PAGE_SIZE)
+  const offset = (Math.max(Math.trunc(page), 1) - 1) * size
+
+  const where =
+    familySlug === null
+      ? isNull(materials.deletedAt)
+      : and(
+          isNull(materials.deletedAt),
+          inArray(
+            materials.id,
+            db
+              .select({ materialId: materialFamilies.materialId })
+              .from(materialFamilies)
+              .innerJoin(families, eq(materialFamilies.familyId, families.id))
+              .where(eq(families.slug, familySlug))
+          )
+        )
+
+  // Slug is the tie-break in both orders: two materials can share a name, and
+  // a whole seed run can share a second of `updated_at`. Without it the same
+  // row could appear on two pages and another on none.
+  const order =
+    sort === 'recently-updated'
+      ? [desc(materials.updatedAt), asc(materials.slug)]
+      : [asc(materials.canonicalName), asc(materials.slug)]
+
+  const [rows, totalRows] = await Promise.all([
+    db
+      .select(summaryColumns)
+      .from(materials)
+      .where(where)
+      .orderBy(...order)
+      .limit(size)
+      .offset(offset),
+    db.select({ value: count() }).from(materials).where(where),
+  ])
+
+  return {
+    items: await withFamilies(rows),
+    total: totalRows[0]?.value ?? 0,
+  }
+}
+
+/**
+ * Summaries for a known set of ids, **in the order the ids were given**.
+ *
+ * `/saved` (W5-B) holds an ordered list of ids from `user_saved_materials`
+ * and needs the editorial half of each; the ordering promise is what lets the
+ * caller decide the order (most-recently-saved first) without this file
+ * knowing anything about bookmarks. Ids that match nothing — or that match a
+ * soft-deleted row — are dropped rather than returned as holes.
+ */
+export async function listMaterialsByIds(
+  ids: string[]
+): Promise<MaterialSummary[]> {
+  const wanted = [...new Set(ids)]
+  if (wanted.length === 0) return []
+
+  const rows = await db
+    .select(summaryColumns)
+    .from(materials)
+    .where(and(inArray(materials.id, wanted), isNull(materials.deletedAt)))
+
+  const summaries = await withFamilies(rows)
+  const byId = new Map(summaries.map((summary) => [summary.id, summary]))
+
+  return wanted
+    .map((id) => byId.get(id))
+    .filter((summary): summary is MaterialSummary => summary !== undefined)
+}
+
+/** How many materials are published — the homepage's one number. */
+export async function countMaterials(): Promise<number> {
+  const rows = await db
+    .select({ value: count() })
+    .from(materials)
+    .where(isNull(materials.deletedAt))
+
+  return rows[0]?.value ?? 0
 }
 
 /**
