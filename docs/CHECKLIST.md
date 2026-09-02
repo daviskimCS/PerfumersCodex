@@ -280,13 +280,13 @@ item ships until its policies are verified with two real accounts.
       migration, all access via the Supabase client. Multi-account RLS
       verification before merge.
 
-### P3-B — Private notes · **BLOCKED: P3-A** _(shares the detail page)_
+### P3-B — Private notes · **IN PROGRESS** _(W6-A dispatched 2026-09-02; P3-A done. RLS already shipped in migration 0002, so no migration this item.)_
 
 - [ ] Per-material private note textarea, auto-save on blur with optimistic
       UI, `user_notes` RLS policies as a migration, Supabase client only.
       Rate limiting is the Week 18 pass — deferral recorded here, not dropped.
 
-### P3-C — Account management · **BLOCKED: P3-A** _(Week 13 is calendar order — no file dependency on P3-B; Wave 6 runs P3-B then P3-C sequentially by choice)_
+### P3-C — Account management · **IN PROGRESS** _(W6-B dispatched 2026-09-02, concurrently with W6-A — file sets are disjoint, so the earlier "sequential by choice" pacing note was dropped.)_
 
 - [ ] Change email, change password, delete account. Deletion runs through
       the Supabase admin API with the secret key in a server action;
@@ -294,8 +294,15 @@ item ships until its policies are verified with two real accounts.
 
 ### **MAKER** — Phase 3 items that are not agent work
 
+> **The consolidated, prioritised list is [maker-todo.md](./maker-todo.md).**
+> It is the one to work from; the bullets below are the Phase 3 slice.
+
 - Two throwaway test accounts for RLS verification (or approval for the
   orchestrator to create them via the admin API)
+- **Verify account deletion cascades** (P3-C, Wave 6) — irreversible and
+  unprovable by an agent; see maker-todo.md item 1
+- **Verify the signed-in bookmark and note round trips** — the RLS boundary
+  is proven, the wiring above it is not
 - 15 further materials (Week 14), polish-pass sign-offs (Week 15),
   onboarding content (Week 16), blog post 3
 
