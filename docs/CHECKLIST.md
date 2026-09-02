@@ -115,11 +115,14 @@ with P2-E), any `lib/db/` query code.
 
 - [x] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
       _Google OAuth console setup is **MAKER**._
-- [ ] **Google OAuth (code side)** — "Continue with Google" on `/login` and
-      `/signup`, `/auth/callback` PKCE exchange with open-redirect protection
-      on `next`. Dispatched 2026-09-02. Ships **dormant**: the provider is not
-      configured, so the button returns a readable notice until
-      [maker-todo.md](./maker-todo.md) item 4 is done.
+- [x] **Google OAuth (code side)** · **DONE** _(2026-09-02)_ — "Continue with
+      Google" on `/login` and `/signup`, `/auth/callback` exchanging the code
+      for a session. The `next` guard is shared with the confirm route and
+      was verified against 14 attack inputs (`//evil.com`, `https://evil.com`,
+      backslash, `javascript:`, `data:`) plus an end-to-end check that none
+      reaches a `Location` header. Ships **dormant**: the provider is not
+      configured, so the button shows "Google sign-in isn't available right
+      now" until [maker-todo.md](./maker-todo.md) item 4 is done.
 
 ### P1-F — Material routes (structural) · **DONE**
 
