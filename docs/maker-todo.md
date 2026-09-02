@@ -4,7 +4,7 @@ Everything here is blocked on a human: an account, a dashboard, a payment, a
 judgment call, or editorial writing. Nothing on this list can be dispatched
 to an agent, and several items block work that otherwise looks finished.
 
-Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, so items 1–4 are the last things standing between this and a verified, fully signed-in personal layer).
+Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, items 1–4 are the last things between this and a verified, fully signed-in personal layer, and item 5 is new from the Wave 7 audit).
 
 Companion to [CHECKLIST.md](./CHECKLIST.md), which tracks the agent-side work.
 Personal planning (career framing, time budget, milestone dates) lives in the
@@ -106,7 +106,41 @@ a password account attaches to that same account rather than creating a
 second one. That is the behaviour you want; it is also worth testing once,
 because it is the kind of thing that surprises people at launch.
 
-### 5. `sources` needs a `key` column
+### 5. Share cards cannot render Greek letters — pick a font
+
+**Why it matters:** aromachemical names routinely begin with α-, β-, γ-, and
+**none** of the fonts available to the Open Graph renderer contains those
+glyphs. Measured straight from the font tables, not assumed:
+
+| font available to `next/og`         | glyphs | α β γ  |
+| ----------------------------------- | ------ | ------ |
+| Geist Mono, latin subset            | 223    | absent |
+| Geist Mono, latin-ext subset        | 162    | absent |
+| Geist Sans (bundled with `next/og`) | 726    | absent |
+
+So the first real material whose name starts with a Greek letter renders a
+tofu box in the largest text on its share card — at the moment the project is
+most on display. Today's fixtures are pure ASCII, which is exactly why this is
+invisible now and will not stay invisible.
+
+It needs your decision because it means a **committed font file**, and
+AGENTS.md requires sign-off before adding one. Options, cheapest first:
+
+1. Find a monospaced face with Greek coverage under a redistributable licence
+   (SIL OFL), commit the `.ttf`, load it in the OG routes. This fixes a second
+   problem for free — see below.
+2. Transliterate in the OG route only (α → "alpha-"). That is a lie about the
+   material's name on a citation-driven reference. Not recommended.
+3. Accept tofu on affected materials. Not recommended.
+
+**The second problem option 1 solves:** the cards are currently set in Geist
+**Sans**, not the site's Geist Mono, because `next/og` needs font _data_ and
+the mono face ships only as a woff2 subset Satori cannot parse. The site's
+identity is monospaced — AGENTS.md calls that a deliberate house-style choice
+— so a shared link currently looks like a different product. One font decision
+fixes both.
+
+### 6. `sources` needs a `key` column
 
 **Why it matters:** the seed input format gives every source a stable `key`
 as its idempotency anchor, but the table has nowhere to store it. URL-less
@@ -124,13 +158,13 @@ Say the word and it becomes a migration.
 
 ## 🟡 Do before launch
 
-### 6. Make the apex the primary domain in Vercel
+### 7. Make the apex the primary domain in Vercel
 
 `NEXT_PUBLIC_SITE_URL` and every `og:url` advertise `perfumerscodex.com`, but
 Vercel has `www` as primary and 308-redirects the apex to it. The site
 currently advertises a URL that redirects. Dashboard fix, no code change.
 
-### 7. Decide on the synthetic test materials
+### 8. Decide on the synthetic test materials
 
 Three obviously-fake materials (`Test Material Alpha` / `Beta` / `Gamma`) are
 in the **live** database and publicly visible. They were seeded to verify the
@@ -142,14 +176,14 @@ Clear them whenever you want:
 npm run db:seed -- ./scripts/fixtures --prune
 ```
 
-### 8. Make the repo public
+### 9. Make the repo public
 
 Your own public-from-day-one constraint, still unmet. `LICENSE` and
 `LICENSE-DATA` are in place. One reasonable trigger: flip it the day the
 first real material renders on the live detail page — "public with real
 content" is a stronger first impression than an empty shell.
 
-### 9. Align the Supabase minimum password length
+### 10. Align the Supabase minimum password length
 
 The dashboard allows 6; `lib/validation/auth.ts` requires 8. Our forms
 enforce 8, so this only matters for flows that bypass them. Set the dashboard
@@ -184,11 +218,10 @@ to 8 so the two agree.
   taken, because the mark inverts between light and dark browser chrome and a
   static bitmap would be wrong half the time. If a bitmap is ever wanted, it
   should be generated per scheme, not frozen.
-- **OG cards use Geist Sans, not the site's Geist Mono.** `next/og` needs font
-  _data_, and the mono face ships only as a woff2 subset that Satori cannot
-  parse. Fixing it means committing a `.ttf` — a deliberate decision, not an
-  oversight. Satori also does not synthesise bold, so all hierarchy on the
-  cards comes from size, colour and letter-spacing.
+- **Satori does not synthesise bold**, so all hierarchy on the OG cards comes
+  from size, colour and letter-spacing. Not a defect, but worth knowing before
+  anyone asks why the cards carry no bold weight. The font question itself is
+  blocking item 5.
 - **Rate limiting is absent** on search, signup, login, note saves and the
   account mutations. Deliberately the Week 18 Upstash pass; the deferral is
   recorded in the code itself, not only in the wave docs.

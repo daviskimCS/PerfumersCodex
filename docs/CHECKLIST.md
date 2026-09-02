@@ -314,6 +314,29 @@ item ships until its policies are verified with two real accounts.
 - 15 further materials (Week 14), polish-pass sign-offs (Week 15),
   onboarding content (Week 16), blog post 3
 
+## Wave 7 — quality bar _(2026-09-02, complete)_
+
+Not a checklist phase: Phases 1–3 closed, so this paid down
+[quality-checklist.md](./quality-checklist.md). See
+[waves/wave-7.md](./waves/wave-7.md).
+
+- [x] **W7-A identity & share cards** — `app/icon.svg` replacing
+      create-next-app's default favicon, plus site-wide and per-material
+      Open Graph cards. Both OG routes proven to survive an unreachable
+      database (byte-identical to the generic card).
+- [x] **W7-B accessibility audit** — 11 surfaces against the per-page and
+      per-form checklists. Six defects: inactive tab labels at 4.39:1, an
+      invisible focus stop on the tab panel, blur-fired field errors never
+      announced, `/login` and `/signup` with no page title, a dangling
+      `aria-controls`, and dark `--destructive` at 4.49:1 in one composition.
+      All fixed; the tab defects went upstream into the primitive. The 404
+      title is a Next 16 limitation (`not-found.js` supports no `metadata`
+      export) and is reported, not fixed.
+
+**Deferred deliberately:** the caching pass. Wave 4 put it after seeding
+settles, and the corpus is still three synthetic materials — tuning
+`cacheLife` against fixtures would be tuning against noise.
+
 ## Suggested wave grouping
 
 File sets verified disjoint.
