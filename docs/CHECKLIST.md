@@ -120,9 +120,9 @@ with P2-E), any `lib/db/` query code.
 
 - [x] `/materials/[slug]` fetching one material and rendering it; `/materials` index listing all materials. Ugly but real — polish is P2-G/P2-H.
 
-### P1-G — Seed script · **READY** _(P1-C done; dispatch once the maker's five-material JSON lands in `perfumers-codex-data`)_
+### P1-G — Seed script · **DONE** _(2026-09-01, W4-A. Live-verified twice against synthetic fixtures: second run a no-op, zero duplicates across 14 tables, `updated_at` never bumped, `REFRESH ... CONCURRENTLY` confirmed working over the transaction-mode pooler. Awaits the maker's real five-material JSON for the production run.)_
 
-- [ ] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
+- [x] TypeScript seed script reading the data repo's JSON into Postgres, idempotent, refreshing the search view at the end.
 
 ### **MAKER** — Phase 1 items that are not agent work
 
@@ -246,15 +246,15 @@ any `app/layout.tsx` change.
 
 - [x] `lib/db/search.ts` returning `SearchCandidate[]` in one round-trip, the CAS short-circuit, `lib/search/index.ts` composing the pipeline, `search_queries` logging, plus the `pg_trgm` extension and `material_search_view` migration.
 
-### P2-F — Search UX · **READY** _(P2-E and P2-C done 2026-08-29)_
+### P2-F — Search UX · **DONE** _(2026-09-01, W4-B)_
 
-- [ ] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
+- [x] Debounced instant search (~150ms), Cmd/Ctrl-K focus, arrow-key navigation, rank-aware results page, genuinely helpful no-results state, recent searches in localStorage.
 
-### P2-G — Material detail page · **READY** _(P1-F and P2-C done 2026-08-29)_
+### P2-G — Material detail page · **DONE** _(2026-09-01, W4-C. RDKit bundle isolation verified against real build output: zero references in every initial/shared client chunk.)_
 
-- [ ] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
+- [x] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
 
-### P2-H — Browse & discovery · **READY** _(P1-F and P2-C done 2026-08-29)_
+### P2-H — Browse & discovery · **IN PROGRESS** _(W5-A dispatched 2026-09-01)_
 
 - [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
 
