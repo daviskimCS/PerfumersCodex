@@ -178,6 +178,17 @@ to 8 so the two agree.
   and stream just the auth affordance.
 - **`notFound()` returns HTTP 200** on streamed routes, with `noindex` as the
   documented mitigation. Next behaviour, not ours.
+- **The icon is SVG-only.** `favicon.ico` was create-next-app's default and is
+  gone; `app/icon.svg` replaces it. Older Safari and some crawlers ignore SVG
+  favicons. The obvious fix — a committed `icon1.png` — is deliberately NOT
+  taken, because the mark inverts between light and dark browser chrome and a
+  static bitmap would be wrong half the time. If a bitmap is ever wanted, it
+  should be generated per scheme, not frozen.
+- **OG cards use Geist Sans, not the site's Geist Mono.** `next/og` needs font
+  _data_, and the mono face ships only as a woff2 subset that Satori cannot
+  parse. Fixing it means committing a `.ttf` — a deliberate decision, not an
+  oversight. Satori also does not synthesise bold, so all hierarchy on the
+  cards comes from size, colour and letter-spacing.
 - **Rate limiting is absent** on search, signup, login, note saves and the
   account mutations. Deliberately the Week 18 Upstash pass; the deferral is
   recorded in the code itself, not only in the wave docs.
