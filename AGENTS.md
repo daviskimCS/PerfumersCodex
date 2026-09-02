@@ -123,7 +123,9 @@ Skip tests for:
 - **Last completed (2026-08-30):** infrastructure review — RLS enabled on all 19 tables with owner policies on user tables (migration 0002, verified against the live Data API); site live at perfumerscodex.com (Vercel + Supabase, auth working in production, CI green); design pass merged (monospaced type, Noctua-brown palette, seamless grain background, inverted light-mode chrome — PRs #1–#5)
 - **Maker's blocking items live in `docs/maker-todo.md`** — human-only work (accounts, dashboards, editorial). Check it before assuming something is unfinished for a code reason.
 - **Waves 4 and 5 complete (2026-09-01):** seed pipeline (P1-G), search UX (P2-F), material detail with lazy RDKit (P2-G), browse/homepage/families (P2-H), bookmarks (P3-A). The app is feature-complete against a seeded corpus of 3 synthetic materials.
-- **In progress:** Wave 6 dispatched 2026-09-02 (P3-B private notes, P3-C account management — concurrent; file sets disjoint). Maker authoring the first five materials + `perfumers-codex-data` repo.
+- **Wave 6 complete (2026-09-02):** private notes (P3-B), account management (P3-C). **Every route in the v1 scope now exists.** Phase 3 is closed on the agent side.
+- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo — the critical path. Next agent work: the deferred caching pass and Week 18 rate limiting.
+- **Unverified and blocking:** account deletion's ON DELETE CASCADE, and the signed-in round trips for bookmarks and notes. All need a real session; see `docs/maker-todo.md` items 1–3.
 - **Blockers:** none
 
 ## Known issues / debt

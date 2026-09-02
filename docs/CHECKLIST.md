@@ -280,15 +280,15 @@ item ships until its policies are verified with two real accounts.
       migration, all access via the Supabase client. Multi-account RLS
       verification before merge.
 
-### P3-B — Private notes · **IN PROGRESS** _(W6-A dispatched 2026-09-02; P3-A done. RLS already shipped in migration 0002, so no migration this item.)_
+### P3-B — Private notes · **DONE (RLS boundary proven; signed-in round trip unverified)** _(2026-09-02, W6-A. Forged note refused 42501 while the legitimate control passed RLS and hit only the FK. The UPDATE policy could not be exercised — an empty table makes that probe vacuous, not passing; WITH CHECK is present in pg_policies and needs a real row to prove.)_
 
-- [ ] Per-material private note textarea, auto-save on blur with optimistic
+- [x] Per-material private note textarea, auto-save on blur with optimistic
       UI, `user_notes` RLS policies as a migration, Supabase client only.
       Rate limiting is the Week 18 pass — deferral recorded here, not dropped.
 
-### P3-C — Account management · **IN PROGRESS** _(W6-B dispatched 2026-09-02, concurrently with W6-A — file sets are disjoint, so the earlier "sequential by choice" pacing note was dropped.)_
+### P3-C — Account management · **DONE (cascade unverified — see maker-todo.md item 1)** _(2026-09-02, W6-B. Delete action takes its id from getUser() and never from the request. Secret key proven absent from every client chunk, against a control that actually fires.)_
 
-- [ ] Change email, change password, delete account. Deletion runs through
+- [x] Change email, change password, delete account. Deletion runs through
       the Supabase admin API with the secret key in a server action;
       `ON DELETE CASCADE` does the cleanup — verified with a throwaway account.
 

@@ -4,7 +4,7 @@ Everything here is blocked on a human: an account, a dashboard, a payment, a
 judgment call, or editorial writing. Nothing on this list can be dispatched
 to an agent, and several items block work that otherwise looks finished.
 
-Sorted by consequence, not by effort. Last reviewed **2026-09-02**.
+Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 — every v1 route now exists, so items 1–3 are the last things standing between this and a verified personal layer).
 
 Companion to [CHECKLIST.md](./CHECKLIST.md), which tracks the agent-side work.
 Personal planning (career framing, time budget, milestone dates) lives in the
@@ -21,6 +21,9 @@ only thing standing between "account deleted" and "rows orphaned in a
 database you told a user was wiped". That is a GDPR promise, not a feature.
 No agent can test it, because creating an account is not an action available
 to one.
+
+`/account` now has the delete form (Wave 6, shipped 2026-09-02), so this is
+testable today.
 
 **How:** sign up a throwaway account, save a bookmark and write a note on any
 material, then delete the account from `/account`. Then confirm the rows are
