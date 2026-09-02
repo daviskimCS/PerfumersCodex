@@ -1,3 +1,4 @@
+import { NoteEditorSkeleton } from '@/components/note-editor'
 import { SaveButtonSkeleton } from '@/components/save-button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -84,6 +85,13 @@ export default function MaterialLoading() {
           </div>
         </div>
       </div>
+
+      {/* Private note (W6-A) — the same skeleton the page's own Suspense
+          boundary falls back to, so the region reserves this box whichever of
+          the two is standing in. It is last on the page because it resolves to
+          nothing for a signed-out reader, and a collapse with no content below
+          it shifts nothing. */}
+      <NoteEditorSkeleton />
     </div>
   )
 }
