@@ -121,7 +121,8 @@ Skip tests for:
 
 - **Phase:** Phases 1–2 (build). Phase 0 closed 2026-08-29 except repo visibility (below).
 - **Last completed (2026-08-30):** infrastructure review — RLS enabled on all 19 tables with owner policies on user tables (migration 0002, verified against the live Data API); site live at perfumerscodex.com (Vercel + Supabase, auth working in production, CI green); design pass merged (monospaced type, Noctua-brown palette, seamless grain background, inverted light-mode chrome — PRs #1–#5)
-- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo; next agent items now READY: P1-G seed script, P2-F search UX, P2-G material detail, P2-H browse (see docs/waves/)
+- **Waves 4 and 5 complete (2026-09-01):** seed pipeline (P1-G), search UX (P2-F), material detail with lazy RDKit (P2-G), browse/homepage/families (P2-H), bookmarks (P3-A). The app is feature-complete against a seeded corpus of 3 synthetic materials.
+- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo. Next agent work is Wave 6 (P3-B private notes, then P3-C account management).
 - **Blockers:** none
 
 ## Known issues / debt

@@ -254,9 +254,9 @@ any `app/layout.tsx` change.
 
 - [x] Hero with client-side RDKit.js 2D structure (lazy-loaded, skipped when `smiles` is null), Safety/Olfactive/Usage/Sources tabs, numbered citation superscripts, matching loading skeletons, per-section empty states, real mobile layout.
 
-### P2-H — Browse & discovery · **IN PROGRESS** _(W5-A dispatched 2026-09-01)_
+### P2-H — Browse & discovery · **DONE** _(2026-09-01, W5-A. Also fixed the loading-skeleton shadowing W4-C found — diagnosed by measuring streamed HTML byte offsets, not reasoning.)_
 
-- [ ] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
+- [x] `/families/[slug]` pages, a real homepage, and a browseable `/materials` index (sortable, filterable by family, paginated).
 
 ### **MAKER** — Phase 2 items that are not agent work
 
@@ -273,9 +273,9 @@ User-owned data starts here. The RLS boundary becomes live: these features go
 through the **Supabase client**, never Drizzle (which bypasses RLS), and no
 item ships until its policies are verified with two real accounts.
 
-### P3-A — Bookmarks · **BLOCKED: wave-4**
+### P3-A — Bookmarks · **DONE (RLS boundary proven; signed-in UI round trip unverified)** _(2026-09-01, W5-B. Policies proven with a discriminating probe pair: a forged insert refused 42501 while the legitimate control passed RLS and hit only the FK. The save/unsave round trip through a real session is untested — creating an account is not an action available to the agent or orchestrator; see MAKER items.)_
 
-- [ ] Save button on material pages (logged-in only), `/saved` page listing
+- [x] Save button on material pages (logged-in only), `/saved` page listing
       the user's saved materials, `user_saved_materials` RLS policies as a
       migration, all access via the Supabase client. Multi-account RLS
       verification before merge.
