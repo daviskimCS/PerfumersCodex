@@ -24,6 +24,25 @@ import { z } from 'zod'
 
 const SITE_URL_FALLBACK = 'http://localhost:3000'
 
+/**
+ * An optional server-only secret.
+ *
+ * Absent, empty, and whitespace-only all mean "not set". A dashboard field
+ * cleared to `""` is how a person switches a feature off, and it must never be
+ * read as a password of zero length.
+ *
+ * The value is trimmed, because values pasted into hosting dashboards and
+ * `.env` files routinely arrive with a trailing newline — which means a secret
+ * cannot begin or end with whitespace. Same normalizing posture as
+ * NEXT_PUBLIC_SITE_URL below.
+ */
+const optionalSecret = () =>
+  z.preprocess((raw) => {
+    if (typeof raw !== 'string') return undefined
+    const trimmed = raw.trim()
+    return trimmed === '' ? undefined : trimmed
+  }, z.string().optional())
+
 const schemas = {
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
@@ -82,6 +101,27 @@ const schemas = {
       )
       return SITE_URL_FALLBACK
     }),
+
+  /**
+   * PRE-LAUNCH GATE (lib/gate.ts). Both optional, both SERVER-ONLY.
+   *
+   * Never rename either of these to NEXT_PUBLIC_*. Next inlines those into the
+   * client bundle by textual substitution, which would publish the password to
+   * exactly the people the gate exists to keep out.
+   *
+   * SITE_GATE_PASSWORD is the switch as well as the password: UNSET MEANS THE
+   * GATE IS OFF. That is deliberate. `next build` and CI run with no
+   * environment at all and must keep working, and a variable that goes missing
+   * from a hosting dashboard must never lock the maker out of their own site.
+   *
+   * SITE_GATE_SECRET signs the unlock cookie. When it is unset, lib/gate.ts
+   * falls back to using the password as the HMAC key rather than inventing a
+   * default — a hard-coded fallback secret in a public repository is not a
+   * secret. Set it in production anyway: it is the difference between a gate
+   * whose signing key is a memorable phrase and one whose key is random.
+   */
+  SITE_GATE_PASSWORD: optionalSecret(),
+  SITE_GATE_SECRET: optionalSecret(),
 } as const
 
 type Schemas = typeof schemas
