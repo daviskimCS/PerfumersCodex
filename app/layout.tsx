@@ -44,12 +44,19 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: '/',
     locale: 'en_US',
-    // No `images` on purpose — the OG artwork does not exist yet. Pointing at
-    // a file that isn't there produces a card with a broken image, which is
-    // worse than a card with none. Add it when the asset lands.
+    // `images` is deliberately absent HERE and set by file convention instead:
+    // app/opengraph-image.tsx is the site-wide card, and
+    // app/materials/[slug]/opengraph-image.tsx overrides it per material.
+    // Declaring a URL in this object as well would pin every page to the
+    // generic card and silently defeat the per-material one (W7-A).
   },
   twitter: {
-    card: 'summary',
+    // `summary_large_image`, not `summary`: the cards are 1200x630, and
+    // `summary` makes X crop them to a small square thumbnail — most of the
+    // design thrown away at exactly the moment it is meant to work. Next
+    // mirrors the openGraph image into twitter:image automatically, so there
+    // is nothing further to declare (W7-A).
+    card: 'summary_large_image',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
   },
@@ -94,7 +101,15 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <SiteHeader />
-        <main id="main-content" className="flex flex-1 flex-col">
+        {/*
+          tabIndex={-1} is what makes the skip link work. Without it the link
+          only sets location.hash: Chrome then moves the TAB START into main,
+          which half-works, but focus itself never moves — Safari does not
+          follow at all and no screen-reader virtual cursor goes with it.
+          -1 keeps it out of the tab order while making it programmatically
+          focusable, which is exactly the case this attribute exists for.
+        */}
+        <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
           {children}
         </main>
         <SiteFooter />

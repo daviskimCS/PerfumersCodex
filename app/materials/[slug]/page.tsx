@@ -15,10 +15,16 @@ import { MaterialStructure } from '@/components/material/structure'
 import { MaterialTabs } from '@/components/material/tabs'
 import { parseMaterialTab } from '@/components/material/tabs-config'
 import { UsagePanel } from '@/components/material/usage-panel'
+import {
+  NoteEditor,
+  NoteEditorSkeleton,
+  NoteEditorUnavailable,
+} from '@/components/note-editor'
 import { SaveButton, SaveButtonSkeleton } from '@/components/save-button'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentUserId, isMaterialSaved } from '@/lib/db/bookmarks'
 import { getMaterialBySlug } from '@/lib/db/materials'
+import { getNote } from '@/lib/db/notes'
 
 // Without this, `next build` statically prerenders the route and the DB query
 // runs at build time — so the build starts depending on a live database,
@@ -185,6 +191,17 @@ export default async function MaterialPage({
       {/* Model output — its own separated, labelled block, never intermixed
           with the human-written description (AGENTS.md). */}
       <OdorPredictionsModule predictions={material.odorPredictions} />
+
+      {/* W6-A mounts here: the reader's own private note, below the tabs and
+          outside every panel, so nothing about the layout can put a personal
+          scribble next to a cited fact (AGENTS.md). Its own Suspense boundary
+          keeps the session and note round trips off the critical path — the
+          material renders as soon as the database answers. Mounted *last* on
+          purpose: signed out, the whole region renders nothing, and there is
+          no content below it for that collapse to shift. */}
+      <Suspense fallback={<NoteEditorSkeleton />}>
+        <NoteRegion materialId={material.id} />
+      </Suspense>
     </article>
   )
 }
@@ -219,6 +236,51 @@ async function SaveControl({ materialId }: { materialId: string }) {
       materialId={materialId}
       signedIn={signedIn}
       initialSaved={saved}
+    />
+  )
+}
+
+/**
+ * Server-side data wiring for the private note (W6-A).
+ *
+ * Both facts the editor renders from are settled here, on the server: whether
+ * there is a session (`getUser()`, validated against the auth server, never
+ * `getSession()`) and the note's current text (read through the Supabase
+ * client, so RLS decides what is visible — `lib/db/notes.ts` never touches
+ * Drizzle, which would bypass RLS). The client component is handed the answers;
+ * it never asks Supabase anything.
+ *
+ * The two failure modes are deliberately not the same failure:
+ *
+ * - the *session* read failed, so the reader cannot be identified at all → the
+ *   region renders nothing, exactly as it would for a signed-out visitor. A
+ *   public reference page must survive an auth-service hiccup, and claiming a
+ *   note problem to someone who may not even have an account would be noise.
+ * - the *note* read failed for a reader we know is signed in → say so. An empty
+ *   textarea here would read as "you have no note" and invite them to type over
+ *   one that still exists (D4: never catch-and-render-blank).
+ */
+async function NoteRegion({ materialId }: { materialId: string }) {
+  let signedIn = false
+  let body: string | null = null
+  let unavailable = false
+
+  try {
+    signedIn = (await getCurrentUserId()) !== null
+    if (signedIn) body = await getNote(materialId)
+  } catch (error) {
+    console.error('[notes] private note unavailable:', error)
+    // True only when the session resolved and the note read is what threw.
+    unavailable = signedIn
+  }
+
+  if (unavailable) return <NoteEditorUnavailable />
+
+  return (
+    <NoteEditor
+      materialId={materialId}
+      signedIn={signedIn}
+      initialBody={body ?? ''}
     />
   )
 }

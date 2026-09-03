@@ -420,9 +420,15 @@
      foreground            12.74           15.34
      muted-fg               5.88            7.07
      brand                  7.44            8.95
-     destructive            4.78            5.76
+     destructive            5.16            6.19
      border-strong          3.40            4.09   (SC 1.4.11, needs 3.0)
      brand-fg / brand       9.10                   (primary button label)
+
+   One figure is not in the table because it is a composition, not a pair:
+   --destructive text on a `bg-destructive/5` panel over the brightest crest
+   of the grain measures 4.78:1. That case is why --destructive was lifted —
+   it failed at 4.49:1 while every pair above it passed, which is what a
+   token-vs-token table cannot show.
 
    The rails forward these tokens rather than inverting, so chrome == surface
    here and the right-hand column is also the chrome figure.
@@ -504,7 +510,15 @@
   --input: var(--border-strong);
 
   /* Status ---------------------------------------------------------------- */
-  --destructive: oklch(0.68 0.175 27); /* #f1655a */
+  /* Lifted from 0.68 to 0.70 (2026-09-02, W7-B audit). At 0.68 this measured
+     4.49:1 — a hair under AA — in one specific composition: `text-destructive`
+     on a `bg-destructive/5` panel sitting over the LIGHTEST crest of the
+     grain. Plain over the texture it was 4.80:1 and over --surface 5.43:1, so
+     the failure needed the 5% tint and the brightest crest together, which is
+     exactly the kind of case a flat-token check never finds. 0.70 clears both
+     (4.83:1 tinted, 5.16:1 bare) and is the smallest step that does; 0.72
+     already clips red to 255. */
+  --destructive: oklch(0.7 0.175 27); /* #f86b60 */
   --destructive-foreground: oklch(0.18 0.02 27); /* #1f100e */
 }
 

@@ -69,3 +69,43 @@ export type AuthFormState = {
 }
 
 export const initialAuthFormState: AuthFormState = {}
+
+/**
+ * Only same-site path targets; blocks `https://…` and `//host` redirects.
+ *
+ * DUPLICATED, deliberately, from the identical guard in
+ * `app/auth/confirm/route.ts` (W3-A). That file is not this item's to edit,
+ * so its copy stays where it is and this one serves the OAuth pair —
+ * `signInWithGoogle` and `app/auth/callback/route.ts` — which both import
+ * from here rather than writing a third copy. Folding the confirm route onto
+ * this export is a one-line follow-up for whoever owns that file next; until
+ * then the two copies must be changed together.
+ *
+ * An unvalidated `next` on an auth callback is an open redirect, not a lint
+ * nit: `?next=//evil.com` is a protocol-relative URL the browser resolves to
+ * another origin, which is why `startsWith('/')` alone is not enough.
+ */
+export function safeInternalPath(path: string | null): string | null {
+  return path !== null && path.startsWith('/') && !path.startsWith('//')
+    ? path
+    : null
+}
+
+/**
+ * The one field the "Continue with Google" form submits (D6: the schema is
+ * shared — the client puts `next` in a hidden input, the server re-parses it
+ * here before it is allowed anywhere near a redirect).
+ *
+ * Sanitizing rather than rejecting is the point. `next` is a URL parameter,
+ * not something the reader typed, so an unsafe or absent value collapses to
+ * `undefined` and the caller falls back to its own default — the same posture
+ * `safeInternalPath` takes in the confirm route. There is no field error a
+ * reader could act on here, so this never produces one.
+ */
+export const googleSignInSchema = z.object({
+  next: z
+    .string()
+    .refine((path) => safeInternalPath(path) !== null)
+    .optional()
+    .catch(undefined),
+})

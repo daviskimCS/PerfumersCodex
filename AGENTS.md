@@ -121,8 +121,13 @@ Skip tests for:
 
 - **Phase:** Phases 1–2 (build). Phase 0 closed 2026-08-29 except repo visibility (below).
 - **Last completed (2026-08-30):** infrastructure review — RLS enabled on all 19 tables with owner policies on user tables (migration 0002, verified against the live Data API); site live at perfumerscodex.com (Vercel + Supabase, auth working in production, CI green); design pass merged (monospaced type, Noctua-brown palette, seamless grain background, inverted light-mode chrome — PRs #1–#5)
+- **Maker's blocking items live in `docs/maker-todo.md`** — human-only work (accounts, dashboards, editorial). Check it before assuming something is unfinished for a code reason.
 - **Waves 4 and 5 complete (2026-09-01):** seed pipeline (P1-G), search UX (P2-F), material detail with lazy RDKit (P2-G), browse/homepage/families (P2-H), bookmarks (P3-A). The app is feature-complete against a seeded corpus of 3 synthetic materials.
-- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo. Next agent work is Wave 6 (P3-B private notes, then P3-C account management).
+- **Wave 6 complete (2026-09-02):** private notes (P3-B), account management (P3-C). **Every route in the v1 scope now exists.** Phase 3 is closed on the agent side.
+- **Google OAuth shipped dormant (2026-09-02):** "Continue with Google" on `/login` and `/signup` with `/auth/callback`; the provider is not configured yet, so the button returns a readable notice (maker-todo item 4).
+- **Wave 7 complete (2026-09-02):** real icon + Open Graph cards (the favicon was still create-next-app's Next.js logo), and the first accessibility audit — 6 defects found, all fixed except a Next-16 limitation on the 404 title. Two fixes went upstream into `components/ui/` so every consumer inherits them.
+- **In progress:** maker authoring the first five materials + `perfumers-codex-data` repo — the critical path. Next agent work: the deferred caching pass and Week 18 rate limiting.
+- **Unverified and blocking:** account deletion's ON DELETE CASCADE, and the signed-in round trips for bookmarks and notes. All need a real session; see `docs/maker-todo.md` items 1–3.
 - **Blockers:** none
 
 ## Known issues / debt

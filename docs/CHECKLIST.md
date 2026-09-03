@@ -115,6 +115,14 @@ with P2-E), any `lib/db/` query code.
 
 - [x] Email/password sign-up, sign-in, sign-out; protected-route check via `supabase.auth.getUser()` (never `getSession()`); basic `/account` showing logged-in email.
       _Google OAuth console setup is **MAKER**._
+- [x] **Google OAuth (code side)** · **DONE** _(2026-09-02)_ — "Continue with
+      Google" on `/login` and `/signup`, `/auth/callback` exchanging the code
+      for a session. The `next` guard is shared with the confirm route and
+      was verified against 14 attack inputs (`//evil.com`, `https://evil.com`,
+      backslash, `javascript:`, `data:`) plus an end-to-end check that none
+      reaches a `Location` header. Ships **dormant**: the provider is not
+      configured, so the button shows "Google sign-in isn't available right
+      now" until [maker-todo.md](./maker-todo.md) item 4 is done.
 
 ### P1-F — Material routes (structural) · **DONE**
 
@@ -280,24 +288,54 @@ item ships until its policies are verified with two real accounts.
       migration, all access via the Supabase client. Multi-account RLS
       verification before merge.
 
-### P3-B — Private notes · **BLOCKED: P3-A** _(shares the detail page)_
+### P3-B — Private notes · **DONE (RLS boundary proven; signed-in round trip unverified)** _(2026-09-02, W6-A. Forged note refused 42501 while the legitimate control passed RLS and hit only the FK. The UPDATE policy could not be exercised — an empty table makes that probe vacuous, not passing; WITH CHECK is present in pg_policies and needs a real row to prove.)_
 
-- [ ] Per-material private note textarea, auto-save on blur with optimistic
+- [x] Per-material private note textarea, auto-save on blur with optimistic
       UI, `user_notes` RLS policies as a migration, Supabase client only.
       Rate limiting is the Week 18 pass — deferral recorded here, not dropped.
 
-### P3-C — Account management · **BLOCKED: P3-A** _(Week 13 is calendar order — no file dependency on P3-B; Wave 6 runs P3-B then P3-C sequentially by choice)_
+### P3-C — Account management · **DONE (cascade unverified — see maker-todo.md item 1)** _(2026-09-02, W6-B. Delete action takes its id from getUser() and never from the request. Secret key proven absent from every client chunk, against a control that actually fires.)_
 
-- [ ] Change email, change password, delete account. Deletion runs through
+- [x] Change email, change password, delete account. Deletion runs through
       the Supabase admin API with the secret key in a server action;
       `ON DELETE CASCADE` does the cleanup — verified with a throwaway account.
 
 ### **MAKER** — Phase 3 items that are not agent work
 
+> **The consolidated, prioritised list is [maker-todo.md](./maker-todo.md).**
+> It is the one to work from; the bullets below are the Phase 3 slice.
+
 - Two throwaway test accounts for RLS verification (or approval for the
   orchestrator to create them via the admin API)
+- **Verify account deletion cascades** (P3-C, Wave 6) — irreversible and
+  unprovable by an agent; see maker-todo.md item 1
+- **Verify the signed-in bookmark and note round trips** — the RLS boundary
+  is proven, the wiring above it is not
 - 15 further materials (Week 14), polish-pass sign-offs (Week 15),
   onboarding content (Week 16), blog post 3
+
+## Wave 7 — quality bar _(2026-09-02, complete)_
+
+Not a checklist phase: Phases 1–3 closed, so this paid down
+[quality-checklist.md](./quality-checklist.md). See
+[waves/wave-7.md](./waves/wave-7.md).
+
+- [x] **W7-A identity & share cards** — `app/icon.svg` replacing
+      create-next-app's default favicon, plus site-wide and per-material
+      Open Graph cards. Both OG routes proven to survive an unreachable
+      database (byte-identical to the generic card).
+- [x] **W7-B accessibility audit** — 11 surfaces against the per-page and
+      per-form checklists. Six defects: inactive tab labels at 4.39:1, an
+      invisible focus stop on the tab panel, blur-fired field errors never
+      announced, `/login` and `/signup` with no page title, a dangling
+      `aria-controls`, and dark `--destructive` at 4.49:1 in one composition.
+      All fixed; the tab defects went upstream into the primitive. The 404
+      title is a Next 16 limitation (`not-found.js` supports no `metadata`
+      export) and is reported, not fixed.
+
+**Deferred deliberately:** the caching pass. Wave 4 put it after seeding
+settles, and the corpus is still three synthetic materials — tuning
+`cacheLife` against fixtures would be tuning against noise.
 
 ## Suggested wave grouping
 

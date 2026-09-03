@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Perfumers Codex</title>
+  <!--
+    THE MARK — an open codex.
+
+    Drawn from the project's own world rather than from a stock glyph set: the
+    codex is what the site is (a bound, curated reference), and the two page
+    blocks lift at their outer edges on the same shallow curve as the rippled
+    grain in app/globals.css (see BACKGROUND there) — the site's texture,
+    reduced to two strokes.
+
+    SELF-GROUNDED, DELIBERATELY. The mark sits on its own filled tile instead
+    of floating as a bare silhouette, because browser chrome is not a colour we
+    control: a chrome-coloured mark disappears on half the tabs it lands in.
+    The tile carries its own contrast (cream on brown, 6.6:1), so the icon
+    reads whatever is behind it.
+
+    LEGIBILITY AT 16px is the binding constraint and it drove every number
+    here. Rasterised to 16px the whole mark is three shapes: two cream blocks
+    and the 1px brown gutter between them. Nothing else survives that size, so
+    nothing else was drawn — no rules across the pages, no spine detail, no
+    second colour. Measured, not assumed: rendered at 512 and downsampled, the
+    gutter holds and the silhouette still reads as a book.
+
+    PALETTE. Tokens from app/globals.css. Names are written here without their
+    leading dashes because an XML comment cannot contain two hyphens in a row.
+
+      light   tile = brand           #7c4726   mark = chrome-foreground #f6efe6
+      dark    tile = brand (dark)    #dbaf87   mark = accent-foreground #2f2015
+
+    The dark pair is the same inversion the site itself performs: in dark mode
+    the brand token lifts to the tan and takes dark ink on top of it. Contrast
+    there is 7.8:1. The light values are presentation ATTRIBUTES and the dark
+    ones are CSS, so a consumer that ignores the stylesheet (or the media
+    query) still gets a fully-coloured icon rather than an unfilled one.
+  -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      #tile {
+        fill: #dbaf87;
+      }
+      #mark {
+        fill: #2f2015;
+      }
+    }
+  </style>
+  <rect id="tile" width="32" height="32" rx="6.5" fill="#7c4726" />
+  <g id="mark" fill="#f6efe6">
+    <path d="M4.6 9.6 C7.4 6.9 11.8 7.2 15 9.8 L15 25.2 C11.8 22.6 7.4 22.3 4.6 25.0 Z" />
+    <path d="M27.4 9.6 C24.6 6.9 20.2 7.2 17 9.8 L17 25.2 C20.2 22.6 24.6 22.3 27.4 25.0 Z" />
+  </g>
+</svg>
