@@ -4,7 +4,7 @@ Everything here is blocked on a human: an account, a dashboard, a payment, a
 judgment call, or editorial writing. Nothing on this list can be dispatched
 to an agent, and several items block work that otherwise looks finished.
 
-Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, items 1–4 are the last things between this and a verified, fully signed-in personal layer, and item 5 is new from the Wave 7 audit).
+Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, items 1–4 are the last things between this and a verified, fully signed-in personal layer; item 5 is new from the Wave 7 audit and item 6 is done).
 
 Companion to [CHECKLIST.md](./CHECKLIST.md), which tracks the agent-side work.
 Personal planning (career framing, time budget, milestone dates) lives in the
@@ -140,19 +140,18 @@ identity is monospaced — AGENTS.md calls that a deliberate house-style choice
 — so a shared link currently looks like a different product. One font decision
 fixes both.
 
-### 6. `sources` needs a `key` column
+### 6. ~~`sources` needs a `key` column~~ — DONE 2026-09-04
 
-**Why it matters:** the seed input format gives every source a stable `key`
-as its idempotency anchor, but the table has nowhere to store it. URL-less
-sources — books, interviews, exactly the ones a perfumery reference leans on
-— therefore fall back to a per-material identity, so **a book cited by three
-materials becomes three rows**. Fine for synthetic fixtures. Wrong for a
-citation-driven reference, and wrong in a way that only shows up once real
-data lands.
+Decided 2026-09-02, shipped as migration `0003_sources-key` and applied to the
+live database 2026-09-04. Sources now resolve by a global `key`, so a book
+cited by three materials is one row. The re-seed proved both paths on live
+data: URL sources seeded under the old design were adopted by the backfill
+and now carry keys, and a shared key resolved to exactly one row referenced
+by two materials. The one row nothing could identify (the old url-less test
+book) was removed under a referential check across every foreign-key table.
 
-**Decision needed before the real data run.** The fix is a `key text` column
-with a unique index and a one-line change to the seed's source resolution.
-Say the word and it becomes a migration.
+Validation now also rejects one key naming two different documents (same key,
+different `url` or `title`) before any write.
 
 ---
 
@@ -205,6 +204,11 @@ to 8 so the two agree.
 
 ## Known debt (tracked, not blocking)
 
+- **Two different source keys with the same URL** are not caught before
+  writing. The old design merged those by URL; the new one surfaces them as a
+  `sources_url_uniq` violation mid-transaction on the citing material — loud,
+  but not the pre-write validation error every other cross-file rule gives.
+  A small follow-up in `lib/validation/material-data.ts` when it matters.
 - **Every route is dynamically rendered.** The header's `getUser()` reads
   cookies, so `/`, `/login`, `/signup` lost static generation. Wave 4
   mandated the server-side check; this is its price. First item for the
