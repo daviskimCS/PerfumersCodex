@@ -163,17 +163,21 @@ different `url` or `title`) before any write.
 Vercel has `www` as primary and 308-redirects the apex to it. The site
 currently advertises a URL that redirects. Dashboard fix, no code change.
 
-### 8. Decide on the synthetic test materials
+### 8. Synthetic test materials — now behind the gate; prune before launch
 
-Three obviously-fake materials (`Test Material Alpha` / `Beta` / `Gamma`) are
-in the **live** database and publicly visible. They were seeded to verify the
-pipeline and they are what makes the browse pages reviewable.
-
-Clear them whenever you want:
+Four obviously-fake materials (`Test Material Alpha` / `Beta` / `Gamma` /
+`Delta`) are in the **live** database. Since 2026-09-03 they sit behind your
+password gate, so the public sees only the construction page and this is no
+longer urgent — but they must not survive launch. When the real corpus is
+seeded, prune them:
 
 ```bash
-npm run db:seed -- ./scripts/fixtures --prune
+npm run db:seed -- <real-data-dir> --prune
 ```
+
+`--prune` soft-deletes materials absent from the input and refuses to run if
+the input is under half the live corpus without `--force-prune`, so a typo'd
+path cannot empty the database.
 
 ### 9. Make the repo public
 
