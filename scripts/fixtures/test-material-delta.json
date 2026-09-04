@@ -1,0 +1,34 @@
+{
+  "slug": "test-material-delta",
+  "canonical_name": "Test Material Delta",
+  "material_type": "natural",
+  "cas_number": null,
+  "iupac_name": null,
+  "smiles": null,
+  "molecular_formula": null,
+  "molecular_weight": null,
+  "synonyms": [
+    { "name": "Test Common Name Delta", "synonym_type": "common_name" }
+  ],
+  "families": ["test-family"],
+  "sources": [
+    {
+      "key": "test-source-1",
+      "type": "book",
+      "title": "Test Source One (a url-less book)",
+      "url": null,
+      "author": "Test Author",
+      "published_at": "2000-01-01",
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": null
+    }
+  ],
+  "usage_limits": [],
+  "hazards": [{ "hazard_code": "H001", "source_key": "test-source-1" }],
+  "description": null,
+  "usage_guidance": null,
+  "landmark_uses": [],
+  "computed_properties": null,
+  "similarity": [],
+  "odor_predictions": []
+}

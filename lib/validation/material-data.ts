@@ -28,9 +28,12 @@ import { z } from 'zod'
  *
  * - Fact rows carry `source_key`, not `source_id`: a per-file reference into
  *   the material's own `sources` array, each source carrying a maker-chosen
- *   stable `key`. `sources.url` is nullable with only a partial unique index,
- *   so url-less sources (books, interviews) have no natural identity for
- *   idempotent seeding without it. Keys are unique *within a file*.
+ *   stable `key`. `sources.url` is nullable, so url-less sources (books,
+ *   interviews) have no natural identity for idempotent seeding without it.
+ *   Keys are unique within a file and *global* across the set (`sources.key`
+ *   is UNIQUE): the same key in two files names the same document and seeds
+ *   as one row, so the two declarations must agree on `url` and `title` —
+ *   a key naming two different documents is a data error, not a merge.
  * - Cross-row references use slugs (`families`, `similar_slug`,
  *   `parent_slug`), never UUIDs — the input set predates any database ids.
  *
@@ -526,6 +529,12 @@ export function validateMaterialData(
     checkMaterial(filename, material, refs, errors)
   }
 
+  // sources.key is UNIQUE across the whole table, so a key reused across
+  // files seeds as ONE row — which is only right when both files mean the
+  // same document. Disagreement on url or title means one file's citation
+  // would silently be rewritten into the other's, so it fails here, by name.
+  checkSharedSourceKeys(materials, errors)
+
   // similar_slug resolution needs the full slug universe. When any material
   // file failed to parse, its slug is unknown, and flagging every reference
   // to it as dangling would bury the real (structural) error.
@@ -686,6 +695,52 @@ interface ReferenceSets {
   familySlugs: Set<string> | null
   categoryIds: Set<number> | null
   hazardCodes: Set<string> | null
+}
+
+/**
+ * A source key reused across files must name the same document: `url` and
+ * `title` must match the first declaration exactly. Only those two — they are
+ * what identifies a document; `accessed_at`, `author`, `notes` may legitimately
+ * differ between the files' declarations (the seed keeps the last-written).
+ * The error lands on the later file, and names the earlier one.
+ */
+function checkSharedSourceKeys(
+  materials: { filename: string; material: MaterialFile }[],
+  errors: MaterialDataError[]
+): void {
+  const first = new Map<
+    string,
+    { file: string; url: string | null; title: string }
+  >()
+  for (const { filename, material } of materials) {
+    material.sources.forEach((source, index) => {
+      const prior = first.get(source.key)
+      if (prior === undefined) {
+        first.set(source.key, {
+          file: filename,
+          url: source.url,
+          title: source.title,
+        })
+        return
+      }
+      // Same file: checkMaterial has already reported the duplicate.
+      if (prior.file === filename) return
+      if (prior.url !== source.url) {
+        errors.push({
+          file: filename,
+          path: `sources[${index}].url`,
+          message: `source key "${source.key}" is shared with ${prior.file} but the url differs (${JSON.stringify(prior.url)} there) — one key names one document; use a different key for a different source`,
+        })
+      }
+      if (prior.title !== source.title) {
+        errors.push({
+          file: filename,
+          path: `sources[${index}].title`,
+          message: `source key "${source.key}" is shared with ${prior.file} but the title differs (${JSON.stringify(prior.title)} there) — one key names one document; use a different key for a different source`,
+        })
+      }
+    })
+  }
 }
 
 function checkMaterial(

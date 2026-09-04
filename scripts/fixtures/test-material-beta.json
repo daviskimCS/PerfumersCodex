@@ -13,9 +13,9 @@
   "families": ["test-subfamily"],
   "sources": [
     {
-      "key": "test-source-1",
+      "key": "test-source-3",
       "type": "sds",
-      "title": "Test Source Three (keys are per-file: same key as alpha's, different source)",
+      "title": "Test Source Three (its own key: a different document from alpha's)",
       "url": "https://example.com/test-source-3",
       "author": null,
       "published_at": null,
@@ -24,7 +24,7 @@
     }
   ],
   "usage_limits": [],
-  "hazards": [{ "hazard_code": "H001", "source_key": "test-source-1" }],
+  "hazards": [{ "hazard_code": "H001", "source_key": "test-source-3" }],
   "description": null,
   "usage_guidance": null,
   "landmark_uses": [],

@@ -336,6 +336,15 @@ export const sources = pgTable(
   'sources',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    /**
+     * The seed input's maker-chosen stable identity for a source (see
+     * `materialSourceSchema` in lib/validation/material-data.ts). Global, not
+     * per-material: the same key in two material files names the same
+     * document and resolves to this one row. The seed pipeline is the only
+     * writer. Nullable because rows seeded before the column existed
+     * (2026-09-02) carry none until the seed backfills them by url.
+     */
+    key: text('key'),
     type: sourceTypeEnum('type').notNull(),
     /** Nullable — books and interviews have no URL. */
     url: text('url'),
@@ -350,6 +359,9 @@ export const sources = pgTable(
     notes: text('notes'),
   },
   (t) => [
+    // Plain, not partial: Postgres treats NULLs as distinct, so the legacy
+    // null-key rows never collide with each other.
+    uniqueIndex('sources_key_uniq').on(t.key),
     // Partial, not plain: url is nullable, and a plain UNIQUE would still let
     // the seed pipeline accumulate a duplicate source row on every run for the
     // sources that do have URLs.
