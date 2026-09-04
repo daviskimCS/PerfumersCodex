@@ -106,39 +106,31 @@ a password account attaches to that same account rather than creating a
 second one. That is the behaviour you want; it is also worth testing once,
 because it is the kind of thing that surprises people at launch.
 
-### 5. Share cards cannot render Greek letters — pick a font
+### 5. Share-card font — decided 2026-09-04: JetBrains Mono (implementation pending)
 
-**Why it matters:** aromachemical names routinely begin with α-, β-, γ-, and
-**none** of the fonts available to the Open Graph renderer contains those
-glyphs. Measured straight from the font tables, not assumed:
+**What was wrong with the first decision.** IBM Plex Mono was chosen on a
+premise the orchestrator got wrong. Measured with fontTools across v2.5.0,
+v1.1.0 and the variable build: **no IBM Plex Mono build has α β γ δ** — the
+only Greek-block glyph is π, from the "Pi" symbol subset — and IBM's README
+says Greek is a Plex _Sans_ feature. The agent stopped at that gate without
+touching the repo.
 
-| font available to `next/og`         | glyphs | α β γ  |
-| ----------------------------------- | ------ | ------ |
-| Geist Mono, latin subset            | 223    | absent |
-| Geist Mono, latin-ext subset        | 162    | absent |
-| Geist Sans (bundled with `next/og`) | 726    | absent |
+**What the defect actually is.** The cards are probably not showing tofu
+today: `next/og` silently fetches Noto Sans from `fonts.googleapis.com` +
+`fonts.gstatic.com` at request time for any glyph its font lacks (three
+calls, ~350 ms per cold render). Tofu is the _failure_ mode when Google is
+unreachable. So the real problem is a hidden third-party runtime dependency
+on every share-card render — exactly what a self-hosted font removes — and
+Plex Mono would not have touched it. Also measured: Satori's fallback is
+applied **per word**, so a companion face sets the whole Greek-prefixed word
+proportional.
 
-So the first real material whose name starts with a Greek letter renders a
-tofu box in the largest text on its share card — at the moment the project is
-most on display. Today's fixtures are pure ASCII, which is exactly why this is
-invisible now and will not stay invisible.
-
-It needs your decision because it means a **committed font file**, and
-AGENTS.md requires sign-off before adding one. Options, cheapest first:
-
-1. Find a monospaced face with Greek coverage under a redistributable licence
-   (SIL OFL), commit the `.ttf`, load it in the OG routes. This fixes a second
-   problem for free — see below.
-2. Transliterate in the OG route only (α → "alpha-"). That is a lie about the
-   material's name on a citation-driven reference. Not recommended.
-3. Accept tofu on affected materials. Not recommended.
-
-**The second problem option 1 solves:** the cards are currently set in Geist
-**Sans**, not the site's Geist Mono, because `next/og` needs font _data_ and
-the mono face ships only as a woff2 subset Satori cannot parse. The site's
-identity is monospaced — AGENTS.md calls that a deliberate house-style choice
-— so a shared link currently looks like a different product. One font decision
-fixes both.
+**The decision.** JetBrains Mono — OFL, native Greek, weights 100–800, one
+family for site and cards, no Google fetch, no per-word fallback. Same plan
+as before with the family swapped: committed TTFs under `assets/fonts/`,
+`next/font/local` for the site, `fs.readFile` for the OG routes, fontTools
+gate for α β γ δ before anything is committed, and a rendered α on a real
+card as proof.
 
 ### 6. ~~`sources` needs a `key` column~~ — DONE 2026-09-04
 
@@ -208,6 +200,9 @@ to 8 so the two agree.
 
 ## Known debt (tracked, not blocking)
 
+- **Every share-card render may call Google Fonts** until item 5 ships:
+  `next/og` fetches Noto Sans for glyphs its font lacks, at request time.
+  Measured 2026-09-04.
 - **Two different source keys with the same URL** are not caught before
   writing. The old design merged those by URL; the new one surfaces them as a
   `sources_url_uniq` violation mid-transaction on the citing material — loud,
