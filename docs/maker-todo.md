@@ -183,15 +183,63 @@ to 8 so the two agree.
 
 ## 🟢 Scheduled / not yet urgent
 
-| When            | What                                                                                                                                                                                                                                                                                                                                                              |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now, ongoing    | **Author the five hand-cited materials** + `families.json`, `usage-categories.json`, `hazard-codes.json`, and create the `perfumers-codex-data` repo. Format: `lib/validation/material-data.ts`; worked example: `scripts/fixtures/test-material-alpha.json`. Budget 2–3 hrs each. **This is the critical path** — everything else is scaffolding until it lands. |
-| ~end Nov 2026   | IFRA 52nd Amendment notification. Keep stamping "51st" until then; afterwards insert new rows stamped "52nd", never overwrite. Folds into the Week 19 data push.                                                                                                                                                                                                  |
-| Before Week 19a | Review the structure–odor training-data licences (Leffingwell / GoodScents-derived). Never redistribute as project data.                                                                                                                                                                                                                                          |
-| Week 20         | Resend SMTP (the built-in sender is rate-limited to a handful of auth emails per hour — it breaks on launch day), upgrade Supabase to Pro, `hello@perfumerscodex.com` alias.                                                                                                                                                                                      |
-| Anytime         | LinkedIn project paragraph; the cheminformatics and odor-map spikes.                                                                                                                                                                                                                                                                                              |
+| When            | What                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now, ongoing    | **Review the cited material drafts** (below) and author the rest of the five. Format: `lib/validation/material-data.ts`; worked example: `scripts/fixtures/test-material-alpha.json`. The drafts cut the writing time but **not** the reviewing time — every one carries open questions only you can settle. **This is still the critical path.** |
+| ~end Nov 2026   | IFRA 52nd Amendment notification. Keep stamping "51st" until then; afterwards insert new rows stamped "52nd", never overwrite. Folds into the Week 19 data push.                                                                                                                                                                                  |
+| Before Week 19a | Review the structure–odor training-data licences (Leffingwell / GoodScents-derived). Never redistribute as project data.                                                                                                                                                                                                                          |
+| Week 20         | Resend SMTP (the built-in sender is rate-limited to a handful of auth emails per hour — it breaks on launch day), upgrade Supabase to Pro, `hello@perfumerscodex.com` alias.                                                                                                                                                                      |
+| Anytime         | LinkedIn project paragraph; the cheminformatics and odor-map spikes.                                                                                                                                                                                                                                                                              |
 
 ---
+
+## Cited material drafts — awaiting your review
+
+Researched 2026-09-04 into `/Users/daviskim/Desktop/WorkDir/project/perfumers-codex-data`
+(not a git repo yet — creating it, and choosing its licence, is still yours).
+Each material has a `<slug>.json` that validates against `materialFileSchema`
+and a `dossier-<slug>.md` recording every fact with its URL and verbatim
+quote, every fact that was **dropped** with the reasons, everything
+unavailable, and the odor quotes.
+
+**How the drafts were made, so you know what to trust.** Every fact was
+fetched from a primary source and then re-fetched by two independent
+adversarial checkers whose default stance was to refute; a fact needed both
+to confirm it. Anything either one could not confirm was dropped from the
+JSON and recorded in the dossier instead. Nothing was filled in from model
+memory. `description` is `null` in every file — olfactive descriptions are
+yours to write, and the dossiers collect the source quotes to write from.
+
+### Iso E Super — drafted
+
+89 facts verified, 71 dropped. Sources: PubChem CID 108242, IFRA Standard 068
+(OTNE), the IFF safety data sheet, The Good Scents Company. All 11 IFRA
+category limits, 4 GHS codes, 32 synonyms.
+
+The dossier ends with **13 open questions**. Four matter before this is
+publishable:
+
+1. **Subcategory floors.** IFRA splits Categories 5 and 10 into subcategories
+   with different limits, and the table stores one value per category. The
+   draft stores the most restrictive (5D 0.19 %, 10A 2.4 %) with the full
+   breakdown in notes. Safe, but it under-states what a body lotion (5A,
+   5.1 %) or a household spray (10B, 6.6 %) may carry. The alternative is a
+   schema change. **Your call, and it applies to every material.**
+2. **Amendment label.** The Standard is Amendment 49, current in the 51st
+   Amendment index. The draft stamps "49th". Whichever you choose, the
+   convention has to hold across all materials, because the unique key is
+   (category, amendment).
+3. **Category 12 is unrepresentable.** `usage_categories` runs 1–11, and
+   OTNE's Standard says "No Restriction" for 12, so nothing is lost here. It
+   will matter for a material whose Standard restricts Category 12.
+4. **H401.** Stored from the IFF SDS; ECHA's harmonised classification does
+   not carry it. Keep it, or restrict hazards to the CLP set?
+
+Also: the family is a placeholder (`proposed-iso-e-super-family` — every
+source says woody, with amber/ambergris), and the manufacturer's page was
+unreachable to the checkers, so its 16 facts were all dropped. If you can
+open iff.com yourself, the typical use level "Up to 10 %" and the olfactive
+description are worth promoting by hand.
 
 ## Known debt (tracked, not blocking)
 
