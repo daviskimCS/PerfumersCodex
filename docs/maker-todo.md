@@ -195,51 +195,161 @@ to 8 so the two agree.
 
 ## Cited material drafts — awaiting your review
 
-Researched 2026-09-04 into `/Users/daviskim/Desktop/WorkDir/project/perfumers-codex-data`
-(not a git repo yet — creating it, and choosing its licence, is still yours).
-Each material has a `<slug>.json` that validates against `materialFileSchema`
-and a `dossier-<slug>.md` recording every fact with its URL and verbatim
-quote, every fact that was **dropped** with the reasons, everything
-unavailable, and the odor quotes.
+Researched 2026-09-04/05 into `/Users/daviskim/Desktop/WorkDir/project/perfumers-codex-data`
+(**not a git repo yet** — creating it, and choosing its licence, is still
+yours; until then these files are unversioned and an accidental overwrite is
+unrecoverable). Each material has a `<slug>.json` that validates against
+`materialFileSchema` and a `dossier-<slug>.md` recording every fact with its
+URL and verbatim quote, every **dropped** fact with the refuters' reasons,
+everything unavailable, and the odor quotes.
+
+The whole set passes the seed's validation pass: _"seed: validated 3
+materials, 3 families, 11 usage categories, 5 hazard codes"_.
 
 **How the drafts were made, so you know what to trust.** Every fact was
-fetched from a primary source and then re-fetched by two independent
-adversarial checkers whose default stance was to refute; a fact needed both
-to confirm it. Anything either one could not confirm was dropped from the
-JSON and recorded in the dossier instead. Nothing was filled in from model
-memory. `description` is `null` in every file — olfactive descriptions are
-yours to write, and the dossiers collect the source quotes to write from.
+fetched from a primary source, then re-fetched by two independent adversarial
+checkers whose default stance was to refute; a fact needed **both** to
+confirm it. Anything either could not confirm was dropped from the JSON and
+recorded in the dossier instead. Nothing came from model memory. `description`
+is `null` in all three — olfactive descriptions are yours, and the dossiers
+collect the source quotes to write from.
 
-### Iso E Super — drafted
+| Material    | CAS         | Verified | Dropped | IFRA                            | Hazards                     | Synonyms |
+| ----------- | ----------- | -------- | ------- | ------------------------------- | --------------------------- | -------- |
+| Iso E Super | 54464-57-2  | 89       | 71      | Standard 068, all 11 categories | H315 H317 H401 H410         | 32       |
+| Javanol     | 198404-98-7 | 87       | 4       | **no Standard** (verified)      | H400 H410                   | 10       |
+| Civetone    | 542-46-1    | 80       | 9       | **no Standard** (verified)      | H315 (minority — see below) | 21       |
 
-89 facts verified, 71 dropped. Sources: PubChem CID 108242, IFRA Standard 068
-(OTNE), the IFF safety data sheet, The Good Scents Company. All 11 IFRA
-category limits, 4 GHS codes, 32 synonyms.
+RDKit 2025.03.4 filled `computed_properties` and pairwise `similarity`.
+Sanity checks pass: heavy-atom counts 17/16/18 match the formulae, and TPSA
+separates the two ketones (17.07) from Javanol's alcohol (20.23). Civetone's
+Crippen logP 5.59 sits below TGSC's published 6.31 — that is a method
+difference, not a wrong structure.
 
-The dossier ends with **13 open questions**. Four matter before this is
-publishable:
+---
+
+### 🔴 Two blocking defects the drafts exposed in the app
+
+Both are **app defects, not data defects**, and neither can be fixed by
+editing a JSON file. I confirmed both in the code.
+
+**1. A verified IFRA absence is indistinguishable from unfinished work.**
+Javanol and Civetone genuinely have no IFRA Standard — established by
+searching the complete 51st-Amendment index and showing the alphabetical
+neighbourhood where an entry would fall. The only honest way to record that
+today is `usage_limits: []`, and `components/material/safety-panel.tsx:76`
+renders the empty case as _"No IFRA limits recorded yet … None have been
+entered for this material."_ So the page tells a perfumer we did not do the
+work, when in fact we did it and the answer is "unrestricted". That is the
+silently-missing failure AGENTS.md forbids, and for safety data it is the
+wrong way round: it under-claims where the truth is permissive.
+
+There is nowhere to put the fact. Neither the file format nor the schema has
+a "no Standard, checked against amendment N" field; it survives only as prose
+in `sources.notes`, which `lib/types.ts` never exposes to the UI. **This
+needs a schema decision before more materials are authored** — two of the
+first three already hit it.
+
+**2. Identity facts publish uncited, and most sources never reach the page.**
+`cas_number`, `iupac_name`, `smiles`, `molecular_formula`, `molecular_weight`,
+`material_type` and every synonym carry no `source_key` in the file format and
+no `source_id` column in `db/schema.ts`. And `lib/db/materials.ts:419` builds
+the page's citation list only from sourceId-bearing rows — its own comment
+says _"sources referenced by no surviving row never appear."_
+
+The result on the live page: **Iso E Super would show 2 of its 4 sources.**
+PubChem and The Good Scents Company both vanish, taking the citation for the
+CAS number and all 32 synonyms with them. Civetone would show 1 of 5, Javanol
+2 of 5. This directly contradicts AGENTS.md: _"Every fact-bearing row in
+materials data has a `source_id`. Non-nullable."_ It holds for the tables that
+have the column; the identity fields never got one.
+
+---
+
+### 🟡 The recurring theme: verified facts with nowhere to live
+
+All three materials turned up strong, well-cited data the schema cannot hold.
+This is the thing worth settling **before** you author the remaining two,
+because retrofitting is far more expensive than deciding now:
+
+- **Physical properties** — melting/boiling point, flash point, refractive
+  index, specific gravity, supplier logP.
+- **Registry identifiers** — FEMA, JECFA, EC, UNII, CoE numbers.
+- **Substantivity** — Civetone's _400 hours at 100 %_, Javanol's _"1 month +"_
+  on a blotter. Exactly what a perfumer opens a reference to find. The
+  schema's `tenacity` is a four-value enum for your judgment, not a place for
+  a supplier's measured figure.
+- **Non-IFRA recommended maxima** — TGSC recommends Civetone _up to 0.1 % in
+  the concentrate_. `usage_limits` is for IFRA rows; putting a ceiling in
+  `usage_guidance.typical_pct_max` would render a maximum as a typical dose
+  (the refuters rejected exactly that). As drafted, the page shows **no usage
+  figure at all** for a material that has published guidance.
+
+### Per-material decisions
+
+**Iso E Super** — 13 open questions; four matter before publishing:
 
 1. **Subcategory floors.** IFRA splits Categories 5 and 10 into subcategories
-   with different limits, and the table stores one value per category. The
-   draft stores the most restrictive (5D 0.19 %, 10A 2.4 %) with the full
-   breakdown in notes. Safe, but it under-states what a body lotion (5A,
-   5.1 %) or a household spray (10B, 6.6 %) may carry. The alternative is a
-   schema change. **Your call, and it applies to every material.**
+   with different limits; the table holds one value per category. The draft
+   stores the most restrictive (5D 0.19 %, 10A 2.4 %) with the breakdown in
+   notes, which under-states what a body lotion (5A, 5.1 %) or a household
+   spray (10B, 6.6 %) may carry. **Sets a precedent for every material.**
 2. **Amendment label.** The Standard is Amendment 49, current in the 51st
-   Amendment index. The draft stamps "49th". Whichever you choose, the
-   convention has to hold across all materials, because the unique key is
-   (category, amendment).
-3. **Category 12 is unrepresentable.** `usage_categories` runs 1–11, and
-   OTNE's Standard says "No Restriction" for 12, so nothing is lost here. It
-   will matter for a material whose Standard restricts Category 12.
-4. **H401.** Stored from the IFF SDS; ECHA's harmonised classification does
-   not carry it. Keep it, or restrict hazards to the CLP set?
+   index; the draft stamps "49th". The unique key is (category, amendment), so
+   one convention must hold everywhere.
+3. **Category 12 is unrepresentable** (`usage_categories` runs 1–11). Harmless
+   here — OTNE's Category 12 is "No Restriction" — but not for the next
+   material.
+4. **H401** is on the IFF SDS but not in ECHA's harmonised classification.
 
-Also: the family is a placeholder (`proposed-iso-e-super-family` — every
-source says woody, with amber/ambergris), and the manufacturer's page was
-unreachable to the checkers, so its 16 facts were all dropped. If you can
-open iff.com yourself, the typical use level "Up to 10 %" and the olfactive
-description are worth promoting by hand.
+The manufacturer's page was unreachable to the checkers, so all 16 of its
+facts were dropped. If you can open iff.com yourself, the typical use level
+_"Up to 10 %"_ and the olfactive description are worth promoting by hand.
+
+**Javanol** — 9 open questions. Is **"Javanol Super"** a synonym or a separate
+material? Givaudan gives it the same CAS and chemical name but a _different
+olfactive profile_, and the schema has no concept of commercial grade. Also:
+no ECHA corroboration was reachable (two 403s and a 502), so the hazards rest
+on two distributor SDSs that agree with each other — worth one manual check.
+The stored SMILES carries no stereochemistry, so the similarity numbers
+describe a diastereomer mixture; the page should not imply otherwise.
+
+**Civetone** — 7 open questions, two of them genuinely interesting:
+
+1. **`material_type: "synthetic"` — confirm.** It occurs in African civet, but
+   the commercial article is dsm-firmenich's synthetic molecule. `natural`
+   would imply a civet-derived material nobody sells. The dossier calls this
+   "the one uncomfortable call". Related, and worth your judgment: the
+   animal-welfare story behind why the synthetic replaced the tincture is
+   arguably the most interesting thing about this material, and a reference a
+   perfumer respects would acknowledge it.
+2. **H315 is a self-notified minority position** — 80 % of ECHA notifiers say
+   "not classified", 20 % say skin irritant, and TGSC's OSHA section says
+   "None found". The draft stores it, erring toward the warning, but rendering
+   a flat _"H315 — causes skin irritation"_ would present a contested minority
+   view as settled fact. Other materials will split the same way, so this may
+   want a notifier-confidence column rather than a per-material fudge.
+
+Also unresolved: whether commercial Civettone is a Z/E mixture and at what
+ratio. No source gives one, so none was invented; the JSON stores the pure Z
+structure.
+
+### Before any of this goes live
+
+- **Re-verify both IFRA absences against the current amendment.** They are
+  stamped to the 51st (notified 2023-06-30). The 52nd's consultation closed
+  12 June 2026 but was not notified as of this research. A material with no
+  Standard today can acquire one, and the page asserts an absence.
+- **Re-stamp `verified_at` / `accessed_at`** — they are research fetch times.
+- **Replace the three placeholder families** (`proposed-*-family`).
+- **Decide the similarity floor.** All three pairs are written, including
+  Civetone↔Javanol at 0.0227, which is noise and will render as a "similar
+  material" on both pages. Fine at three materials, wrong at three hundred.
+- **Fingerprint provenance.** These Tanimotos come from RDKit.js's folded
+  2048-bit Morgan fingerprints. AGENTS.md makes the Python pipeline in
+  `perfumers-codex-data` canonical; if it uses different parameters it will
+  produce different numbers under the same `rdkit_version` stamp, which will
+  not disambiguate them.
 
 ## Known debt (tracked, not blocking)
 
