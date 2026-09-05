@@ -7,6 +7,11 @@ and [tech-stack.md](./tech-stack.md); this file is the work queue.
 
 **Orchestrator-owned. Subagents read it; only the orchestrator ticks boxes.**
 
+> **Updated Sep 5, 2026:** Phases 1–3 and Wave 7 are complete and merged
+> (PRs #1–#9). The note below is history — `db/schema.ts` has been the real
+> schema since P1-A. What remains of v1 scope is **Phase 4** at the end of
+> this file.
+
 > **Updated Aug 26, 2026** after reconciling the main checkout's uncommitted
 > June work onto this branch. Week 1 scaffolding (Supabase clients + proxy
 > middleware, pooled Drizzle client, `drizzle.config.ts`, `.env.example`,
@@ -163,8 +168,10 @@ with P2-E), any `lib/db/` query code.
   in `lib/types.ts`) and carries the evidence fields: exact-synonym flag,
   trigram similarity, `ts_rank`, `updatedAt`.
 - `gold-set.ts` exports a typed `{ query, expectSlug, maxRank }[]` seeded with the
-  five Week 5 cases: `"iso e"`, `"OTNE"`, `"54464-57-2"`, `"ambermax"`,
-  `"amber wood"` — each expecting `iso-e-super`.
+  five Week 5 cases: `"iso e"`, `"OTNE"`, `"54464-57-2"`, `"timbersilk"`,
+  `"amber wood"` — each expecting `iso-e-super`. (The trade-name case was
+  `"ambermax"` until 2026-09-05, when cited research showed Ambermax is a
+  different Givaudan material; `e17d708`.)
 - Tests iterate the gold set against synthetic candidates and assert expected
   rank; plus edge cases for empty query, whitespace-only, and mixed case.
 - Zero database imports anywhere in these files.
@@ -339,7 +346,8 @@ settles, and the corpus is still three synthetic materials — tuning
 
 ## Suggested wave grouping
 
-File sets verified disjoint.
+_Historical — every wave below was dispatched and merged (PRs #3–#8); kept as
+the record of how the work was cut._ File sets verified disjoint.
 
 | Wave | Items                        | Why together                                                                                                                                                                                                            |
 | ---- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -348,3 +356,61 @@ File sets verified disjoint.
 | 3    | **P1-E**, **P1-F**, **P2-E** | Prepared and reviewed — see [waves/wave-3.md](./waves/wave-3.md) for entry criteria, prompts, and the partial-dispatch rule (P1-E can go early)                                                                         |
 | 4    | **P1-G**, **P2-F**, **P2-G** | Prepared — see [waves/wave-4.md](./waves/wave-4.md). Gated on Wave 3 + the `@rdkit/rdkit` install decision                                                                                                              |
 | 5    | **P2-H**, **P3-A**           | Prepared — see [waves/wave-5.md](./waves/wave-5.md). Gated on Wave 4; P3-A additionally on RLS test accounts. P3-B/P3-C follow in Wave 6 — P3-B shares the detail page with P3-A; P3-C is held there as a pacing choice |
+
+## Phase 4 — what remains of v1 scope _(added 2026-09-05)_
+
+Phases 1–3 and Wave 7 are closed. These are the v1 items in
+[scope.md](./scope.md) that no phase has claimed, plus the defects the first
+cited drafts exposed. Ordered by consequence, not effort; the top three are
+the ones that cost the most left undone.
+
+### P4-A — Schema round for the cited drafts · **BLOCKED: maker decisions**
+
+- [ ] A representable "no IFRA Standard, checked against amendment N" —
+      Javanol and Civetone today render as unresearched
+      (`components/material/safety-panel.tsx`).
+- [ ] `source_id` on identity fields and synonyms, and
+      `lib/db/materials.ts`'s citation walk including them — Iso E Super
+      would show 2 of its 4 sources.
+- [ ] Wherever the maker decides physical properties, registry identifiers,
+      substantivity and non-IFRA maxima live.
+
+Waits on the decisions in [database-schema.md](./database-schema.md#open-questions-from-the-first-cited-drafts-2026-09-05).
+Migration + seed file format + `lib/types.ts` (orchestrator) + safety panel +
+detail page. One wave; file sets overlap, so sequential.
+
+### P4-B — Seed the real corpus · **BLOCKED: P4-A, maker review of the drafts**
+
+- [ ] `npm run db:seed -- <perfumers-codex-data> --prune` replaces the four
+      synthetic materials. First real content on the live detail page — the
+      trigger for making the repo public (maker-todo item 9).
+
+### P4-C — Rate limiting · **BLOCKED: maker (Upstash via the Vercel Marketplace)**
+
+- [ ] Signup, login, search, note saves, account mutations — the Week 18 pass
+      deferred since Wave 4. Must land before public signup.
+
+### P4-D — Substructure / chemical-class filter · **READY**
+
+- [ ] Client-side over the corpus's SMILES with the already-lazy RDKit.js
+      (scope.md; cheminformatics.md §1). Buildable against fixtures now; only
+      worth looking at once P4-B lands.
+
+### P4-E — Privacy policy, terms of service, `/blog` MDX route · **READY** _(copy is MAKER)_
+
+### P4-F — Admin dashboard `/admin` + submit-a-correction form · **READY**
+
+Locked to the maker's email; reads `search_queries`. Worth little until real
+users produce queries.
+
+### P4-G — Caching pass · **BLOCKED: P4-B**
+
+Deferred since Wave 4 for the same reason it is still deferred: tuning
+`cacheLife` against fixtures is tuning against noise.
+
+### P4-H — Structure–odor experiment · **BLOCKED: maker licence review**
+
+Lives in `perfumers-codex-data`; the app side is the labelled module over
+`odor_predictions`, which already exists in the schema.
+
+### P4-I — Sentry at launch · **BLOCKED: maker account**
