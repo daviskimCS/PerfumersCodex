@@ -1,6 +1,6 @@
 # Wave 6 — The personal layer closes
 
-**Status: READY — dispatched 2026-09-02.** Orchestrator-owned; subagents read
+**Status: COMPLETE — dispatched 2026-09-02, merged 2026-09-03 (PR #8).** Orchestrator-owned; subagents read
 it, only the orchestrator edits it. House rules, protocol and standing
 constraints are [wave-3.md](./wave-3.md)'s, carried verbatim into every
 prompt, plus wave-4's rate-limiting and caching deferral records, which

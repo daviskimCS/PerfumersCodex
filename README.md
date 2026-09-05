@@ -25,16 +25,18 @@ cp .env.example .env.local   # fill in Supabase project values
 npm run dev
 ```
 
-| Script                | Purpose                                |
-| --------------------- | -------------------------------------- |
-| `npm run dev`         | Dev server (Turbopack)                 |
-| `npm run typecheck`   | TypeScript, no emit                    |
-| `npm run lint`        | ESLint                                 |
-| `npm run test`        | Vitest unit tests                      |
-| `npm run db:generate` | Generate Drizzle migration from schema |
-| `npm run db:migrate`  | Apply migrations (uses `DIRECT_URL`)   |
+| Script                     | Purpose                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run dev`              | Dev server (Turbopack)                                                                     |
+| `npm run typecheck`        | TypeScript, no emit                                                                        |
+| `npm run lint`             | ESLint                                                                                     |
+| `npm run test`             | Vitest unit tests                                                                          |
+| `npm run db:generate`      | Generate Drizzle migration from schema                                                     |
+| `npm run db:migrate`       | Apply migrations (uses `DIRECT_URL`)                                                       |
+| `npm run db:seed -- <dir>` | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input |
+| `npm run db:studio`        | Drizzle Studio against the direct connection                                               |
 
-Note: the app runtime uses the pooled connection (`DATABASE_URL`, port 6543); migrations use the direct connection (`DIRECT_URL`, port 5432). Both are required in `.env.local`.
+Note: the app runtime uses the pooled connection (`DATABASE_URL`, port 6543); migrations use the direct connection (`DIRECT_URL`, port 5432). Both are required in `.env.local`. `SITE_GATE_PASSWORD` turns on the pre-launch password gate; leave it unset locally — unset means off.
 
 ## Licensing
 

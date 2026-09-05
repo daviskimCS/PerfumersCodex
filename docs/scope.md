@@ -2,6 +2,14 @@
 
 ## V1 — what ships at launch (Month 6)
 
+> **Status 2026-09-05.** Built and live behind the pre-launch gate: search,
+> material detail, browse, families, bookmarks, notes, account management,
+> Google sign-in (dormant until configured), share cards, the seed pipeline.
+> Not yet built from the list below: the substructure / chemical-class
+> filter, the structure–odor experiment, the admin dashboard, the correction
+> form, privacy/terms pages, the blog, rate limiting, Sentry. Tracked as
+> Phase 4 in [CHECKLIST.md](./CHECKLIST.md).
+
 ### Public, anonymous browsing
 
 - Search by name, synonym, CAS number, IUPAC name
@@ -38,7 +46,7 @@
 - Public GitHub repo
 - Custom .com domain, HTTPS
 - Privacy policy, terms of service
-- Sentry error tracking, Plausible analytics
+- Sentry error tracking (added at launch); Vercel Web Analytics (shipped Aug 2026 — Plausible is the fallback, see tech-stack.md)
 - 35–50 hand-curated materials
 
 ## V2 — deferred features (post-launch, no commitment yet)

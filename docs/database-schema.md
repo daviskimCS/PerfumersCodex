@@ -7,6 +7,7 @@
 - **Soft deletes on editorial content.** `deleted_at` columns on materials and descriptions; never lose history.
 - **Constraints liberally applied.** NOT NULL, FOREIGN KEY, CHECK constraints are documentation that the database enforces.
 - **Timestamps everywhere.** `created_at` and `updated_at` on every mutable table.
+- **Row-Level Security on every table, deny-by-default** (migration `0002`, 2026-08-30). Supabase grants `anon` full DML over PostgREST, so a table without RLS is world-writable the moment the site is live. Editorial tables carry no policies — the app reads them through Drizzle, which connects as `postgres` and bypasses RLS; user tables carry owner-scoped policies. Never touch user tables through Drizzle.
 
 ## Core tables
 
@@ -116,18 +117,19 @@ Join table.
 
 Citations.
 
-| Column       | Type                 | Notes                                                                 |
-| ------------ | -------------------- | --------------------------------------------------------------------- |
-| id           | uuid PK              |                                                                       |
-| type         | enum NOT NULL        | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other |
-| url          | text NULLABLE        |                                                                       |
-| title        | text NOT NULL        |                                                                       |
-| author       | text NULLABLE        |                                                                       |
-| published_at | date NULLABLE        |                                                                       |
-| accessed_at  | timestamptz NOT NULL |                                                                       |
-| notes        | text NULLABLE        |                                                                       |
+| Column       | Type                                       | Notes                                                                                                                                                                                                                         |
+| ------------ | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id           | uuid PK                                    |                                                                                                                                                                                                                               |
+| key          | text NULLABLE, UNIQUE (`sources_key_uniq`) | Global identity from the seed input, so one document cited by many materials is one row (migration `0003`, 2026-09-04). Every live row is keyed; the column is nullable only so legacy rows could be adopted by the backfill. |
+| type         | enum NOT NULL                              | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other                                                                                                                                                         |
+| url          | text NULLABLE                              |                                                                                                                                                                                                                               |
+| title        | text NOT NULL                              |                                                                                                                                                                                                                               |
+| author       | text NULLABLE                              |                                                                                                                                                                                                                               |
+| published_at | date NULLABLE                              |                                                                                                                                                                                                                               |
+| accessed_at  | timestamptz NOT NULL                       |                                                                                                                                                                                                                               |
+| notes        | text NULLABLE                              |                                                                                                                                                                                                                               |
 
-Partial unique index: `UNIQUE (url) WHERE url IS NOT NULL` — otherwise the seed pipeline accumulates duplicate source rows every run.
+Sources resolve by `key` first. The partial unique index `UNIQUE (url) WHERE url IS NOT NULL` remains as the secondary guard — without it the seed pipeline accumulated duplicate rows every run.
 
 ### `material_descriptions`
 
@@ -358,3 +360,33 @@ These rules belong in `lib/search.ts` with Vitest cases for each. Log every quer
 - **Why text array for `key_facets` instead of join table:** facets are tags, not entities. They don't need their own lifecycle. PostgreSQL arrays + GIN indexing handle this cleanly.
 - **Why predictions live apart from descriptions:** the editorial layer is the product's trust anchor. Model output carries its own provenance (`model_version`), renders only as labeled-experimental, and can be regenerated or withdrawn wholesale without touching human-written content.
 - **Why computed properties have `rdkit_version` instead of `source_id`:** they aren't cited facts, they're deterministic recomputations — the honest provenance is the exact tool that produced them.
+
+## Open questions from the first cited drafts (2026-09-05)
+
+The first three real materials (Iso E Super, Javanol, Civetone — see
+[maker-todo.md](./maker-todo.md)) produced verified facts this schema cannot
+hold, and two of them are defects on the live page. Decide these before the
+corpus grows; each sets a convention every later material follows.
+
+1. **A verified IFRA absence.** Javanol and Civetone have no Standard, checked
+   against the complete 51st-Amendment index. `usage_limits` with zero rows is
+   the only representation, and the safety panel renders it as "none entered
+   yet". Needs a field for "no Standard, checked against amendment N".
+2. **Identity facts have no `source_id`.** `cas_number`, `iupac_name`,
+   `smiles`, `molecular_formula`, `molecular_weight` and `material_synonyms`
+   are the exception to the non-nullable-citation principle above, and the
+   detail page's citation list is built only from `source_id`-bearing rows —
+   so PubChem and TGSC vanish from Iso E Super's sources.
+3. **IFRA subcategories.** Categories 5 and 10 split into subcategories with
+   different limits; the table stores one value per category. Storing the
+   most restrictive under-states what a body lotion or a spray may carry.
+   `usage_categories` also stops at 11, so Category 12 is unrepresentable.
+4. **Where verified physical properties, registry identifiers (FEMA, JECFA,
+   EC, UNII), supplier substantivity figures and non-IFRA recommended maxima
+   live.** All three materials produced them; all are parked in source
+   `notes`.
+5. **Minority GHS classifications.** Civetone's H315 is a 20 % self-notified
+   position; `material_hazards` has no way to say so.
+6. **Amendment label convention** for `ifra_amendment_version` — the
+   Standard's own amendment, or the index it is current in. The unique key
+   is (category, amendment), so one convention must hold.

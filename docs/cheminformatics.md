@@ -27,6 +27,13 @@ Split of labor: RDKit (Python) computes in `perfumers-codex-data`; RDKit.js
 renders and filters in the browser. The WASM bundle is heavy — it is
 lazy-loaded and kept out of the critical path (Lighthouse >90 stands).
 
+The first three cited drafts (2026-09-05) were computed with RDKit.js
+2025.03.4 in Node as a stopgap — Crippen logP, TPSA, heavy atoms, and
+Tanimoto over folded 2048-bit Morgan fingerprints. When the Python pipeline
+exists, regenerate from it and record the fingerprint parameters beside
+`rdkit_version`; the version stamp alone does not distinguish two fingerprint
+configurations.
+
 ## 2. Structure–odor experiment — committed for v1
 
 A fingerprint → odor-descriptor classifier, trained on public labeled

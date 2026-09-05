@@ -27,7 +27,7 @@ This separation also matters for the open-source story: code + data can be open-
 
 ### IFRA Standards (safety/usage limits)
 
-- The 51st Amendment is the current notified standard (still true as of June 2026)
+- The 51st Amendment is the current notified standard (still true as of September 2026: the 52nd's consultation closed 12 June 2026 and it had not been notified when the first three materials were cited on 2026-09-04)
 - **Heads-up — 52nd Amendment timing collides with launch.** The 52nd Amendment public consultation ran Dec 2025 – June 2026; formal notification is expected late 2026, i.e. right around this project's Month-6 launch. It proposes ~51 new Restriction Standards, revises 18 existing ones, and consolidates the furocoumarin policy. Consequences: (1) the schema's `ifra_amendment_version` + `verified_at` design is not optional polish — it is load-bearing; (2) plan a re-verification pass over all entered limits as the _first post-launch maintenance task_ (insert new rows stamped "52nd", never overwrite "51st" rows); (3) display the amendment version prominently on every safety tab so users know what they're reading
 - Standards themselves are publicly readable as PDFs per material on IFRA's site
 - They are copyrighted; IFRA enforces against republication

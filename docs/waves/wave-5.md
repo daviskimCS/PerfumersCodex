@@ -1,6 +1,6 @@
 # Wave 5 — Browse the corpus, own your shelf
 
-**Status: REVIEWED — dispatch when entry criteria clear.** Written and
+**Status: COMPLETE — merged 2026-09-02 (PR #7).** Written and
 independently reviewed 2026-08-27 (verdict: dispatch after fixes — all
 findings applied). Orchestrator-owned. House rules, protocol, and standing
 constraints are those of [wave-3.md](./wave-3.md), carried verbatim into

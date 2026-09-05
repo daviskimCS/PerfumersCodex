@@ -1,6 +1,6 @@
 # Wave 4 — Data in, search out, detail page real
 
-**Status: REVIEWED — dispatch when entry criteria clear.** Written and
+**Status: COMPLETE — merged 2026-09-02 (PR #7).** Written and
 independently reviewed 2026-08-27 (verdict: dispatch after fixes — all
 findings applied). Orchestrator-owned; subagents read it, only the
 orchestrator edits it. House rules, protocol, and the standing constraints
