@@ -27,7 +27,7 @@
      TYPEFACES
 
      Monospaced throughout (Aug 2026). Every role — display, body, UI — uses
-     Geist Mono; `mono` stays as the semantic name for data that is
+     JetBrains Mono; `mono` stays as the semantic name for data that is
      *inherently* monospaced (CAS numbers, SMILES, molecular formulae), so
      call sites keep saying what they mean even while the faces coincide.
 
@@ -37,17 +37,29 @@
      rather than an article. It is also a deliberate, uncommon choice for a
      content site, which is the house style (see AGENTS.md).
 
+     JetBrains Mono (Sep 2026, replacing Geist Mono) because it carries
+     Greek natively. α-ionone, β-caryophyllene, γ-undecalactone, δ-damascone
+     are everyday names in this corpus, and Geist Mono has no Greek at all —
+     the browser set each such letter from whatever fallback face it found.
+     It is self-hosted from assets/fonts/jetbrains-mono (OFL-1.1) through
+     next/font/local in app/layout.tsx, and the Open Graph cards render from
+     the same release, so site and share card are one family.
+
      PREVIOUS STACKS, kept so this is one edit to undo:
 
        --font-display (system serif — no webfont was ever wired):
          ui-serif, 'Iowan Old Style', 'Charter', 'Source Serif 4', Georgia,
          'Times New Roman', serif
-       --font-sans (Geist Sans, still loaded by next/font in layout.tsx):
+       --font-sans (Geist Sans, when next/font/google loaded it in layout.tsx):
          var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui,
          -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+       --font-mono (Geist Mono, likewise):
+         var(--font-geist-mono, 'Geist Mono'), ui-monospace, 'SF Mono',
+         SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace
 
-     Geist Sans remains loaded in app/layout.tsx and `--font-sans-alt` below
-     still points at it, so reverting is: swap the two values back.
+     Neither Geist face is loaded any more — nothing used the sans, and the
+     mono is replaced — so reverting means restoring the `next/font/google`
+     imports in app/layout.tsx as well as swapping the values back.
 
      Always reference these via the font-display / font-sans / font-mono
      utilities; never name a family at a call site.
@@ -57,19 +69,13 @@
      drop the entire stack and the UI would silently render in the browser's
      default font. */
   --font-mono:
-    var(--font-geist-mono, 'Geist Mono'), ui-monospace, 'SF Mono',
+    var(--font-jetbrains-mono, 'JetBrains Mono'), ui-monospace, 'SF Mono',
     SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Display and body both resolve to the mono stack. Named separately so the
      roles stay meaningful and a future change can split them again. */
   --font-display: var(--font-mono);
   --font-sans: var(--font-mono);
-
-  /* Geist Sans, still loaded and available for anything that needs
-     proportional type (long-form prose, if it ever earns an exception). */
-  --font-sans-alt:
-    var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, -apple-system,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   --font-heading: var(--font-display);
 

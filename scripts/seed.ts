@@ -25,15 +25,17 @@
  *
  * Four decisions worth knowing about:
  *
- * - **Source identity.** `sources` has no `key` column, so the input's stable
- *   per-file `key` has to become identity some other way. Sources WITH a url
- *   are keyed by url — that is exactly what the partial unique index
- *   `sources_url_uniq` exists for, and it also lets two materials cite one
- *   document without duplicating the row. Sources WITHOUT a url (books,
- *   interviews) get a deterministic UUIDv5 derived from
- *   `<material slug>\0<source key>`, so the same input always addresses the
- *   same row. Keys are per-file (two materials may both use "ifra-51" for
- *   different documents), hence the material slug in the derivation.
+ * - **Source identity is the input's `key`, globally** (maker decision,
+ *   2026-09-02, `sources.key` + `sources_key_uniq`). The same key in two
+ *   material files names the same document and resolves to ONE row — a book
+ *   cited by three materials is one row, not three, which is what a
+ *   citation-driven reference needs. `writeSources` resolves each source in
+ *   order: a row with this key → update it; else a row with this url and no
+ *   key → adopt it (the one-time backfill for rows seeded before the column
+ *   existed, when url was the only identity); else insert. Before any of that
+ *   runs, validateMaterialData has proved every reuse of a key across files
+ *   agrees on url and title, so the update never quietly turns one document
+ *   into another.
  *   Sources are never deleted: dropping a citation from the input leaves an
  *   unreferenced `sources` row behind, which is deliberate — deleting one
  *   would race the FKs of every other material that might cite it, and an
@@ -63,7 +65,6 @@
  * user-owned table. The seed never touches them.
  */
 
-import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
@@ -247,35 +248,6 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
-/**
- * RFC 4122 §4.3 name-based UUID (SHA-1). Node ships no v5 generator and this
- * is not worth a dependency. The namespace is an arbitrary fixed constant —
- * its only job is to keep these ids from colliding with anything else.
- */
-const SOURCE_NAMESPACE = '6f3b8b4e-2a1d-4f7c-9c2e-5d0a1b6e8f34'
-
-function uuidV5(name: string, namespace: string): string {
-  const digest = createHash('sha1')
-    .update(Buffer.from(namespace.replace(/-/g, ''), 'hex'))
-    .update(Buffer.from(name, 'utf8'))
-    .digest()
-  digest[6] = (digest[6] & 0x0f) | 0x50 // version 5
-  digest[8] = (digest[8] & 0x3f) | 0x80 // RFC 4122 variant
-  const hex = digest.subarray(0, 16).toString('hex')
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    hex.slice(12, 16),
-    hex.slice(16, 20),
-    hex.slice(20, 32),
-  ].join('-')
-}
-
-/** Stable id for a url-less source. Keys are per-file, so the slug is in it. */
-function urllessSourceId(materialSlug: string, sourceKey: string): string {
-  return uuidV5(`${materialSlug} ${sourceKey}`, SOURCE_NAMESPACE)
-}
-
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 /* -------------------------------------------------------------------------
@@ -366,10 +338,26 @@ async function writeHazardCodes(records: HazardCodeRecord[]): Promise<void> {
  * Sources
  * ---------------------------------------------------------------------- */
 
-/** key → source id, for the material's fact rows to point at. */
+/**
+ * key → source id, for the material's fact rows to point at.
+ *
+ * Keys are global (see the header): a key another material already seeded
+ * resolves to that material's row, so a shared document is one row however
+ * many materials cite it. Three branches, tried in order:
+ *
+ *   (a) a row with this key exists → update its mutable fields, use it;
+ *   (b) else, if the source has a url and a row with that url has no key →
+ *       adopt it: set the key, update the fields, use it. This is the
+ *       one-time backfill for rows seeded before `sources.key` existed;
+ *       once every legacy row has been adopted it never fires again;
+ *   (c) else insert, with the key.
+ *
+ * (b) is the only branch that can pair a key with a pre-existing row, and it
+ * refuses rows that already carry a key — a url that has moved under another
+ * key surfaces as a `sources_url_uniq` violation, loudly, not as a merge.
+ */
 async function writeSources(
   tx: Transaction,
-  materialSlug: string,
   records: MaterialSourceRecord[]
 ): Promise<Map<string, string>> {
   const idByKey = new Map<string, string>()
@@ -385,30 +373,40 @@ async function writeSources(
       notes: record.notes,
     }
 
-    const rows =
-      record.url === null
-        ? await tx
-            .insert(sources)
-            .values({
-              id: urllessSourceId(materialSlug, record.key),
-              ...values,
-            })
-            .onConflictDoUpdate({ target: sources.id, set: values })
-            .returning({ id: sources.id })
-        : await tx
-            .insert(sources)
-            .values(values)
-            // The index is partial, so its predicate has to be restated for
-            // Postgres to infer it. Unqualified on purpose — it must read
-            // exactly like `sources_url_uniq`'s own WHERE clause.
-            .onConflictDoUpdate({
-              target: sources.url,
-              targetWhere: sql`url is not null`,
-              set: values,
-            })
-            .returning({ id: sources.id })
+    // (a) The key is the identity. `sources_key_uniq` guarantees at most one.
+    const byKey = (
+      await tx
+        .update(sources)
+        .set(values)
+        .where(eq(sources.key, record.key))
+        .returning({ id: sources.id })
+    )[0]
+    if (byKey !== undefined) {
+      idByKey.set(record.key, byKey.id)
+      continue
+    }
 
-    idByKey.set(record.key, firstRow(rows, `source "${record.key}"`).id)
+    // (b) Backfill: a legacy row seeded by url before the key column existed.
+    if (record.url !== null) {
+      const adopted = (
+        await tx
+          .update(sources)
+          .set({ key: record.key, ...values })
+          .where(and(eq(sources.url, record.url), isNull(sources.key)))
+          .returning({ id: sources.id })
+      )[0]
+      if (adopted !== undefined) {
+        idByKey.set(record.key, adopted.id)
+        continue
+      }
+    }
+
+    // (c) New document.
+    const inserted = await tx
+      .insert(sources)
+      .values({ key: record.key, ...values })
+      .returning({ id: sources.id })
+    idByKey.set(record.key, firstRow(inserted, `source "${record.key}"`).id)
   }
 
   return idByKey
@@ -580,11 +578,7 @@ async function writeMaterial(
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
     const { id, outcome } = await writeMaterialRow(tx, material)
-    const sourceIdByKey = await writeSources(
-      tx,
-      material.slug,
-      material.sources
-    )
+    const sourceIdByKey = await writeSources(tx, material.sources)
     const source = (key: string): string =>
       resolveSource(sourceIdByKey, key, material.slug)
 

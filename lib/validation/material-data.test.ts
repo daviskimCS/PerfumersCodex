@@ -27,6 +27,8 @@ const FIXTURES_DIR = path.join(
 const ALPHA = 'test-material-alpha.json'
 const BETA = 'test-material-beta.json'
 const GAMMA = 'test-material-gamma.json'
+/** Cites alpha's url-less book under the same key — the shared-source case. */
+const DELTA = 'test-material-delta.json'
 
 function loadFixture(filename: string): MaterialDataFile {
   const raw = readFileSync(path.join(FIXTURES_DIR, filename), 'utf8')
@@ -37,7 +39,12 @@ const baseline: MaterialDataInput = {
   families: loadFixture(FAMILIES_FILE),
   usageCategories: loadFixture(USAGE_CATEGORIES_FILE),
   hazardCodes: loadFixture(HAZARD_CODES_FILE),
-  materials: [loadFixture(ALPHA), loadFixture(BETA), loadFixture(GAMMA)],
+  materials: [
+    loadFixture(ALPHA),
+    loadFixture(BETA),
+    loadFixture(GAMMA),
+    loadFixture(DELTA),
+  ],
 }
 
 /** Each case mutates a fresh copy; the on-disk fixtures stay the one valid baseline. */
@@ -77,6 +84,7 @@ describe('validateMaterialData — fixture set', () => {
       'test-material-alpha',
       'test-material-beta',
       'test-material-gamma',
+      'test-material-delta',
     ])
     expect(result.bundle.families).toHaveLength(2)
     expect(result.bundle.usageCategories).toHaveLength(11)
@@ -100,7 +108,43 @@ describe('validateMaterialData — fixture set', () => {
     const materialFiles = present.filter(
       (name) => name.endsWith('.json') && !REFERENCE_FILES.includes(name)
     )
-    expect(materialFiles.sort()).toEqual([ALPHA, BETA, GAMMA])
+    expect(materialFiles.sort()).toEqual([ALPHA, BETA, DELTA, GAMMA])
+  })
+
+  /**
+   * `sources.key` is global: alpha and delta both declare `test-source-1`
+   * for the same url-less book, and the seed must resolve both to ONE row.
+   * This pins the fixture set to actually exercising that path — if someone
+   * "fixes" delta's key to be unique, the live dedupe run tests nothing.
+   */
+  it('shares one source key between two files for the same document', () => {
+    const result = validateMaterialData(makeInput())
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+    if (!result.ok) return
+    const alpha = result.bundle.materials[0].sources.find(
+      (s) => s.key === 'test-source-1'
+    )
+    const delta = result.bundle.materials[3].sources.find(
+      (s) => s.key === 'test-source-1'
+    )
+    expect(alpha).toBeDefined()
+    expect(delta).toBeDefined()
+    expect(delta?.url).toBe(alpha?.url)
+    expect(delta?.title).toBe(alpha?.title)
+  })
+
+  it('accepts a shared key whose non-identity fields differ', () => {
+    const input = makeInput()
+    // Beta cites alpha's second (url-bearing) source under alpha's key. Same
+    // document, but accessed on a different day with its own note — the
+    // identity is url + title, and only those must agree.
+    const alphaSource = structuredClone(rows(material(input, ALPHA).sources)[1])
+    alphaSource.accessed_at = '2026-02-02T00:00:00Z'
+    alphaSource.notes = 'Cited again from beta - still a synthetic fixture'
+    rows(material(input, BETA).sources).push(alphaSource)
+
+    const result = validateMaterialData(input)
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
   })
 
   it('applies defaults for omitted collections and singletons', () => {
@@ -218,6 +262,27 @@ const failureCases: FailureCase[] = [
     },
     at: { file: ALPHA, path: 'sources[1].key' },
     message: /duplicate source key/,
+  },
+  {
+    // The converse of the shared-key acceptance: a key is global, so the same
+    // key naming a different document in another file is a data error — the
+    // seed would otherwise overwrite alpha's citation with delta's.
+    name: 'shared source key across files with a different title',
+    mutate: (input) => {
+      rows(material(input, DELTA).sources)[0].title =
+        'Test Source One (a different book under the same key)'
+    },
+    at: { file: DELTA, path: 'sources[0].title' },
+    message: /shared with test-material-alpha\.json but the title differs/,
+  },
+  {
+    name: 'shared source key across files with a different url',
+    mutate: (input) => {
+      rows(material(input, DELTA).sources)[0].url =
+        'https://example.com/test-source-1-moved'
+    },
+    at: { file: DELTA, path: 'sources[0].url' },
+    message: /shared with test-material-alpha\.json but the url differs/,
   },
   {
     name: 'malformed CAS number',
