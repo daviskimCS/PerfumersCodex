@@ -41,9 +41,9 @@ disjoint: W7-A creates only new files under Next's metadata file conventions,
 W7-B edits existing components and pages. Neither touches `app/layout.tsx`,
 `db/**`, package manifests or CI.
 
-| Item                     | Exclusive files                                                                                                                                      | Proves it is done                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| W7-A Identity & OG cards | `app/icon.svg`, `app/apple-icon.tsx`, `app/opengraph-image.tsx`, `app/materials/[slug]/opengraph-image.tsx`, delete `app/favicon.ico`                | `npm run build` + the rendered images fetched and inspected              |
+| Item                     | Exclusive files                                                                                                                                      | Proves it is done                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| W7-A Identity & OG cards | `app/icon.svg`, `app/apple-icon.tsx`, `app/opengraph-image.tsx`, `app/materials/[slug]/opengraph-image.tsx`, delete `app/favicon.ico`                | `npm run build` + the rendered images fetched and inspected                 |
 | W7-B Accessibility audit | `components/*.tsx` (not `ui/`), `components/account/**`, `components/material/**`, `components/auth/**`, `app/**/page.tsx`, `app/(auth)/**/page.tsx` | `npm run typecheck && npm run lint && npm run build` + keyboard walkthrough |
 
 `app/layout.tsx` stays orchestrator-owned. If either item needs a change

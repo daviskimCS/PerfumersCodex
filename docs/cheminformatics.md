@@ -47,7 +47,7 @@ deliverable is the evaluation:
   pages showing predicted descriptors with the model version, always separate
   from the human-written description (schema-enforced: `odor_predictions`
   vs. `material_descriptions`). Where a human description exists, the
-  side-by-side *is* the demo of honest evaluation.
+  side-by-side _is_ the demo of honest evaluation.
 
 This is an experiment with published metrics, not a product feature, and it
 is framed that way everywhere it appears.
@@ -65,12 +65,12 @@ The same discipline backs both search and the experiment:
 
 ## Deferred (in priority order)
 
-| Item | Status |
-|---|---|
-| Interactive odor map (UMAP over fingerprints/descriptors) | Stretch at launch, else first post-launch feature — highest demo-value-per-hour |
-| MCP server — the reference as queryable tools for LLM clients | v1.1 |
-| IFRA amendment diffing (what changed, which materials affected) | v1.1 — pairs with the 52nd Amendment re-verification |
-| Embeddings / pgvector hybrid retrieval | When the corpus outgrows FTS + trigram + synonyms |
+| Item                                                            | Status                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Interactive odor map (UMAP over fingerprints/descriptors)       | Stretch at launch, else first post-launch feature — highest demo-value-per-hour |
+| MCP server — the reference as queryable tools for LLM clients   | v1.1                                                                            |
+| IFRA amendment diffing (what changed, which materials affected) | v1.1 — pairs with the 52nd Amendment re-verification                            |
+| Embeddings / pgvector hybrid retrieval                          | When the corpus outgrows FTS + trigram + synonyms                               |
 
 Synonym and name resolution — arguably the actual hard problem — is not on
 this list because it is already core v1 scope: canonical IDs, the

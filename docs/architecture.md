@@ -60,7 +60,7 @@ middleware.ts         Repo root — Supabase token-refresh middleware. The one
   pipeline writes every table in the schema, and routing that through
   `lib/db/` would mean adding a write API that no page ever calls, growing
   the app's data-access surface to serve a script. The rule's purpose is to
-  keep *route and component* code away from raw rows, and that purpose is
+  keep _route and component_ code away from raw rows, and that purpose is
   untouched. `scripts/` still takes its client from `lib/db/` rather than
   opening its own connection, so there remains exactly one pooled client.
 - `lib/db/` functions return app-facing types (D3), not raw Drizzle rows —
