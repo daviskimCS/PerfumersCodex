@@ -3,6 +3,7 @@ import { ImageResponse } from 'next/og'
 import GenericOpengraphImage, {
   CardShell,
   MARK_SRC,
+  cardFonts,
   size,
 } from '@/app/opengraph-image'
 import { humanize } from '@/components/material/format'
@@ -22,7 +23,9 @@ import { getMaterialBySlug } from '@/lib/db/materials'
  * the platforms cache that for a long time. So the database read is wrapped,
  * and both a missing material and an unreachable database render the generic
  * card by calling the site-wide route's own component — not a copy of it, so
- * the two cannot drift.
+ * the two cannot drift. The typeface is read from disk the same way, through
+ * the site-wide route's `cardFonts()`, and that helper keeps the promise too:
+ * an unreadable font degrades to next/og's default face rather than a 500.
  */
 
 // Mirrors the page's own choice (app/materials/[slug]/page.tsx): without it,
@@ -141,6 +144,6 @@ export default async function MaterialOpengraphImage({
         </div>
       </div>
     </CardShell>,
-    { ...size }
+    { ...size, fonts: await cardFonts() }
   )
 }

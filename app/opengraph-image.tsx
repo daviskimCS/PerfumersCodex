@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 /**
  * The site-wide Open Graph card.
@@ -6,20 +8,77 @@ import { ImageResponse } from 'next/og'
  * Next's file convention picks this up automatically and emits the og:image
  * tags — app/layout.tsx does not need (and does not have) an `images` entry.
  *
- * TYPEFACE. The site is monospaced (Geist Mono, loaded through next/font), but
- * `ImageResponse` needs font *data*, not a family name, and next/font resolves
- * to a woff2 subset that Satori cannot parse (ttf/otf/woff only). Fetching a
- * ttf from a third-party host at request time would make every social preview
- * depend on that host being up, which wave-7.md forbids. So this card renders
- * in `next/og`'s built-in default, which in Next 16 is Geist Regular read off
- * disk from next's own bundle — no network, no dependency, and the same
- * family as `--font-sans-alt`, which app/layout.tsx already loads. It is one
- * weight (400) and Satori does not synthesise bold, so the hierarchy here is
- * built from size, colour and letter-spacing rather than from weight.
+ * TYPEFACE. JetBrains Mono Regular, the family the site itself sets
+ * (app/layout.tsx), read from the repository's own copy under assets/fonts.
+ * `ImageResponse` needs font *data* in ttf/otf/woff, so the next/font face the
+ * pages use is no help here; this is the static 400 instance from the same
+ * release. One weight, because Satori does not synthesise bold and the cards
+ * build their hierarchy from size, colour and letter-spacing instead.
  *
- * No data is read, so this route stays statically optimised: it is generated
- * once at build time and cannot fail at request time.
+ * Supplying `fonts` is not decoration. Without it `next/og` renders its
+ * bundled Geist and, for any glyph Geist lacks, fetches Noto Sans from
+ * fonts.googleapis.com + fonts.gstatic.com at REQUEST time — and perfumery
+ * names are full of glyphs Geist lacks (α-ionone, β-caryophyllene,
+ * γ-undecalactone). Every such card was a hidden third-party dependency with
+ * tofu as its failure mode, and Satori falls back per WORD, so the whole
+ * Greek-prefixed name would set in a different face. JetBrains Mono carries
+ * Greek natively, so with it supplied there is no glyph left for that path to
+ * fetch (docs/maker-todo.md, item 5).
+ *
+ * `process.cwd()` plus a literal path is the loading pattern Next documents
+ * for this, and output file tracing follows it: the font is listed in each
+ * card route's route.js.nft.json under .next/server/app, so it ships in the
+ * serverless bundle with no next.config change.
+ *
+ * Nothing here depends on the request — the font comes off disk, not the
+ * network — so this route stays statically optimised: it is generated once at
+ * build time and cannot fail at request time.
  */
+
+const FONT_PATH = join(
+  process.cwd(),
+  'assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf'
+)
+
+type CardFonts = NonNullable<
+  ConstructorParameters<typeof ImageResponse>[1]
+>['fonts']
+
+// Read once per process, not once per card: the per-material route is
+// force-dynamic and would otherwise hit the disk on every share.
+let fontData: Promise<Buffer> | undefined
+
+/**
+ * The `fonts` option every card passes to ImageResponse.
+ *
+ * Resolves to `undefined` — next/og's default face — only if the file cannot
+ * be read. That is a deployment defect (the font missing from the traced
+ * bundle), not a request-time condition, and it is logged as one; but a card
+ * in the wrong face beats a 500, which every social platform caches as a
+ * broken image for a long time. The per-material route's own promise is that
+ * it never throws, and this keeps that promise for the font as well as the
+ * database.
+ */
+export async function cardFonts(): Promise<CardFonts> {
+  try {
+    fontData ??= readFile(FONT_PATH)
+    return [
+      {
+        name: 'JetBrains Mono',
+        data: await fontData,
+        weight: 400,
+        style: 'normal',
+      },
+    ]
+  } catch (error) {
+    fontData = undefined
+    console.error(
+      `[opengraph-image] could not read ${FONT_PATH}; rendering in next/og's default face`,
+      error
+    )
+    return undefined
+  }
+}
 
 // Palette. Literal hexes because Satori has no cascade to read tokens from —
 // these are the values recorded beside the tokens in app/globals.css.
@@ -96,6 +155,9 @@ export function CardShell({ children }: { children: React.ReactNode }) {
         backgroundColor: PAPER,
         backgroundImage: PAPER_GRAIN,
         color: INK,
+        // Inherited by everything on the card, including the rail. Only one
+        // family is ever supplied, but naming it keeps the intent legible.
+        fontFamily: 'JetBrains Mono',
       }}
     >
       {/* The header rail, reduced to its edge — the site's frame, not its UI. */}
@@ -117,7 +179,7 @@ export function CardShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
   return new ImageResponse(
     <CardShell>
       {/* A raw <img>, not next/image: next/image is a React component that
@@ -157,6 +219,6 @@ export default function OpengraphImage() {
         perfumers.
       </div>
     </CardShell>,
-    { ...size }
+    { ...size, fonts: await cardFonts() }
   )
 }

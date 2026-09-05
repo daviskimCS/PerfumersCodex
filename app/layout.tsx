@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { Analytics } from '@vercel/analytics/next'
@@ -8,14 +8,23 @@ import './globals.css'
 
 import { env } from '@/lib/env'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+// JetBrains Mono, self-hosted from assets/fonts/jetbrains-mono (OFL-1.1; the
+// licence sits beside the files). Chosen over Geist Mono because it carries
+// Greek natively — α-ionone, β-caryophyllene, γ-undecalactone are everyday
+// names here, and Geist Mono has none of those letters (docs/maker-todo.md,
+// item 5). Self-hosted so the share cards (app/opengraph-image.tsx) can set
+// the same family from the same release, with no request-time font fetch.
+//
+// One variable file covers 100–800, so the 400 / 500 / 600 the UI uses are
+// real instances. The declared range is load-bearing, not documentation:
+// app/globals.css sets `font-synthesis-weight: none` on <body>, so a face the
+// browser believed to be 400-only could not be faked bolder and every
+// `font-medium` and heading would render at 400.
+const jetbrainsMono = localFont({
+  src: '../assets/fonts/jetbrains-mono/JetBrainsMono[wght].ttf',
+  weight: '100 800',
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
 })
 
 const SITE_NAME = 'Perfumers Codex'
@@ -93,7 +102,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme-pref="system"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${jetbrainsMono.variable} h-full`}
       suppressHydrationWarning
     >
       <head>
