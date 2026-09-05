@@ -4,7 +4,7 @@ Everything here is blocked on a human: an account, a dashboard, a payment, a
 judgment call, or editorial writing. Nothing on this list can be dispatched
 to an agent, and several items block work that otherwise looks finished.
 
-Sorted by consequence, not by effort. Last reviewed **2026-09-02** (after Wave 6 + Google OAuth — every v1 route now exists, items 1–4 are the last things between this and a verified, fully signed-in personal layer; item 5 is new from the Wave 7 audit and item 6 is done).
+Sorted by consequence, not by effort. Last reviewed **2026-09-04** (items 5 and 6 are done — the font swap and the sources key both shipped; items 1–4 are the last things between this and a verified, fully signed-in personal layer).
 
 Companion to [CHECKLIST.md](./CHECKLIST.md), which tracks the agent-side work.
 Personal planning (career framing, time budget, milestone dates) lives in the
@@ -106,31 +106,26 @@ a password account attaches to that same account rather than creating a
 second one. That is the behaviour you want; it is also worth testing once,
 because it is the kind of thing that surprises people at launch.
 
-### 5. Share-card font — decided 2026-09-04: JetBrains Mono (implementation pending)
+### 5. ~~Share-card font~~ — DONE 2026-09-04 (JetBrains Mono)
 
-**What was wrong with the first decision.** IBM Plex Mono was chosen on a
-premise the orchestrator got wrong. Measured with fontTools across v2.5.0,
-v1.1.0 and the variable build: **no IBM Plex Mono build has α β γ δ** — the
-only Greek-block glyph is π, from the "Pi" symbol subset — and IBM's README
-says Greek is a Plex _Sans_ feature. The agent stopped at that gate without
-touching the repo.
+Shipped on the same day it was decided. JetBrains Mono v2.304 is committed
+under `assets/fonts/jetbrains-mono` (OFL-1.1) and is now the one family for
+the site (`next/font/local`, variable file, weights 100–800 declared) and for
+the share cards (static Regular passed to `ImageResponse`). Geist is gone.
 
-**What the defect actually is.** The cards are probably not showing tofu
-today: `next/og` silently fetches Noto Sans from `fonts.googleapis.com` +
-`fonts.gstatic.com` at request time for any glyph its font lacks (three
-calls, ~350 ms per cold render). Tofu is the _failure_ mode when Google is
-unreachable. So the real problem is a hidden third-party runtime dependency
-on every share-card render — exactly what a self-hosted font removes — and
-Plex Mono would not have touched it. Also measured: Satori's fallback is
-applied **per word**, so a companion face sets the whole Greek-prefixed word
-proportional.
+Two measurements closed it, both with controls. fontTools: α β γ δ present in
+every committed file, all four absent from `next/og`'s bundled Geist. A fetch
+wrapper on the card render: three calls to `fonts.googleapis.com` /
+`fonts.gstatic.com` with no font supplied, zero with it. Output tracing lists
+the font in both card routes' `route.js.nft.json`, so it reaches Vercel with
+no config change — but **eyeball one per-material card on the next preview
+deployment** anyway; a traced file and a deployed file are two different
+claims, and only the second one matters.
 
-**The decision.** JetBrains Mono — OFL, native Greek, weights 100–800, one
-family for site and cards, no Google fetch, no per-word fallback. Same plan
-as before with the family swapped: committed TTFs under `assets/fonts/`,
-`next/font/local` for the site, `fs.readFile` for the OG routes, fontTools
-gate for α β γ δ before anything is committed, and a rendered α on a real
-card as proof.
+The history, for the record: IBM Plex Mono was chosen first on the
+orchestrator's wrong premise that IBM's "complete" build carried Greek.
+fontTools proved no Plex Mono build has α β γ δ; the agent stopped at that
+gate without touching the repo, which is exactly right.
 
 ### 6. ~~`sources` needs a `key` column~~ — DONE 2026-09-04
 
@@ -200,9 +195,6 @@ to 8 so the two agree.
 
 ## Known debt (tracked, not blocking)
 
-- **Every share-card render may call Google Fonts** until item 5 ships:
-  `next/og` fetches Noto Sans for glyphs its font lacks, at request time.
-  Measured 2026-09-04.
 - **Two different source keys with the same URL** are not caught before
   writing. The old design merged those by URL; the new one surfaces them as a
   `sources_url_uniq` violation mid-transaction on the citing material — loud,
@@ -223,8 +215,8 @@ to 8 so the two agree.
   should be generated per scheme, not frozen.
 - **Satori does not synthesise bold**, so all hierarchy on the OG cards comes
   from size, colour and letter-spacing. Not a defect, but worth knowing before
-  anyone asks why the cards carry no bold weight. The font question itself is
-  blocking item 5.
+  anyone asks why the cards carry no bold weight. The family itself is
+  settled (item 5): JetBrains Mono Regular, read from the repo.
 - **Rate limiting is absent** on search, signup, login, note saves and the
   account mutations. Deliberately the Week 18 Upstash pass; the deferral is
   recorded in the code itself, not only in the wave docs.
