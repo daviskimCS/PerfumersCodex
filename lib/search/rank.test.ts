@@ -344,9 +344,9 @@ const GOLD_SET_CANDIDATES: Record<string, SearchCandidate[]> = {
     makeTarget({ exactSynonymMatch: true, matchedSynonym: 'OTNE' }),
   ],
   // Trade-name synonym (tier 2), same shape.
-  ambermax: [
+  timbersilk: [
     makeCandidate({ trigramSimilarity: 0.85 }),
-    makeTarget({ exactSynonymMatch: true, matchedSynonym: 'Ambermax' }),
+    makeTarget({ exactSynonymMatch: true, matchedSynonym: 'Timbersilk' }),
   ],
   // Odour phrase: nothing but full text matches, so tier 4 on ts_rank alone.
   'amber wood': [

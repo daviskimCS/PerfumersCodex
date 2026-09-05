@@ -48,7 +48,9 @@ export const GOLD_SET: GoldSetCase[] = [
     layer: 'pipeline',
   },
   // Trade-name synonym.
-  { query: 'ambermax', expectSlug: 'iso-e-super', maxRank: 1, layer: 'rank' },
+  // Timbersilk is a verified IFF trade name (dossier §6.3, TGSC); it shares no
+  // prefix with the canonical name, so it exercises the synonym route.
+  { query: 'timbersilk', expectSlug: 'iso-e-super', maxRank: 1, layer: 'rank' },
   // Odour phrase: no name matches at all, so this one rides on full text.
   { query: 'amber wood', expectSlug: 'iso-e-super', maxRank: 1, layer: 'rank' },
 ]
