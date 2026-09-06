@@ -144,6 +144,28 @@ different `url` or `title`) before any write.
 
 ## 🟡 Do before launch
 
+### 6b. The search-log purge does not exist
+
+`db/schema.ts` and `docs/database-schema.md` both said search-query rows are
+"purged by a Supabase scheduled job" after ~90 days. Checked against the live
+database on 2026-09-05: **no `pg_cron` extension, no `cron` schema, no job,
+and the oldest row still there.** Both comments are corrected, and `/privacy`
+says plainly that entries are kept indefinitely today rather than promising a
+retention period nothing enforces.
+
+Two ways to close it, your call:
+
+1. **Build it.** Enable `pg_cron` in the Supabase dashboard and schedule
+   `delete from search_queries where created_at < now() - interval '90 days'`
+   daily. Then update the two comments and the privacy policy together — they
+   are now cross-referenced so they cannot drift apart again.
+2. **Drop the intent** and keep the log indefinitely. It carries no user id,
+   no IP and no session, so it is not personal data; the case for purging is
+   tidiness rather than privacy.
+
+Worth doing before launch either way, because the privacy policy currently
+describes option 2 and the docs used to describe option 1.
+
 ### 7. Make the apex the primary domain in Vercel
 
 `NEXT_PUBLIC_SITE_URL` and every `og:url` advertise `perfumerscodex.com`, but
