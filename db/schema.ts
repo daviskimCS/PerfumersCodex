@@ -35,7 +35,6 @@
 import { sql } from 'drizzle-orm'
 import { authUid, authenticatedRole } from 'drizzle-orm/supabase'
 import {
-  type AnyPgColumn,
   check,
   date,
   index,
@@ -49,6 +48,7 @@ import {
   smallint,
   text,
   timestamp,
+  type AnyPgColumn,
   unique,
   uniqueIndex,
   uuid,
@@ -312,6 +312,55 @@ export const materialUsageLimits = pgTable(
       'material_usage_limits_max_pct_range_check',
       sql`${t.maxPct} BETWEEN 0 AND 100`
     ),
+  ]
+).enableRLS()
+
+/**
+ * Structural classes a molecule can belong to — "ester", "macrocyclic ketone".
+ * Reference data seeded from chemical-classes.json, like usage_categories and
+ * hazard_codes.
+ *
+ * A STRUCTURAL axis, deliberately separate from `families`, which stays the
+ * olfactive one: nothing about a lactone ring predicts how a material smells,
+ * and conflating the two would imply it does.
+ */
+export const chemicalClasses = pgTable('chemical_classes', {
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  /**
+   * The SMARTS pattern membership is computed from. Validated by compiling it
+   * before any write — and an empty pattern is rejected, because RDKit parses
+   * it as valid and it would match every molecule in the corpus.
+   */
+  smarts: text('smarts').notNull(),
+  description: text('description').notNull(),
+  sortOrder: smallint('sort_order').notNull(),
+}).enableRLS()
+
+/**
+ * Which materials belong to which class.
+ *
+ * Not a cited fact, so no `source_id`: membership is a deterministic
+ * recomputation from `materials.smiles` and the class's SMARTS, stamped with
+ * the RDKit version that produced it — the same rule as computed properties
+ * and similarity (AGENTS.md). The seed derives these rows rather than reading
+ * them from a data file, so nothing can claim a class its structure does not
+ * support. A NULL-SMILES material has no rows here at all.
+ */
+export const materialChemicalClasses = pgTable(
+  'material_chemical_classes',
+  {
+    materialId: uuid('material_id')
+      .notNull()
+      .references(() => materials.id),
+    classSlug: text('class_slug')
+      .notNull()
+      .references(() => chemicalClasses.slug),
+    rdkitVersion: text('rdkit_version').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.materialId, t.classSlug] }),
+    index('material_chemical_classes_class_slug_idx').on(t.classSlug),
   ]
 ).enableRLS()
 

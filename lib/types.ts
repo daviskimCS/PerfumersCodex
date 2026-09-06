@@ -65,6 +65,24 @@ export interface FamilySummary {
   parentSlug: string | null
 }
 
+/**
+ * A structural class a molecule belongs to — "ester", "macrocyclic ketone".
+ * Structural, not olfactive: `FamilyRef` is the olfactive axis and the two are
+ * independent. Membership is computed from the structure, never authored, so
+ * these carry an `rdkit_version` rather than a `sourceId`.
+ */
+export interface ChemicalClassRef {
+  slug: string
+  name: string
+}
+
+/** A class with everything the filter row needs, including its own count. */
+export interface ChemicalClass extends ChemicalClassRef {
+  smarts: string
+  description: string
+  materialCount: number
+}
+
 export interface MaterialSummary {
   id: string
   slug: string
@@ -72,6 +90,8 @@ export interface MaterialSummary {
   materialType: MaterialType
   casNumber: string | null
   families: FamilyRef[]
+  /** Empty for NULL-SMILES materials: a mixture has no single structure. */
+  chemicalClasses: ChemicalClassRef[]
 }
 
 export interface UsageLimit {
