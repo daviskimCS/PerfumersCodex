@@ -7,5 +7,18 @@
   "smiles": null,
   "molecular_formula": null,
   "molecular_weight": null,
-  "families": ["test-family", "test-subfamily"]
+  "identity_source_key": "test-source-4",
+  "families": ["test-family", "test-subfamily"],
+  "sources": [
+    {
+      "key": "test-source-4",
+      "type": "other",
+      "title": "Test Source Four (the record that established gamma's identity)",
+      "url": "https://example.com/test-source-4",
+      "author": null,
+      "published_at": null,
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": "Synthetic fixture citation - not a real source"
+    }
+  ]
 }

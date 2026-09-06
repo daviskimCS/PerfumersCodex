@@ -2,7 +2,7 @@ import { ShieldAlert, TriangleAlert } from 'lucide-react'
 
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
-import type { Citation, Hazard, UsageLimit } from '@/lib/types'
+import type { Citation, Hazard, IfraAbsence, UsageLimit } from '@/lib/types'
 
 import { Cite } from './cite'
 import { compareVersions, datePart } from './format'
@@ -11,7 +11,7 @@ import { PanelSection } from './section'
 /**
  * Safety tab: IFRA usage limits and GHS hazards.
  *
- * Two rules shape this panel, and both are honesty rules rather than layout
+ * Three rules shape this panel, and all are honesty rules rather than layout
  * ones:
  *
  * 1. `restrictionType` decides what the limit column says. A prohibition with
@@ -22,6 +22,11 @@ import { PanelSection } from './section'
  *    (docs/data-strategy.md): the 52nd Amendment lands around launch, rows are
  *    inserted rather than overwritten, so a reader has to be able to see which
  *    standard they are reading without hunting for it.
+ * 3. "No Standard" and "not researched" are different facts and get different
+ *    blocks. A verified absence (`ifraAbsences`, checked against an
+ *    amendment's complete index) is *content* with a citation — the answer a
+ *    perfumer came for is "unrestricted". Only the case with no limits AND no
+ *    absence is an empty state, and it means exactly "nobody has looked yet".
  */
 
 /** The limit as a phrase, with `restrictionType` carrying its real weight. */
@@ -38,9 +43,22 @@ function limitPhrase(limit: UsageLimit): string {
   }
 }
 
-function AmendmentBadges({ limits }: { limits: UsageLimit[] }) {
+/**
+ * Every amendment this material has been checked against — whether the check
+ * found a Standard (a limit row) or verified there is none (an absence row).
+ */
+function AmendmentBadges({
+  limits,
+  absences,
+}: {
+  limits: UsageLimit[]
+  absences: IfraAbsence[]
+}) {
   const versions = [
-    ...new Set(limits.map((limit) => limit.ifraAmendmentVersion)),
+    ...new Set([
+      ...limits.map((limit) => limit.ifraAmendmentVersion),
+      ...absences.map((absence) => absence.ifraAmendmentVersion),
+    ]),
   ].sort(compareVersions)
   if (versions.length === 0) return null
   return (
@@ -54,12 +72,83 @@ function AmendmentBadges({ limits }: { limits: UsageLimit[] }) {
   )
 }
 
+/**
+ * The verified-absence state, when there are no limits to tabulate. Not an
+ * `EmptyState`: it states a fact and cites its evidence, one block per
+ * amendment checked.
+ */
+function IfraAbsenceStatement({
+  absences,
+  sources,
+}: {
+  absences: IfraAbsence[]
+  sources: Citation[]
+}) {
+  return (
+    <div className="max-w-measure">
+      <h3 className="text-xl">No IFRA Standard</h3>
+      <div className="mt-2 space-y-4">
+        {absences.map((absence) => (
+          <div key={absence.ifraAmendmentVersion}>
+            <p className="text-foreground">
+              Checked against the complete index of IFRA Standards for the{' '}
+              {absence.ifraAmendmentVersion} Amendment on{' '}
+              <span className="font-mono text-sm">
+                {datePart(absence.verifiedAt)}
+              </span>
+              : this material is not the subject of any restriction, prohibition
+              or specification.
+              <Cite sources={sources} sourceId={absence.sourceId} />
+            </p>
+            {absence.notes ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {absence.notes}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The verified-absence footnote under a limits table: the material has a
+ * Standard under one amendment and none under another, and the reader needs
+ * both halves to know which applies to them.
+ */
+function IfraAbsenceList({
+  absences,
+  sources,
+}: {
+  absences: IfraAbsence[]
+  sources: Citation[]
+}) {
+  return (
+    <ul className="mt-4 space-y-1 text-sm">
+      {absences.map((absence) => (
+        <li key={absence.ifraAmendmentVersion}>
+          No Standard under the IFRA {absence.ifraAmendmentVersion} Amendment
+          {' — '}
+          <span className="text-muted-foreground">
+            verified{' '}
+            <span className="font-mono">{datePart(absence.verifiedAt)}</span>
+          </span>
+          <Cite sources={sources} sourceId={absence.sourceId} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function SafetyPanel({
   usageLimits,
+  ifraAbsences,
   hazards,
   sources,
 }: {
   usageLimits: UsageLimit[]
+  ifraAbsences: IfraAbsence[]
   hazards: Hazard[]
   sources: Citation[]
 }) {
@@ -67,15 +156,19 @@ export function SafetyPanel({
     <div>
       <PanelSection
         title="IFRA usage limits"
-        aside={<AmendmentBadges limits={usageLimits} />}
+        aside={<AmendmentBadges limits={usageLimits} absences={ifraAbsences} />}
       >
-        {usageLimits.length === 0 ? (
+        {usageLimits.length === 0 && ifraAbsences.length === 0 ? (
+          // Neither a limit nor a verified absence: nobody has looked yet.
           <EmptyState
             icon={ShieldAlert}
             headingLevel={3}
             title="No IFRA limits recorded yet"
             description="Category limits are hand-entered from the published standard and stamped with the amendment they were verified against. None have been entered for this material."
           />
+        ) : usageLimits.length === 0 ? (
+          // Looked, and found no Standard: a cited fact, not an empty state.
+          <IfraAbsenceStatement absences={ifraAbsences} sources={sources} />
         ) : (
           <div className="-mx-gutter overflow-x-auto px-gutter md:mx-0 md:px-0">
             <table className="w-full min-w-144 border-collapse text-left">
@@ -141,6 +234,10 @@ export function SafetyPanel({
                 ))}
               </tbody>
             </table>
+            {ifraAbsences.length > 0 ? (
+              // A Standard under one amendment, none under another.
+              <IfraAbsenceList absences={ifraAbsences} sources={sources} />
+            ) : null}
           </div>
         )}
       </PanelSection>

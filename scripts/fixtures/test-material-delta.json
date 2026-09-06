@@ -7,8 +7,13 @@
   "smiles": null,
   "molecular_formula": null,
   "molecular_weight": null,
+  "identity_source_key": "test-source-1",
   "synonyms": [
-    { "name": "Test Common Name Delta", "synonym_type": "common_name" }
+    {
+      "name": "Test Common Name Delta",
+      "synonym_type": "common_name",
+      "source_key": "test-source-1"
+    }
   ],
   "families": ["test-family"],
   "sources": [
@@ -21,9 +26,27 @@
       "published_at": "2000-01-01",
       "accessed_at": "2026-01-01T00:00:00Z",
       "notes": null
+    },
+    {
+      "key": "test-source-5",
+      "type": "ifra",
+      "title": "Test Source Five (a synthetic IFRA amendment index)",
+      "url": "https://example.com/test-source-5",
+      "author": null,
+      "published_at": null,
+      "accessed_at": "2026-01-01T00:00:00Z",
+      "notes": "Synthetic fixture citation - not a real IFRA document"
     }
   ],
   "usage_limits": [],
+  "ifra_absences": [
+    {
+      "ifra_amendment_version": "test-amendment",
+      "verified_at": "2026-01-01T00:00:00Z",
+      "notes": "Synthetic verified absence - exercises material_ifra_absences",
+      "source_key": "test-source-5"
+    }
+  ],
   "hazards": [{ "hazard_code": "H001", "source_key": "test-source-1" }],
   "description": null,
   "usage_guidance": null,

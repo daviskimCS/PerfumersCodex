@@ -27,7 +27,10 @@ const FIXTURES_DIR = path.join(
 const ALPHA = 'test-material-alpha.json'
 const BETA = 'test-material-beta.json'
 const GAMMA = 'test-material-gamma.json'
-/** Cites alpha's url-less book under the same key — the shared-source case. */
+/**
+ * Cites alpha's url-less book under the same key — the shared-source case —
+ * and carries the fixture set's one verified IFRA absence.
+ */
 const DELTA = 'test-material-delta.json'
 
 function loadFixture(filename: string): MaterialDataFile {
@@ -151,13 +154,56 @@ describe('validateMaterialData — fixture set', () => {
     const result = validateMaterialData(makeInput())
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    // test-material-gamma.json omits every child section entirely.
+    // test-material-gamma.json omits every optional child section — it
+    // carries only `sources`, because `identity_source_key` must resolve.
     const gamma = result.bundle.materials[2]
     expect(gamma.synonyms).toEqual([])
+    expect(gamma.ifra_absences).toEqual([])
     expect(gamma.landmark_uses).toEqual([])
     expect(gamma.description).toBeNull()
     expect(gamma.usage_guidance).toBeNull()
     expect(gamma.computed_properties).toBeNull()
+  })
+
+  /**
+   * Identity is cited: every material names the record its identity scalars
+   * came from, and every synonym names its own document. Pinned so a fixture
+   * can never quietly regress to the pre-2026-09-05 shape where identity and
+   * synonyms published uncited.
+   */
+  it('cites identity and every synonym from a declared source', () => {
+    const result = validateMaterialData(makeInput())
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+    if (!result.ok) return
+    for (const entry of result.bundle.materials) {
+      const keys = new Set(entry.sources.map((s) => s.key))
+      expect(keys, entry.slug).toContain(entry.identity_source_key)
+      for (const synonym of entry.synonyms) {
+        expect(keys, `${entry.slug}: ${synonym.name}`).toContain(
+          synonym.source_key
+        )
+      }
+    }
+  })
+
+  /**
+   * Exactly one fixture carries a verified IFRA absence, so the seed
+   * exercises `material_ifra_absences` and the detail page has a synthetic
+   * material in the "no Standard, verified" state. Delta: a natural with no
+   * usage limits, so nothing about it suggests a real safety history.
+   */
+  it('carries one verified IFRA absence, on delta', () => {
+    const result = validateMaterialData(makeInput())
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+    if (!result.ok) return
+    const withAbsences = result.bundle.materials.filter(
+      (entry) => entry.ifra_absences.length > 0
+    )
+    expect(withAbsences.map((entry) => entry.slug)).toEqual([
+      'test-material-delta',
+    ])
+    expect(withAbsences[0].usage_limits).toEqual([])
+    expect(withAbsences[0].ifra_absences).toHaveLength(1)
   })
 })
 
@@ -185,6 +231,75 @@ const failureCases: FailureCase[] = [
       delete rows(material(input, ALPHA).usage_limits)[0].source_key
     },
     at: { file: ALPHA, path: 'usage_limits[0].source_key' },
+  },
+  {
+    // Identity is a cited fact: a material with no identity source is
+    // exactly the uncited-identity defect this field exists to close.
+    name: 'missing identity_source_key',
+    mutate: (input) => {
+      delete material(input, ALPHA).identity_source_key
+    },
+    at: { file: ALPHA, path: 'identity_source_key' },
+  },
+  {
+    name: 'unknown identity_source_key',
+    mutate: (input) => {
+      material(input, ALPHA).identity_source_key = 'test-source-none'
+    },
+    at: { file: ALPHA, path: 'identity_source_key' },
+    message: /matches no source declared in this file/,
+  },
+  {
+    name: 'missing source_key on a synonym',
+    mutate: (input) => {
+      delete rows(material(input, ALPHA).synonyms)[0].source_key
+    },
+    at: { file: ALPHA, path: 'synonyms[0].source_key' },
+  },
+  {
+    name: 'unknown source_key on a synonym',
+    mutate: (input) => {
+      rows(material(input, ALPHA).synonyms)[0].source_key = 'test-source-none'
+    },
+    at: { file: ALPHA, path: 'synonyms[0].source_key' },
+    message: /matches no source declared in this file/,
+  },
+  {
+    name: 'unknown source_key on an IFRA absence',
+    mutate: (input) => {
+      rows(material(input, DELTA).ifra_absences)[0].source_key =
+        'test-source-none'
+    },
+    at: { file: DELTA, path: 'ifra_absences[0].source_key' },
+    message: /matches no source declared in this file/,
+  },
+  {
+    // PRIMARY KEY (material_id, ifra_amendment_version).
+    name: 'duplicate IFRA absence for one amendment',
+    mutate: (input) => {
+      const absences = rows(material(input, DELTA).ifra_absences)
+      absences.push(structuredClone(absences[0]))
+    },
+    at: { file: DELTA, path: 'ifra_absences[1].ifra_amendment_version' },
+    message: /duplicate IFRA absence/,
+  },
+  {
+    // Alpha's limits are under "test-amendment"; an absence verified against
+    // the same amendment's index contradicts them.
+    name: 'usage limit and IFRA absence for the same amendment',
+    mutate: (input) => {
+      material(input, ALPHA).ifra_absences = [
+        {
+          ifra_amendment_version: 'test-amendment',
+          verified_at: '2026-01-01T00:00:00Z',
+          notes: null,
+          source_key: 'test-source-1',
+        },
+      ]
+    },
+    at: { file: ALPHA, path: 'ifra_absences[0].ifra_amendment_version' },
+    message:
+      /a Standard and a verified absence for the same amendment cannot both be true/,
   },
   {
     name: 'unknown source_key on a landmark use',

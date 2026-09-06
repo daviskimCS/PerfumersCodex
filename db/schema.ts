@@ -172,6 +172,14 @@ export const materials = pgTable(
      * the `number` shapes in `lib/types.ts`.
      */
     molecularWeight: numeric('molecular_weight'),
+    /**
+     * The record the identity scalars above come from — one source per
+     * material, cited once (docs/database-schema.md). Added nullable in
+     * migration 0004, NOT NULL since 0005.
+     */
+    identitySourceId: uuid('identity_source_id')
+      .notNull()
+      .references(() => sources.id),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -198,6 +206,13 @@ export const materialSynonyms = pgTable(
       .references(() => materials.id),
     name: text('name').notNull(),
     synonymType: synonymTypeEnum('synonym_type').notNull(),
+    /**
+     * Per row, not per material: synonyms come from different documents.
+     * Added nullable in migration 0004, NOT NULL since 0005.
+     */
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id),
   },
   (t) => [
     // Every material detail page and every search hit fans out to this table
@@ -297,6 +312,33 @@ export const materialUsageLimits = pgTable(
       'material_usage_limits_max_pct_range_check',
       sql`${t.maxPct} BETWEEN 0 AND 100`
     ),
+  ]
+).enableRLS()
+
+/**
+ * A verified absence of an IFRA Standard, checked against one amendment's
+ * complete index (migration 0004). Without it a material with no Standard was
+ * indistinguishable from one nobody had researched: zero usage-limit rows
+ * either way, and the safety panel said "none entered yet" to both. Never
+ * overwritten — one row per material per amendment, like the limits.
+ * Editorial table: RLS enabled, no policies; the app reads it through Drizzle.
+ */
+export const materialIfraAbsences = pgTable(
+  'material_ifra_absences',
+  {
+    materialId: uuid('material_id')
+      .notNull()
+      .references(() => materials.id),
+    ifraAmendmentVersion: text('ifra_amendment_version').notNull(),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull(),
+    notes: text('notes'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.materialId, t.ifraAmendmentVersion] }),
+    index('material_ifra_absences_material_id_idx').on(t.materialId),
   ]
 ).enableRLS()
 

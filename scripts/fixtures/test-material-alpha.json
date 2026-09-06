@@ -7,9 +7,18 @@
   "smiles": "SMILES-TEST-ALPHA",
   "molecular_formula": "TEST-FORMULA",
   "molecular_weight": 100,
+  "identity_source_key": "test-source-2",
   "synonyms": [
-    { "name": "Test Trade Name Alpha", "synonym_type": "trade_name" },
-    { "name": "TMA-TEST", "synonym_type": "abbreviation" }
+    {
+      "name": "Test Trade Name Alpha",
+      "synonym_type": "trade_name",
+      "source_key": "test-source-2"
+    },
+    {
+      "name": "TMA-TEST",
+      "synonym_type": "abbreviation",
+      "source_key": "test-source-1"
+    }
   ],
   "families": ["test-family"],
   "sources": [
@@ -54,6 +63,7 @@
       "source_key": "test-source-1"
     }
   ],
+  "ifra_absences": [],
   "hazards": [{ "hazard_code": "H000", "source_key": "test-source-2" }],
   "description": {
     "description": "A synthetic test description. It exists only to exercise the seed-input fixtures and describes no real material.",

@@ -228,41 +228,35 @@ difference, not a wrong structure.
 
 ---
 
-### 🔴 Two blocking defects the drafts exposed in the app
+### ✅ Both blocking defects are fixed (2026-09-05)
 
-Both are **app defects, not data defects**, and neither can be fixed by
-editing a JSON file. I confirmed both in the code.
+They were app defects, not data defects, and neither could be fixed by
+editing a JSON file. Both shipped as P4-A.
 
-**1. A verified IFRA absence is indistinguishable from unfinished work.**
-Javanol and Civetone genuinely have no IFRA Standard — established by
-searching the complete 51st-Amendment index and showing the alphabetical
-neighbourhood where an entry would fall. The only honest way to record that
-today is `usage_limits: []`, and `components/material/safety-panel.tsx:76`
-renders the empty case as _"No IFRA limits recorded yet … None have been
-entered for this material."_ So the page tells a perfumer we did not do the
-work, when in fact we did it and the answer is "unrestricted". That is the
-silently-missing failure AGENTS.md forbids, and for safety data it is the
-wrong way round: it under-claims where the truth is permissive.
+**1. A verified IFRA absence is now a fact on the page.** `material_ifra_absences`
+holds one row per material per amendment. Javanol's and Civetone's pages will
+read _"No IFRA Standard — checked against the complete index of IFRA Standards
+for the 51st Amendment on …: this material is not the subject of any
+restriction, prohibition or specification"_, with a citation to the index.
+A material with no limits **and** no absence still gets the old empty state,
+which now means exactly "nobody has looked yet". Validation refuses a file
+claiming both a Standard and an absence for the same amendment.
 
-There is nowhere to put the fact. Neither the file format nor the schema has
-a "no Standard, checked against amendment N" field; it survives only as prose
-in `sources.notes`, which `lib/types.ts` never exposes to the UI. **This
-needs a schema decision before more materials are authored** — two of the
-first three already hit it.
+**2. Identity facts are cited.** The CAS in the hero and the Identity panel
+carry the record they came from; every synonym carries its own document. The
+page's citation list is built starting from those, so Iso E Super will show
+all 4 of its sources rather than 2, and PubChem and The Good Scents Company
+keep the citations for its CAS and 32 synonyms.
 
-**2. Identity facts publish uncited, and most sources never reach the page.**
-`cas_number`, `iupac_name`, `smiles`, `molecular_formula`, `molecular_weight`,
-`material_type` and every synonym carry no `source_key` in the file format and
-no `source_id` column in `db/schema.ts`. And `lib/db/materials.ts:419` builds
-the page's citation list only from sourceId-bearing rows — its own comment
-says _"sources referenced by no surviving row never appear."_
+Your three data files were updated to match: every synonym now names its
+source. Two Civetone synonyms were **removed** rather than guessed — the bare
+"9-Cycloheptadecen-1-one" (which PubChem attaches to a different record) and
+"Civettone Neat (Firmenich)" (evidenced only by a reseller page that is not a
+declared source). Worth a glance when you review.
 
-The result on the live page: **Iso E Super would show 2 of its 4 sources.**
-PubChem and The Good Scents Company both vanish, taking the citation for the
-CAS number and all 32 synonyms with them. Civetone would show 1 of 5, Javanol
-2 of 5. This directly contradicts AGENTS.md: _"Every fact-bearing row in
-materials data has a `source_id`. Non-nullable."_ It holds for the tables that
-have the column; the identity fields never got one.
+**Still yours to verify:** these were proven against synthetic fixtures on the
+live database. The real pages cannot be seen until you review the drafts and
+the corpus is seeded (P4-B).
 
 ---
 

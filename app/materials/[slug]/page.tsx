@@ -3,6 +3,7 @@ import { cache, Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { Cite } from '@/components/material/cite'
 import { ComputedPropertiesModule } from '@/components/material/computed-properties'
 import { humanize } from '@/components/material/format'
 import { MaterialIdentity } from '@/components/material/identity'
@@ -112,6 +113,10 @@ export default async function MaterialPage({
               <p className="mt-4 font-mono text-sm">
                 <span className="text-muted-foreground">CAS </span>
                 {material.casNumber}
+                <Cite
+                  sources={material.sources}
+                  sourceId={material.identitySourceId}
+                />
               </p>
             ) : null}
 
@@ -155,6 +160,7 @@ export default async function MaterialPage({
             safety: (
               <SafetyPanel
                 usageLimits={material.usageLimits}
+                ifraAbsences={material.ifraAbsences}
                 hazards={material.hazards}
                 sources={material.sources}
               />
