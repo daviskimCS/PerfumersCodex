@@ -364,22 +364,25 @@ Phases 1–3 and Wave 7 are closed. These are the v1 items in
 cited drafts exposed. Ordered by consequence, not effort; the top three are
 the ones that cost the most left undone.
 
-### P4-A — Schema round for the cited drafts · **BLOCKED: maker decisions**
+### P4-A — Schema round for the cited drafts · **DONE** _(2026-09-05)_
 
-- [ ] A representable "no IFRA Standard, checked against amendment N" —
-      Javanol and Civetone today render as unresearched
-      (`components/material/safety-panel.tsx`).
-- [ ] `source_id` on identity fields and synonyms, and
-      `lib/db/materials.ts`'s citation walk including them — Iso E Super
-      would show 2 of its 4 sources.
+- [x] A representable "no IFRA Standard, checked against amendment N" —
+      `material_ifra_absences` (migration `0004`), rendered as a cited fact by
+      `components/material/safety-panel.tsx`; the empty state now means only
+      "not researched".
+- [x] `source_id` on identity fields and synonyms
+      (`materials.identity_source_id`, `material_synonyms.source_id`;
+      `0004` nullable → live re-seed → `0005` NOT NULL) and
+      `lib/db/materials.ts`'s citation walk starting with them.
 - [ ] Wherever the maker decides physical properties, registry identifiers,
-      substantivity and non-IFRA maxima live.
+      substantivity and non-IFRA maxima live — **still open**, tracked in
+      [database-schema.md](./database-schema.md).
 
-Waits on the decisions in [database-schema.md](./database-schema.md#open-questions-from-the-first-cited-drafts-2026-09-05).
-Migration + seed file format + `lib/types.ts` (orchestrator) + safety panel +
-detail page. One wave; file sets overlap, so sequential.
+Shipped as three concurrent agents over disjoint file sets (contract first,
+then ingestion / read side / data files). The remaining unticked box is an
+editorial-shape decision, not a defect.
 
-### P4-B — Seed the real corpus · **BLOCKED: P4-A, maker review of the drafts**
+### P4-B — Seed the real corpus · **BLOCKED: maker review of the drafts**
 
 - [ ] `npm run db:seed -- <perfumers-codex-data> --prune` replaces the four
       synthetic materials. First real content on the live detail page — the
