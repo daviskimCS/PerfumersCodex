@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  CHEMICAL_CLASSES_FILE,
   FAMILIES_FILE,
   HAZARD_CODES_FILE,
   REFERENCE_FILES,
@@ -42,6 +43,7 @@ const baseline: MaterialDataInput = {
   families: loadFixture(FAMILIES_FILE),
   usageCategories: loadFixture(USAGE_CATEGORIES_FILE),
   hazardCodes: loadFixture(HAZARD_CODES_FILE),
+  chemicalClasses: loadFixture(CHEMICAL_CLASSES_FILE),
   materials: [
     loadFixture(ALPHA),
     loadFixture(BETA),
@@ -92,6 +94,56 @@ describe('validateMaterialData — fixture set', () => {
     expect(result.bundle.families).toHaveLength(2)
     expect(result.bundle.usageCategories).toHaveLength(11)
     expect(result.bundle.hazardCodes).toHaveLength(3)
+    expect(result.bundle.chemicalClasses).toHaveLength(9)
+  })
+
+  /**
+   * `sort_order` exists because the class list is curated rather than
+   * alphabetical, so the bundle hands it over already in that order — neither
+   * the seed nor the filter row should have to remember to sort it.
+   */
+  it('returns chemical classes in sort_order', () => {
+    const input = makeInput()
+    input.chemicalClasses.data = [
+      ...rows(input.chemicalClasses.data as LooseValue),
+    ].reverse()
+
+    const result = validateMaterialData(input)
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+    if (!result.ok) return
+    const orders = result.bundle.chemicalClasses.map((c) => c.sort_order)
+    expect(orders).toEqual([...orders].sort((a, b) => a - b))
+    expect(result.bundle.chemicalClasses[0].slug).toBe('ester')
+  })
+
+  /**
+   * The compile check is injected (validateMaterialData is synchronous and
+   * RDKit is a 6.6 MB async WASM load), so this proves the wiring with a stub
+   * that refuses one pattern. `scripts/classify.test.ts` runs the same path
+   * with the real compiler.
+   */
+  it('rejects a SMARTS the injected compiler refuses', () => {
+    const result = validateMaterialData(makeInput(), {
+      smartsIsValid: (smarts) => smarts !== '[r{12-}]',
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0].file).toBe(CHEMICAL_CLASSES_FILE)
+    expect(result.errors[0].message).toMatch(/cannot compile/)
+  })
+
+  it('accepts every fixture SMARTS when the compiler accepts them', () => {
+    const seen: string[] = []
+    const result = validateMaterialData(makeInput(), {
+      smartsIsValid: (smarts) => {
+        seen.push(smarts)
+        return true
+      },
+    })
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+    // Every pattern is offered to the compiler, not just the first.
+    expect(seen).toHaveLength(9)
   })
 
   /**
@@ -492,6 +544,56 @@ const failureCases: FailureCase[] = [
     },
     at: { file: GAMMA, path: 'computed_properties' },
     message: /requires smiles/,
+  },
+  {
+    // The primary key of `chemical_classes`, and the class's URL identity.
+    name: 'duplicate chemical class slug',
+    mutate: (input) => {
+      const classes = rows(input.chemicalClasses.data as LooseValue)
+      classes[1].slug = classes[0].slug
+    },
+    at: { file: CHEMICAL_CLASSES_FILE, path: '[1].slug' },
+    message: /duplicate chemical class slug/,
+  },
+  {
+    // Not a database constraint: two classes on the same position make the
+    // filter row's order depend on how Postgres feels about ties.
+    name: 'duplicate chemical class sort_order',
+    mutate: (input) => {
+      const classes = rows(input.chemicalClasses.data as LooseValue)
+      classes[1].sort_order = classes[0].sort_order
+    },
+    at: { file: CHEMICAL_CLASSES_FILE, path: '[1].sort_order' },
+    message: /duplicate sort_order/,
+  },
+  {
+    /**
+     * The one that would do real damage silently. RDKit compiles "" into a
+     * perfectly valid query molecule, so nothing downstream errors — the class
+     * would just exist forever with nothing in it. Rejected structurally, so
+     * it fails whether or not a compiler was injected.
+     */
+    name: 'empty SMARTS pattern',
+    mutate: (input) => {
+      rows(input.chemicalClasses.data as LooseValue)[0].smarts = ''
+    },
+    at: { file: CHEMICAL_CLASSES_FILE, path: '[0].smarts' },
+    message: /cannot be empty/,
+  },
+  {
+    name: 'whitespace-only SMARTS pattern',
+    mutate: (input) => {
+      rows(input.chemicalClasses.data as LooseValue)[0].smarts = '   \t '
+    },
+    at: { file: CHEMICAL_CLASSES_FILE, path: '[0].smarts' },
+    message: /cannot be empty/,
+  },
+  {
+    name: 'chemical class missing its description',
+    mutate: (input) => {
+      delete rows(input.chemicalClasses.data as LooseValue)[2].description
+    },
+    at: { file: CHEMICAL_CLASSES_FILE, path: '[2].description' },
   },
 ]
 

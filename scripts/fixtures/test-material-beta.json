@@ -4,7 +4,7 @@
   "material_type": "isolate",
   "cas_number": "000-00-0",
   "iupac_name": null,
-  "smiles": "SMILES-TEST-BETA",
+  "smiles": "O=C1CCCCC1",
   "molecular_formula": null,
   "molecular_weight": null,
   "identity_source_key": "test-source-3",

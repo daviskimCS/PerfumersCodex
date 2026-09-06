@@ -4,7 +4,7 @@
   "material_type": "synthetic",
   "cas_number": "00-00-0",
   "iupac_name": "test-iupac-name-alpha",
-  "smiles": "SMILES-TEST-ALPHA",
+  "smiles": "CC(=O)OCCO",
   "molecular_formula": "TEST-FORMULA",
   "molecular_weight": 100,
   "identity_source_key": "test-source-2",

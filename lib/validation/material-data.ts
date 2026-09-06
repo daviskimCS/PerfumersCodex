@@ -10,11 +10,12 @@ import { z } from 'zod'
  * onto Drizzle stays trivial. App code never sees these shapes — it uses the
  * camelCase contracts in lib/types.ts.
  *
- * The input set is one JSON file per material plus three reference files:
+ * The input set is one JSON file per material plus four reference files:
  *
  *   families.json          [{ slug, name, parent_slug }]
  *   usage-categories.json  [{ id (1–11), name, description }]
  *   hazard-codes.json      [{ code, description, category }]
+ *   chemical-classes.json  [{ slug, name, smarts, description, sort_order }]
  *   <material>.json        { slug, canonical_name, material_type,
  *                            cas_number, iupac_name, smiles,
  *                            molecular_formula, molecular_weight,
@@ -55,7 +56,7 @@ import { z } from 'zod'
  */
 
 /**
- * The three reference filenames, fixed by this format.
+ * The four reference filenames, fixed by this format.
  *
  * They live here rather than in `scripts/seed.ts` because the input format is
  * this module's contract: the seed script discovers material files by
@@ -66,11 +67,13 @@ import { z } from 'zod'
 export const FAMILIES_FILE = 'families.json'
 export const USAGE_CATEGORIES_FILE = 'usage-categories.json'
 export const HAZARD_CODES_FILE = 'hazard-codes.json'
+export const CHEMICAL_CLASSES_FILE = 'chemical-classes.json'
 
 export const REFERENCE_FILES: readonly string[] = [
   FAMILIES_FILE,
   USAGE_CATEGORIES_FILE,
   HAZARD_CODES_FILE,
+  CHEMICAL_CLASSES_FILE,
 ]
 
 /**
@@ -199,6 +202,31 @@ export const hazardCodeRecordSchema = z.strictObject({
 })
 
 export const hazardCodesFileSchema = z.array(hazardCodeRecordSchema)
+
+/**
+ * chemical-classes.json — the `chemical_classes` table (migration 0006).
+ *
+ * `smarts` is the pattern `scripts/classify.ts` computes membership from, so
+ * the trimmed-nonempty rule is load-bearing rather than tidiness: RDKit
+ * compiles `""` into a perfectly valid query molecule with no atoms, which
+ * never errors and never matches — an empty pattern would quietly define a
+ * class no material can ever join. Whether RDKit can compile the pattern at
+ * all is checked in validateMaterialData, which needs RDKit and so takes the
+ * compiler from its caller (see MaterialDataOptions).
+ */
+export const chemicalClassRecordSchema = z.strictObject({
+  slug: slugSchema,
+  name: textSchema,
+  smarts: z
+    .string()
+    .trim()
+    .min(1, 'SMARTS pattern cannot be empty — an empty query matches nothing'),
+  description: textSchema,
+  // smallint, and the list is curated rather than alphabetical.
+  sort_order: z.number().int().min(0).max(32767),
+})
+
+export const chemicalClassesFileSchema = z.array(chemicalClassRecordSchema)
 
 /**
  * A `material_synonyms` row. `source_key` is per row, not per material:
@@ -422,6 +450,7 @@ export const materialFileSchema = z
 export type FamilyRecord = z.infer<typeof familyRecordSchema>
 export type UsageCategoryRecord = z.infer<typeof usageCategoryRecordSchema>
 export type HazardCodeRecord = z.infer<typeof hazardCodeRecordSchema>
+export type ChemicalClassRecord = z.infer<typeof chemicalClassRecordSchema>
 export type MaterialSynonymRecord = z.infer<typeof materialSynonymSchema>
 export type MaterialSourceRecord = z.infer<typeof materialSourceSchema>
 export type UsageLimitRecord = z.infer<typeof usageLimitRecordSchema>
@@ -447,7 +476,24 @@ export interface MaterialDataInput {
   families: MaterialDataFile
   usageCategories: MaterialDataFile
   hazardCodes: MaterialDataFile
+  chemicalClasses: MaterialDataFile
   materials: MaterialDataFile[]
+}
+
+/**
+ * Checks this module cannot perform itself.
+ *
+ * `smartsIsValid` compiles a SMARTS pattern and says whether RDKit accepts it.
+ * It is injected rather than imported because compiling needs RDKit.js — a
+ * 6.6 MB WebAssembly module loaded asynchronously — and this module is
+ * synchronous, dependency-free, and imported by tests that must not pay for
+ * it. `scripts/seed.ts` supplies it from the same RDKit instance it classifies
+ * with. Omitted, the structural checks on `smarts` still run (nonempty after
+ * trimming) and only the compile check is skipped; the seed says so in its log
+ * when it skips, and it only skips for a corpus that has nothing to classify.
+ */
+export interface MaterialDataOptions {
+  smartsIsValid?: (smarts: string) => boolean
 }
 
 /** Every error names the offending file and the field path within it. */
@@ -461,6 +507,8 @@ export interface MaterialDataBundle {
   families: FamilyRecord[]
   usageCategories: UsageCategoryRecord[]
   hazardCodes: HazardCodeRecord[]
+  /** In `sort_order`, so the seed and the filter row agree on the order. */
+  chemicalClasses: ChemicalClassRecord[]
   /** In input order; slugs are unique across the set. */
   materials: MaterialFile[]
 }
@@ -505,7 +553,8 @@ function parseFile<S extends z.ZodType>(
  * failed to parse, so cascades don't bury the root cause.
  */
 export function validateMaterialData(
-  input: MaterialDataInput
+  input: MaterialDataInput,
+  options: MaterialDataOptions = {}
 ): MaterialDataResult {
   const errors: MaterialDataError[] = []
 
@@ -518,6 +567,11 @@ export function validateMaterialData(
   const hazardCodes = parseFile(
     input.hazardCodes,
     hazardCodesFileSchema,
+    errors
+  )
+  const chemicalClasses = parseFile(
+    input.chemicalClasses,
+    chemicalClassesFileSchema,
     errors
   )
 
@@ -537,6 +591,14 @@ export function validateMaterialData(
   }
   if (hazardCodes !== null) {
     checkHazardCodes(input.hazardCodes.filename, hazardCodes, errors)
+  }
+  if (chemicalClasses !== null) {
+    checkChemicalClasses(
+      input.chemicalClasses.filename,
+      chemicalClasses,
+      options.smartsIsValid,
+      errors
+    )
   }
 
   const refs: ReferenceSets = {
@@ -592,7 +654,8 @@ export function validateMaterialData(
     errors.length > 0 ||
     families === null ||
     categories === null ||
-    hazardCodes === null
+    hazardCodes === null ||
+    chemicalClasses === null
   ) {
     return { ok: false, errors }
   }
@@ -602,6 +665,12 @@ export function validateMaterialData(
       families,
       usageCategories: categories,
       hazardCodes,
+      // Sorted here, once, so neither the seed nor the filter row has to
+      // remember to: `sort_order` exists precisely because the list is
+      // curated, and a file written out of order should still display in it.
+      chemicalClasses: [...chemicalClasses].sort(
+        (a, b) => a.sort_order - b.sort_order
+      ),
       materials: materials.map((entry) => entry.material),
     },
   }
@@ -722,6 +791,60 @@ function checkHazardCodes(
       })
     } else {
       codesSeen.add(hazard.code)
+    }
+  })
+}
+
+/**
+ * `chemical_classes` is the one reference table whose contents are executable:
+ * every pattern is run against every structure in the corpus, so a bad row
+ * does not fail loudly at insert time the way a bad hazard code does — it
+ * quietly mislabels materials. Hence three checks:
+ *
+ * - duplicate `slug` — the primary key, and the class's URL identity;
+ * - duplicate `sort_order` — not a database constraint, but two classes
+ *   sharing a position makes the filter row's order depend on how Postgres
+ *   feels about ties, which is a display bug nobody will trace back to here;
+ * - a SMARTS RDKit refuses — the pattern is the whole definition of the class,
+ *   so an uncompilable one defines nothing. Skipped when the caller supplied
+ *   no compiler (see MaterialDataOptions); the emptiness check above it is
+ *   structural and always runs.
+ */
+function checkChemicalClasses(
+  file: string,
+  classes: ChemicalClassRecord[],
+  smartsIsValid: ((smarts: string) => boolean) | undefined,
+  errors: MaterialDataError[]
+): void {
+  const slugsSeen = new Set<string>()
+  const sortOrdersSeen = new Set<number>()
+  classes.forEach((chemicalClass, index) => {
+    if (slugsSeen.has(chemicalClass.slug)) {
+      errors.push({
+        file,
+        path: `[${index}].slug`,
+        message: `duplicate chemical class slug "${chemicalClass.slug}"`,
+      })
+    } else {
+      slugsSeen.add(chemicalClass.slug)
+    }
+
+    if (sortOrdersSeen.has(chemicalClass.sort_order)) {
+      errors.push({
+        file,
+        path: `[${index}].sort_order`,
+        message: `duplicate sort_order ${chemicalClass.sort_order} — the display order would be arbitrary between the two`,
+      })
+    } else {
+      sortOrdersSeen.add(chemicalClass.sort_order)
+    }
+
+    if (smartsIsValid !== undefined && !smartsIsValid(chemicalClass.smarts)) {
+      errors.push({
+        file,
+        path: `[${index}].smarts`,
+        message: `RDKit cannot compile the SMARTS pattern ${JSON.stringify(chemicalClass.smarts)}`,
+      })
     }
   })
 }
