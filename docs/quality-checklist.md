@@ -4,6 +4,8 @@ The "boring quality" work that separates a portfolio project from a real one. ~2
 
 This is a checklist, not a milestone. Apply continuously. Audit explicitly during polish weeks (15 and 21).
 
+Wave 7 (2026-09-02) ran the per-page and per-form lists across every shipped surface — six defects found and fixed, recorded in [CHECKLIST.md](./CHECKLIST.md). The boxes below stay unticked on purpose: this file is the bar, not the record.
+
 ## Per-page checklist
 
 For every public page (search, material detail, family page, account, etc.):

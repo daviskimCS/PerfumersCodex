@@ -1,6 +1,6 @@
 # Wave 7 — The quality bar
 
-**Status: READY — dispatched 2026-09-02.** Orchestrator-owned; subagents read
+**Status: COMPLETE — dispatched 2026-09-02, merged 2026-09-03 (PR #8).** Orchestrator-owned; subagents read
 it, only the orchestrator edits it. House rules, protocol and standing
 constraints are [wave-3.md](./wave-3.md)'s, carried verbatim into every
 prompt, plus wave-4's rate-limiting and caching deferral records.
@@ -41,9 +41,9 @@ disjoint: W7-A creates only new files under Next's metadata file conventions,
 W7-B edits existing components and pages. Neither touches `app/layout.tsx`,
 `db/**`, package manifests or CI.
 
-| Item                     | Exclusive files                                                                                                                                      | Proves it is done                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| W7-A Identity & OG cards | `app/icon.svg`, `app/apple-icon.tsx`, `app/opengraph-image.tsx`, `app/materials/[slug]/opengraph-image.tsx`, delete `app/favicon.ico`                | `npm run build` + the rendered images fetched and inspected              |
+| Item                     | Exclusive files                                                                                                                                      | Proves it is done                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| W7-A Identity & OG cards | `app/icon.svg`, `app/apple-icon.tsx`, `app/opengraph-image.tsx`, `app/materials/[slug]/opengraph-image.tsx`, delete `app/favicon.ico`                | `npm run build` + the rendered images fetched and inspected                 |
 | W7-B Accessibility audit | `components/*.tsx` (not `ui/`), `components/account/**`, `components/material/**`, `components/auth/**`, `app/**/page.tsx`, `app/(auth)/**/page.tsx` | `npm run typecheck && npm run lint && npm run build` + keyboard walkthrough |
 
 `app/layout.tsx` stays orchestrator-owned. If either item needs a change

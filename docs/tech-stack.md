@@ -6,6 +6,7 @@
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Framework                  | Next.js 16 (App Router, Turbopack default)                                                                                                                                         |
 | Language                   | TypeScript (strict mode)                                                                                                                                                           |
+| Typography                 | JetBrains Mono, self-hosted (`assets/fonts/`, OFL) through `next/font/local`; the same file feeds the Open Graph cards, so no request-time font fetch (Sep 2026)                   |
 | Styling                    | Tailwind CSS v4 + shadcn/ui                                                                                                                                                        |
 | Database                   | Postgres (hosted on Supabase)                                                                                                                                                      |
 | ORM                        | Drizzle                                                                                                                                                                            |
@@ -25,6 +26,8 @@
 | Blog                       | MDX route (`/blog`) inside this Next.js app — no separate platform                                                                                                                 |
 
 > **Updated June 2026** after a currency review: Next.js 14 → 16, Tailwind v3 → v4, Vercel KV → Upstash (Vercel KV was discontinued Dec 2024), Supabase auth-helpers → `@supabase/ssr`, and Resend pulled forward from v1.1 to pre-launch (see Supabase section below).
+
+> **Updated September 2026:** JetBrains Mono self-hosted (Geist dropped — it has no Greek glyphs, and `next/og` was fetching Noto Sans from Google at request time to cover them); Row-Level Security deny-by-default on every table (migration `0002`); `sources.key` (migration `0003`); the pre-launch password gate (`SITE_GATE_PASSWORD` — unset means off).
 
 > **Updated August 2026:** cheminformatics (RDKit / RDKit.js) and the structure–odor experiment added to v1 scope — see [scope.md](./scope.md) and [cheminformatics.md](./cheminformatics.md). Embeddings/pgvector, an MCP server, and the UMAP odor map are explicitly deferred (table below).
 
@@ -64,7 +67,7 @@ Bundles Postgres + Auth + Storage + Realtime. Pays for the integration tax up fr
 
 **Currency notes (June 2026):**
 
-- Auth integration uses `@supabase/ssr` (browser client + server client + token-refresh middleware). The old `auth-helpers` packages are deprecated — never mix the two.
+- Auth integration uses `@supabase/ssr` (browser client + server client + token-refresh proxy — `proxy.ts`, Next 16's name for middleware). The old `auth-helpers` packages are deprecated — never mix the two.
 - Use the new API keys (`sb_publishable_...` / `sb_secret_...`) from day one; legacy `anon`/`service_role` JWT keys are deprecated end of 2026.
 - **Email gotcha:** Supabase's built-in auth email sender is rate-limited to a handful of emails per hour — fine for solo dev, fatal on launch day when strangers sign up. Wire Resend SMTP (free tier: 3k emails/mo) with the custom domain into Supabase Auth during Phase 4, not v1.1 as originally planned.
 - **Free-tier pause:** free projects pause after ~~7 days of inactivity. Fine during the build; upgrade to Pro (~~$25/mo) at launch for no-pause reliability and daily backups. Budget decision: accepted (June 2026).

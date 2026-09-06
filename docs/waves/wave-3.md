@@ -1,6 +1,6 @@
 # Wave 3 — First database-backed wave
 
-**Status: REVIEWED — dispatch when entry criteria clear.** Prepared
+**Status: COMPLETE — merged 2026-08-29 (PR #3).** Prepared
 2026-08-27; independently reviewed the same day (verdict: dispatch after
 fixes — all 12 findings applied). Orchestrator-owned; subagents
 read it, only the orchestrator edits it.

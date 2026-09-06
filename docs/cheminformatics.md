@@ -27,6 +27,13 @@ Split of labor: RDKit (Python) computes in `perfumers-codex-data`; RDKit.js
 renders and filters in the browser. The WASM bundle is heavy — it is
 lazy-loaded and kept out of the critical path (Lighthouse >90 stands).
 
+The first three cited drafts (2026-09-05) were computed with RDKit.js
+2025.03.4 in Node as a stopgap — Crippen logP, TPSA, heavy atoms, and
+Tanimoto over folded 2048-bit Morgan fingerprints. When the Python pipeline
+exists, regenerate from it and record the fingerprint parameters beside
+`rdkit_version`; the version stamp alone does not distinguish two fingerprint
+configurations.
+
 ## 2. Structure–odor experiment — committed for v1
 
 A fingerprint → odor-descriptor classifier, trained on public labeled
@@ -47,7 +54,7 @@ deliverable is the evaluation:
   pages showing predicted descriptors with the model version, always separate
   from the human-written description (schema-enforced: `odor_predictions`
   vs. `material_descriptions`). Where a human description exists, the
-  side-by-side *is* the demo of honest evaluation.
+  side-by-side _is_ the demo of honest evaluation.
 
 This is an experiment with published metrics, not a product feature, and it
 is framed that way everywhere it appears.
@@ -65,12 +72,12 @@ The same discipline backs both search and the experiment:
 
 ## Deferred (in priority order)
 
-| Item | Status |
-|---|---|
-| Interactive odor map (UMAP over fingerprints/descriptors) | Stretch at launch, else first post-launch feature — highest demo-value-per-hour |
-| MCP server — the reference as queryable tools for LLM clients | v1.1 |
-| IFRA amendment diffing (what changed, which materials affected) | v1.1 — pairs with the 52nd Amendment re-verification |
-| Embeddings / pgvector hybrid retrieval | When the corpus outgrows FTS + trigram + synonyms |
+| Item                                                            | Status                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Interactive odor map (UMAP over fingerprints/descriptors)       | Stretch at launch, else first post-launch feature — highest demo-value-per-hour |
+| MCP server — the reference as queryable tools for LLM clients   | v1.1                                                                            |
+| IFRA amendment diffing (what changed, which materials affected) | v1.1 — pairs with the 52nd Amendment re-verification                            |
+| Embeddings / pgvector hybrid retrieval                          | When the corpus outgrows FTS + trigram + synonyms                               |
 
 Synonym and name resolution — arguably the actual hard problem — is not on
 this list because it is already core v1 scope: canonical IDs, the

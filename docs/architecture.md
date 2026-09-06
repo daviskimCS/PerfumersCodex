@@ -45,9 +45,10 @@ lib/
   validation/         Zod schemas shared by client + server (see D6)
   types.ts            App-facing domain contracts (see D3)
   env.ts              Validated env access (see D6)
-middleware.ts         Repo root — Supabase token-refresh middleware. The one
-                      location Next.js fixes; the only file outside the layout
-                      above with a job.
+proxy.ts              Repo root — Supabase token-refresh proxy (Next 16's name
+                      for middleware) plus the pre-launch password gate
+                      (lib/gate.ts). The one location Next.js fixes; the only
+                      file outside the layout above with a job.
 ```
 
 **Rules (promote to AGENTS.md on approval):**
@@ -60,7 +61,7 @@ middleware.ts         Repo root — Supabase token-refresh middleware. The one
   pipeline writes every table in the schema, and routing that through
   `lib/db/` would mean adding a write API that no page ever calls, growing
   the app's data-access surface to serve a script. The rule's purpose is to
-  keep *route and component* code away from raw rows, and that purpose is
+  keep _route and component_ code away from raw rows, and that purpose is
   untouched. `scripts/` still takes its client from `lib/db/` rather than
   opening its own connection, so there remains exactly one pooled client.
 - `lib/db/` functions return app-facing types (D3), not raw Drizzle rows —
@@ -102,7 +103,7 @@ those may adjust during Week 5 implementation without a decision review.
 not in the app-facing `lib/types.ts`.
 
 **Consequences:** `normalize.ts` + `rank.ts` are pure functions — the Week 5
-gold set ("iso e", "OTNE", "54464-57-2", "ambermax", "amber wood" → Iso E
+gold set ("iso e", "OTNE", "54464-57-2", "timbersilk", "amber wood" → Iso E
 Super at expected rank) runs against synthetic candidates with no database.
 One DB round-trip per search keeps the <150ms p95 budget honest. The public
 import path stays `@/lib/search` (the milestone plan's `lib/search.ts` becomes
