@@ -36,6 +36,13 @@
       "when": 1788657825517,
       "tag": "0004_ifra-absences-identity-sources",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788658233792,
+      "tag": "0005_identity-sources-not-null",
+      "breakpoints": true
     }
   ]
 }

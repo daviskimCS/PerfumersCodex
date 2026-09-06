@@ -174,10 +174,12 @@ export const materials = pgTable(
     molecularWeight: numeric('molecular_weight'),
     /**
      * The record the identity scalars above come from — one source per
-     * material, cited once (docs/database-schema.md). Nullable only between
-     * migrations 0004 and 0005; the seed always sets it.
+     * material, cited once (docs/database-schema.md). Added nullable in
+     * migration 0004, NOT NULL since 0005.
      */
-    identitySourceId: uuid('identity_source_id').references(() => sources.id),
+    identitySourceId: uuid('identity_source_id')
+      .notNull()
+      .references(() => sources.id),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -206,9 +208,11 @@ export const materialSynonyms = pgTable(
     synonymType: synonymTypeEnum('synonym_type').notNull(),
     /**
      * Per row, not per material: synonyms come from different documents.
-     * Nullable only between migrations 0004 and 0005; the seed always sets it.
+     * Added nullable in migration 0004, NOT NULL since 0005.
      */
-    sourceId: uuid('source_id').references(() => sources.id),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id),
   },
   (t) => [
     // Every material detail page and every search hit fans out to this table
