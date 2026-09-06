@@ -5,8 +5,7 @@
 > **Status 2026-09-05.** Built and live behind the pre-launch gate: search,
 > material detail, browse, families, bookmarks, notes, account management,
 > Google sign-in (dormant until configured), share cards, the seed pipeline.
-> Not yet built from the list below: the substructure / chemical-class
-> filter, the structure–odor experiment, the admin dashboard, the correction
+> Not yet built from the list below: the structure–odor experiment, the admin dashboard, the correction
 > form, privacy/terms pages, the blog, rate limiting, Sentry. Tracked as
 > Phase 4 in [CHECKLIST.md](./CHECKLIST.md).
 
@@ -21,7 +20,7 @@
 
 - 2D structure rendering on every discrete-molecule material page (client-side via RDKit.js/WASM; naturals are mixtures and show none)
 - "Structurally similar materials" module — Morgan/ECFP fingerprints + Tanimoto similarity, precomputed in the data pipeline
-- Substructure / chemical-class filtering ("all esters", "macrocyclic musks", "contains a lactone ring") — client-side over the corpus's SMILES
+- Substructure / chemical-class filtering ("all esters", "macrocyclic musks", "contains a lactone ring") — **shipped 2026-09-05.** The fixed classes are precomputed at seed time and filtered in SQL on `/materials`; arbitrary SMARTS queries run client-side on `/structure`. See cheminformatics.md §1 for why it is split
 - Computed properties (logP, TPSA, heavy atoms) as volatility-adjacent context, stamped with the RDKit version
 
 ### Structure–odor experiment (added August 2026)

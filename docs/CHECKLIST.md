@@ -393,11 +393,20 @@ editorial-shape decision, not a defect.
 - [ ] Signup, login, search, note saves, account mutations — the Week 18 pass
       deferred since Wave 4. Must land before public signup.
 
-### P4-D — Substructure / chemical-class filter · **READY**
+### P4-D — Substructure / chemical-class filter · **DONE** _(2026-09-05)_
 
-- [ ] Client-side over the corpus's SMILES with the already-lazy RDKit.js
-      (scope.md; cheminformatics.md §1). Buildable against fixtures now; only
-      worth looking at once P4-B lands.
+- [x] Nine structural classes precomputed at seed time into
+      `material_chemical_classes` (migration `0006`), filtered in SQL at
+      `/materials?class=…`, composing with the family filter.
+- [x] `/structure` for arbitrary SMARTS, client-side, degrading to the
+      precomputed class links without scripting.
+- [x] Every class pattern tested against known molecules with negative
+      controls (`scripts/classify.test.ts`, `components/structure-search/match.test.ts`).
+
+The split from cheminformatics.md's original "runs client-side over the
+corpus's SMILES" is recorded there with its reasoning. Worth revisiting once
+P4-B lands and the corpus is real rather than two structure-bearing
+fixtures.
 
 ### P4-E — Privacy policy, terms of service, `/blog` MDX route · **READY** _(copy is MAKER)_
 
