@@ -7,8 +7,13 @@
   "smiles": "SMILES-TEST-BETA",
   "molecular_formula": null,
   "molecular_weight": null,
+  "identity_source_key": "test-source-3",
   "synonyms": [
-    { "name": "Test Common Name Beta", "synonym_type": "common_name" }
+    {
+      "name": "Test Common Name Beta",
+      "synonym_type": "common_name",
+      "source_key": "test-source-3"
+    }
   ],
   "families": ["test-subfamily"],
   "sources": [
@@ -24,6 +29,7 @@
     }
   ],
   "usage_limits": [],
+  "ifra_absences": [],
   "hazards": [{ "hazard_code": "H001", "source_key": "test-source-3" }],
   "description": null,
   "usage_guidance": null,

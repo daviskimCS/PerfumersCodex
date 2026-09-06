@@ -17,7 +17,9 @@
  *
  *   1. reference tables (families, usage_categories, hazard_codes) — the first
  *      family/limit/hazard insert FKs into them;
- *   2. every material and its child rows;
+ *   2. every material: its sources first (`materials.identity_source_id` FKs
+ *      into them, so the row cannot be written before its citations exist),
+ *      then the row, then its child rows;
  *   3. `material_similarity` — its FKs point at OTHER materials, so a one-pass
  *      per-material write dies on the first forward reference;
  *   4. optional pruning, then `REFRESH MATERIALIZED VIEW CONCURRENTLY`
@@ -79,6 +81,7 @@ import {
   materialDescriptions,
   materialFamilies,
   materialHazards,
+  materialIfraAbsences,
   materialSimilarity,
   materialSynonyms,
   materialUsageGuidance,
@@ -422,10 +425,13 @@ type RowOutcome = 'created' | 'updated' | 'unchanged'
  * The material row itself, change-detected: an unchanged material keeps its
  * `updated_at`, so re-running the seed cannot reshuffle search results.
  * A soft-deleted material that reappears in the input is resurrected.
+ * `identitySourceId` is already resolved: the caller writes the material's
+ * sources first, because this row FKs into them.
  */
 async function writeMaterialRow(
   tx: Transaction,
-  material: MaterialFile
+  material: MaterialFile,
+  identitySourceId: string
 ): Promise<{ id: string; outcome: RowOutcome }> {
   const next = {
     canonicalName: material.canonical_name,
@@ -435,6 +441,7 @@ async function writeMaterialRow(
     smiles: material.smiles,
     molecularFormula: material.molecular_formula,
     molecularWeight: numericValue(material.molecular_weight),
+    identitySourceId,
   }
 
   const existing = (
@@ -464,7 +471,8 @@ async function writeMaterialRow(
     existing.iupacName === next.iupacName &&
     existing.smiles === next.smiles &&
     existing.molecularFormula === next.molecularFormula &&
-    sameNumeric(existing.molecularWeight, material.molecular_weight)
+    sameNumeric(existing.molecularWeight, material.molecular_weight) &&
+    existing.identitySourceId === next.identitySourceId
 
   if (unchanged) return { id: existing.id, outcome: 'unchanged' }
 
@@ -568,19 +576,26 @@ interface MaterialWriteReport {
 }
 
 /**
- * One material, one transaction: the material row, its sources, and a wholesale
- * replacement of every child collection. Nothing here touches another
- * material's rows — `material_similarity` is the separate pass below.
+ * One material, one transaction: its sources, the material row, and a
+ * wholesale replacement of every child collection. Sources go first because
+ * the row itself now cites one of them (`identity_source_id`) — the only
+ * write here whose FK points at a row written in the same call. Nothing here
+ * touches another material's rows — `material_similarity` is the separate
+ * pass below.
  */
 async function writeMaterial(
   material: MaterialFile,
   familyIdBySlug: Map<string, string>
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
-    const { id, outcome } = await writeMaterialRow(tx, material)
     const sourceIdByKey = await writeSources(tx, material.sources)
     const source = (key: string): string =>
       resolveSource(sourceIdByKey, key, material.slug)
+    const { id, outcome } = await writeMaterialRow(
+      tx,
+      material,
+      source(material.identity_source_key)
+    )
 
     // Delete-and-reinsert, inside the transaction: synonyms and landmark uses
     // have no natural key, so replacement is the only idempotent write. The
@@ -590,6 +605,9 @@ async function writeMaterial(
     await tx
       .delete(materialUsageLimits)
       .where(eq(materialUsageLimits.materialId, id))
+    await tx
+      .delete(materialIfraAbsences)
+      .where(eq(materialIfraAbsences.materialId, id))
     await tx.delete(materialHazards).where(eq(materialHazards.materialId, id))
     await tx.delete(landmarkUses).where(eq(landmarkUses.materialId, id))
     await tx
@@ -608,6 +626,7 @@ async function writeMaterial(
           materialId: id,
           name: synonym.name,
           synonymType: synonym.synonym_type,
+          sourceId: source(synonym.source_key),
         }))
       )
       childRows += material.synonyms.length
@@ -642,6 +661,19 @@ async function writeMaterial(
         }))
       )
       childRows += material.usage_limits.length
+    }
+
+    if (material.ifra_absences.length > 0) {
+      await tx.insert(materialIfraAbsences).values(
+        material.ifra_absences.map((absence) => ({
+          materialId: id,
+          ifraAmendmentVersion: absence.ifra_amendment_version,
+          sourceId: source(absence.source_key),
+          verifiedAt: new Date(absence.verified_at),
+          notes: absence.notes,
+        }))
+      )
+      childRows += material.ifra_absences.length
     }
 
     if (material.hazards.length > 0) {

@@ -18,11 +18,22 @@ import { z } from 'zod'
  *   <material>.json        { slug, canonical_name, material_type,
  *                            cas_number, iupac_name, smiles,
  *                            molecular_formula, molecular_weight,
+ *                            identity_source_key,
  *                            synonyms[], families[], sources[],
- *                            usage_limits[], hazards[], description,
- *                            usage_guidance, landmark_uses[],
+ *                            usage_limits[], ifra_absences[], hazards[],
+ *                            description, usage_guidance, landmark_uses[],
  *                            computed_properties, similarity[],
  *                            odor_predictions[] }
+ *
+ * Identity is cited like every other fact (2026-09-05, docs/database-schema.md
+ * `materials.identity_source_id`, `material_synonyms.source_id`): every file
+ * names `identity_source_key`, the one record its identity scalars come from
+ * (a natural cites whatever established its identity), and every synonym
+ * carries its own `source_key`. `ifra_absences[]` records a verified absence
+ * of an IFRA Standard, one row per amendment whose index was searched — so a
+ * material with no Standard is distinguishable from one nobody has researched
+ * (no limits and no absence). A file may not carry both a usage limit and an
+ * absence for the same amendment.
  *
  * Two deliberate departures from a 1:1 column mirror (both wave-4 decisions):
  *
@@ -189,9 +200,15 @@ export const hazardCodeRecordSchema = z.strictObject({
 
 export const hazardCodesFileSchema = z.array(hazardCodeRecordSchema)
 
+/**
+ * A `material_synonyms` row. `source_key` is per row, not per material:
+ * synonyms come from different documents (a PubChem list, a supplier sheet,
+ * the IFRA Standard's commercial names).
+ */
 export const materialSynonymSchema = z.strictObject({
   name: textSchema,
   synonym_type: synonymTypeSchema,
+  source_key: slugSchema,
 })
 
 /**
@@ -239,6 +256,19 @@ export const usageLimitRecordSchema = z
       path: ['max_pct'],
     }
   )
+
+/**
+ * A `material_ifra_absences` row: a verified absence of an IFRA Standard,
+ * checked against one amendment's complete index (`source_key` is that index
+ * document). PRIMARY KEY (material_id, ifra_amendment_version) and the
+ * limit-versus-absence contradiction are checked in validateMaterialData.
+ */
+export const ifraAbsenceRecordSchema = z.strictObject({
+  ifra_amendment_version: textSchema,
+  verified_at: timestampSchema,
+  notes: optionalTextSchema,
+  source_key: slugSchema,
+})
 
 export const materialHazardRecordSchema = z.strictObject({
   hazard_code: ghsCodeSchema,
@@ -335,10 +365,15 @@ export const materialFileSchema = z
       .nullable(),
     molecular_formula: textSchema.nullable(),
     molecular_weight: z.number().positive().nullable(),
+    // Required, never defaulted: identity is a cited fact, and a material
+    // whose identity came from nowhere is not a material this reference
+    // publishes (docs/database-schema.md `identity_source_id` NOT NULL).
+    identity_source_key: slugSchema,
     synonyms: z.array(materialSynonymSchema).default([]),
     families: z.array(slugSchema).default([]),
     sources: z.array(materialSourceSchema).default([]),
     usage_limits: z.array(usageLimitRecordSchema).default([]),
+    ifra_absences: z.array(ifraAbsenceRecordSchema).default([]),
     hazards: z.array(materialHazardRecordSchema).default([]),
     description: descriptionRecordSchema.nullable().default(null),
     usage_guidance: usageGuidanceRecordSchema.nullable().default(null),
@@ -390,6 +425,7 @@ export type HazardCodeRecord = z.infer<typeof hazardCodeRecordSchema>
 export type MaterialSynonymRecord = z.infer<typeof materialSynonymSchema>
 export type MaterialSourceRecord = z.infer<typeof materialSourceSchema>
 export type UsageLimitRecord = z.infer<typeof usageLimitRecordSchema>
+export type IfraAbsenceRecord = z.infer<typeof ifraAbsenceRecordSchema>
 export type MaterialHazardRecord = z.infer<typeof materialHazardRecordSchema>
 export type DescriptionRecord = z.infer<typeof descriptionRecordSchema>
 export type UsageGuidanceRecord = z.infer<typeof usageGuidanceRecordSchema>
@@ -772,8 +808,15 @@ function checkMaterial(
     }
   }
 
+  requireSource(material.identity_source_key, 'identity_source_key')
+  material.synonyms.forEach((synonym, index) =>
+    requireSource(synonym.source_key, `synonyms[${index}].source_key`)
+  )
   material.usage_limits.forEach((limit, index) =>
     requireSource(limit.source_key, `usage_limits[${index}].source_key`)
+  )
+  material.ifra_absences.forEach((absence, index) =>
+    requireSource(absence.source_key, `ifra_absences[${index}].source_key`)
   )
   material.hazards.forEach((hazard, index) =>
     requireSource(hazard.source_key, `hazards[${index}].source_key`)
@@ -846,6 +889,35 @@ function checkMaterial(
         file,
         path: `usage_limits[${index}].category_id`,
         message: `category id ${limit.category_id} matches no entry in usage-categories.json`,
+      })
+    }
+  })
+
+  // PRIMARY KEY (material_id, ifra_amendment_version) — one verdict per
+  // amendment. And an absence contradicts any Standard under the same
+  // amendment: "the index lists no Standard" and "here is its Standard"
+  // cannot both be true of one document (docs/database-schema.md). A
+  // Standard in a LATER amendment is fine — that is history, kept side by side.
+  const limitAmendments = new Set(
+    material.usage_limits.map((limit) => limit.ifra_amendment_version)
+  )
+  const absencesSeen = new Set<string>()
+  material.ifra_absences.forEach((absence, index) => {
+    const path = `ifra_absences[${index}].ifra_amendment_version`
+    if (absencesSeen.has(absence.ifra_amendment_version)) {
+      errors.push({
+        file,
+        path,
+        message: `duplicate IFRA absence for amendment "${absence.ifra_amendment_version}"`,
+      })
+    } else {
+      absencesSeen.add(absence.ifra_amendment_version)
+    }
+    if (limitAmendments.has(absence.ifra_amendment_version)) {
+      errors.push({
+        file,
+        path,
+        message: `a Standard and a verified absence for the same amendment cannot both be true — usage_limits also cites amendment "${absence.ifra_amendment_version}"`,
       })
     }
   })
