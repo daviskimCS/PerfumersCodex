@@ -85,6 +85,19 @@ export interface UsageLimit {
   sourceId: string
 }
 
+/**
+ * A verified absence of an IFRA Standard, checked against one amendment's
+ * complete index. Rows are never overwritten: when a later amendment brings a
+ * Standard, its limits sit beside this row as history. A material with no
+ * usageLimits AND no ifraAbsences has simply not been researched.
+ */
+export interface IfraAbsence {
+  ifraAmendmentVersion: string // e.g. "51st"
+  verifiedAt: string
+  notes: string | null
+  sourceId: string
+}
+
 export interface Hazard {
   code: string // e.g. "H317"
   description: string
@@ -141,8 +154,11 @@ export interface MaterialDetail extends MaterialSummary {
   smiles: string | null // null = natural/mixture → hide ALL structure features
   molecularFormula: string | null
   molecularWeight: number | null
-  synonyms: { name: string; type: SynonymType }[]
+  /** The record the identity scalars come from — one source, cited once. */
+  identitySourceId: string
+  synonyms: { name: string; type: SynonymType; sourceId: string }[]
   usageLimits: UsageLimit[]
+  ifraAbsences: IfraAbsence[]
   hazards: Hazard[]
   olfactive: OlfactiveDescription | null
   usageGuidance: UsageGuidance | null
@@ -152,7 +168,10 @@ export interface MaterialDetail extends MaterialSummary {
   odorPredictions: OdorPrediction[] // renders ONLY in the labeled experimental module
   /**
    * Every sourceId above resolves here. Citation superscript number =
-   * index in this array + 1, so ordering is part of the contract.
+   * index in this array + 1, so ordering is part of the contract: sources
+   * are ordered by first reference, walking the fields above in declaration
+   * order (identity → synonyms → usageLimits → ifraAbsences → hazards → …),
+   * which is also the page's visual order.
    */
   sources: Citation[]
 }

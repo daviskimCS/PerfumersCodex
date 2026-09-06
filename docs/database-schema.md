@@ -15,31 +15,33 @@
 
 The central table — one row per aromachemical or natural material.
 
-| Column            | Type                               | Notes                                                                                                                         |
-| ----------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| id                | uuid PK                            |                                                                                                                               |
-| slug              | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                           |
-| canonical_name    | text NOT NULL                      | The display name                                                                                                              |
-| material_type     | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it |
-| cas_number        | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                            |
-| iupac_name        | text NULLABLE                      |                                                                                                                               |
-| smiles            | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                     |
-| molecular_formula | text NULLABLE                      |                                                                                                                               |
-| molecular_weight  | numeric NULLABLE                   |                                                                                                                               |
-| created_at        | timestamptz NOT NULL DEFAULT now() |                                                                                                                               |
-| updated_at        | timestamptz NOT NULL DEFAULT now() |                                                                                                                               |
-| deleted_at        | timestamptz NULLABLE               | Soft delete                                                                                                                   |
+| Column             | Type                               | Notes                                                                                                                                                                                                                       |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                 | uuid PK                            |                                                                                                                                                                                                                             |
+| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                                                                                         |
+| canonical_name     | text NOT NULL                      | The display name                                                                                                                                                                                                            |
+| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                                                                                               |
+| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                                                                                                                          |
+| iupac_name         | text NULLABLE                      |                                                                                                                                                                                                                             |
+| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                                                                                                   |
+| molecular_formula  | text NULLABLE                      |                                                                                                                                                                                                                             |
+| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once. Added nullable in migration `0004`, NOT NULL in `0005` (2026-09-05). |
+| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                                                                                             |
+| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
+| updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
+| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                                                                                                 |
 
 ### `material_synonyms`
 
 Many synonyms per material — drives search.
 
-| Column       | Type                         | Notes                                                           |
-| ------------ | ---------------------------- | --------------------------------------------------------------- |
-| id           | uuid PK                      |                                                                 |
-| material_id  | uuid FK → materials NOT NULL |                                                                 |
-| name         | text NOT NULL                |                                                                 |
-| synonym_type | enum NOT NULL                | trade_name / iupac / common_name / abbreviation / supplier_name |
+| Column       | Type                         | Notes                                                                                                                                  |
+| ------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| id           | uuid PK                      |                                                                                                                                        |
+| material_id  | uuid FK → materials NOT NULL |                                                                                                                                        |
+| name         | text NOT NULL                |                                                                                                                                        |
+| synonym_type | enum NOT NULL                | trade_name / iupac / common_name / abbreviation / supplier_name                                                                        |
+| source_id    | uuid FK → sources NOT NULL   | Per row — synonyms come from different documents (PubChem list, TGSC, the IFRA Standard's commercial names). Migrations `0004`/`0005`. |
 
 Index: `(material_id)`, full-text index on `name`.
 
@@ -91,6 +93,21 @@ Per-material, per-category IFRA limits.
 | verified_at            | timestamptz NOT NULL                    |                                                                                                                                                                   |
 
 UNIQUE (material_id, category_id, ifra_amendment_version).
+
+### `material_ifra_absences`
+
+A verified absence of an IFRA Standard, checked against one amendment's complete index (migration `0004`, 2026-09-05). Without it a material with no Standard was indistinguishable from one nobody had researched — zero `material_usage_limits` rows either way, and the safety panel said "none entered yet" to both.
+
+| Column                                            | Type                         | Notes                                               |
+| ------------------------------------------------- | ---------------------------- | --------------------------------------------------- |
+| material_id                                       | uuid FK → materials NOT NULL |                                                     |
+| ifra_amendment_version                            | text NOT NULL                | The amendment whose index was searched, e.g. "51st" |
+| source_id                                         | uuid FK → sources NOT NULL   | The index document                                  |
+| verified_at                                       | timestamptz NOT NULL         |                                                     |
+| notes                                             | text NULLABLE                |                                                     |
+| PRIMARY KEY (material_id, ifra_amendment_version) |                              |                                                     |
+
+Never overwritten: when a later amendment brings a Standard, its `material_usage_limits` rows sit beside this row as history. Validation refuses a file carrying both a limit and an absence for the same amendment. No limits and no absence means "not researched", and the UI says exactly that.
 
 ### `hazard_codes`
 
@@ -368,15 +385,8 @@ The first three real materials (Iso E Super, Javanol, Civetone — see
 hold, and two of them are defects on the live page. Decide these before the
 corpus grows; each sets a convention every later material follows.
 
-1. **A verified IFRA absence.** Javanol and Civetone have no Standard, checked
-   against the complete 51st-Amendment index. `usage_limits` with zero rows is
-   the only representation, and the safety panel renders it as "none entered
-   yet". Needs a field for "no Standard, checked against amendment N".
-2. **Identity facts have no `source_id`.** `cas_number`, `iupac_name`,
-   `smiles`, `molecular_formula`, `molecular_weight` and `material_synonyms`
-   are the exception to the non-nullable-citation principle above, and the
-   detail page's citation list is built only from `source_id`-bearing rows —
-   so PubChem and TGSC vanish from Iso E Super's sources.
+1. ~~**A verified IFRA absence.**~~ **Decided 2026-09-05:** `material_ifra_absences`, one row per material per amendment (above).
+2. ~~**Identity facts have no `source_id`.**~~ **Decided 2026-09-05:** `materials.identity_source_id` (one per material) and `material_synonyms.source_id` (per row); the detail page's citation walk now starts with them.
 3. **IFRA subcategories.** Categories 5 and 10 split into subcategories with
    different limits; the table stores one value per category. Storing the
    most restrictive under-states what a body lotion or a spray may carry.
