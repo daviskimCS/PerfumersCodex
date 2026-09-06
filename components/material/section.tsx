@@ -17,7 +17,8 @@ export function PanelSection({
   children,
   className,
 }: {
-  title: string
+  /** Usually a string; a node when the title itself carries a citation. */
+  title: ReactNode
   /** Right-hand furniture for the heading row — a badge, a provenance note. */
   aside?: ReactNode
   children: ReactNode

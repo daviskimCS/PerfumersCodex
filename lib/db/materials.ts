@@ -8,6 +8,7 @@ import {
   materialDescriptions,
   materialFamilies,
   materialHazards,
+  materialIfraAbsences,
   materialSimilarity,
   materialSynonyms,
   materialUsageGuidance,
@@ -21,6 +22,7 @@ import { db } from '@/lib/db'
 import type {
   Citation,
   FamilyRef,
+  IfraAbsence,
   MaterialDetail,
   MaterialSummary,
 } from '@/lib/types'
@@ -267,6 +269,7 @@ export async function getMaterialBySlug(
     familyRows,
     synonymRows,
     usageLimitRows,
+    ifraAbsenceRows,
     hazardRows,
     descriptionRows,
     guidanceRows,
@@ -285,6 +288,7 @@ export async function getMaterialBySlug(
       .select({
         name: materialSynonyms.name,
         type: materialSynonyms.synonymType,
+        sourceId: materialSynonyms.sourceId,
       })
       .from(materialSynonyms)
       .where(eq(materialSynonyms.materialId, material.id))
@@ -311,6 +315,21 @@ export async function getMaterialBySlug(
       .orderBy(
         asc(materialUsageLimits.categoryId),
         asc(materialUsageLimits.verifiedAt)
+      ),
+    db
+      .select({
+        ifraAmendmentVersion: materialIfraAbsences.ifraAmendmentVersion,
+        verifiedAt: materialIfraAbsences.verifiedAt,
+        notes: materialIfraAbsences.notes,
+        sourceId: materialIfraAbsences.sourceId,
+      })
+      .from(materialIfraAbsences)
+      .where(eq(materialIfraAbsences.materialId, material.id))
+      // One row per amendment (the PK), so this is effectively a single key;
+      // verified_at is the tie-break for a deterministic citation walk.
+      .orderBy(
+        asc(materialIfraAbsences.ifraAmendmentVersion),
+        asc(materialIfraAbsences.verifiedAt)
       ),
     db
       .select({
@@ -412,15 +431,40 @@ export async function getMaterialBySlug(
   const computed = computedRows[0] ?? null
 
   /**
+   * Identity citations are mandatory (lib/types.ts: `identitySourceId` and
+   * `synonyms[].sourceId` are plain strings). The columns are nullable only
+   * between migrations 0004 and 0005, so a NULL here is a half-migrated
+   * database, not a material with nothing to cite. Fail loudly and name the
+   * column: passing it through as "no citation" would silently drop a source
+   * from the walk below and renumber every superscript on the page.
+   */
+  const identitySourceId = material.identitySourceId
+  if (identitySourceId === null) {
+    throw new Error(
+      `materials: ${material.slug} has NULL materials.identity_source_id — identity facts must cite a record (migration 0005 makes this NOT NULL)`
+    )
+  }
+  const synonyms = synonymRows.map((row) => {
+    if (row.sourceId === null) {
+      throw new Error(
+        `materials: ${material.slug} synonym "${row.name}" has NULL material_synonyms.source_id — every synonym must cite a record (migration 0005 makes this NOT NULL)`
+      )
+    }
+    return { name: row.name, type: row.type, sourceId: row.sourceId }
+  })
+
+  /**
    * Citation ordering — the app-wide rule pinned by wave-3.md W3-B:
    * `sources` is ordered by FIRST REFERENCE, walking `MaterialDetail`'s
    * fields in declaration order, deduped by source id. The superscript
-   * number is index-in-`sources` + 1. Fields with no sourceId (synonyms,
-   * computed, similar, odorPredictions) contribute nothing; sources
-   * referenced by no surviving row never appear.
+   * number is index-in-`sources` + 1. Fields with no sourceId (computed,
+   * similar, odorPredictions) contribute nothing; sources referenced by no
+   * surviving row never appear.
    *
-   * Walk order = declaration order of the sourceId-bearing fields:
-   * usageLimits → hazards → olfactive → usageGuidance → landmarkUses.
+   * Walk order = declaration order of the sourceId-bearing fields, which is
+   * also the page's visual order:
+   * identity → synonyms → usageLimits → ifraAbsences → hazards → olfactive
+   * → usageGuidance → landmarkUses.
    */
   const orderedSourceIds: string[] = []
   const seen = new Set<string>()
@@ -430,7 +474,10 @@ export async function getMaterialBySlug(
       orderedSourceIds.push(sourceId)
     }
   }
+  reference(identitySourceId)
+  for (const row of synonyms) reference(row.sourceId)
   for (const row of usageLimitRows) reference(row.sourceId)
+  for (const row of ifraAbsenceRows) reference(row.sourceId)
   for (const row of hazardRows) reference(row.sourceId)
   reference(description?.sourceId ?? null)
   reference(guidance?.sourceId ?? null)
@@ -473,7 +520,8 @@ export async function getMaterialBySlug(
     smiles: material.smiles,
     molecularFormula: material.molecularFormula,
     molecularWeight: toNumber(material.molecularWeight),
-    synonyms: synonymRows,
+    identitySourceId,
+    synonyms,
     usageLimits: usageLimitRows.map((row) => ({
       categoryId: row.categoryId,
       categoryName: row.categoryName,
@@ -482,6 +530,12 @@ export async function getMaterialBySlug(
       notes: row.notes,
       ifraAmendmentVersion: row.ifraAmendmentVersion,
       verifiedAt: row.verifiedAt.toISOString(),
+      sourceId: row.sourceId,
+    })),
+    ifraAbsences: ifraAbsenceRows.map((row): IfraAbsence => ({
+      ifraAmendmentVersion: row.ifraAmendmentVersion,
+      verifiedAt: row.verifiedAt.toISOString(),
+      notes: row.notes,
       sourceId: row.sourceId,
     })),
     hazards: hazardRows,

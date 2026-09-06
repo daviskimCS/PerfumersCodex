@@ -1,15 +1,20 @@
 import type { MaterialDetail } from '@/lib/types'
 
+import { Cite } from './cite'
 import { humanize } from './format'
 import { Field, FieldList, PanelSection } from './section'
 
 /**
  * The identifier block that sits under the hero and above the tabs.
  *
- * Everything here is uncited by design — these are canonical identifiers from
- * PubChem-class sources rather than fact rows, and `lib/types.ts` gives none of
- * them a `sourceId`. `Field` drops absent values, so a natural with no SMILES
- * and no formula simply shows fewer rows instead of a column of dashes.
+ * Cited in two grains. The identity scalars (IUPAC name, formula, weight,
+ * SMILES — and the CAS number in the hero) all come from ONE record, so
+ * `identitySourceId` is cited once, on the section title, rather than four
+ * times down the list. Synonyms are cited per row: they come from different
+ * documents (PubChem's list, TGSC, the IFRA Standard's commercial names), and
+ * each carries its own `sourceId`. `Field` drops absent values, so a natural
+ * with no SMILES and no formula simply shows fewer rows instead of a column
+ * of dashes.
  */
 export function MaterialIdentity({ material }: { material: MaterialDetail }) {
   const hasAnyIdentifier =
@@ -25,7 +30,18 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
   if (!hasAnyIdentifier) return null
 
   return (
-    <PanelSection title="Identity" className="mt-12">
+    <PanelSection
+      title={
+        <>
+          Identity
+          <Cite
+            sources={material.sources}
+            sourceId={material.identitySourceId}
+          />
+        </>
+      }
+      className="mt-12"
+    >
       <FieldList>
         <Field term="IUPAC name" value={material.iupacName} />
         <Field
@@ -54,6 +70,10 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
                     <span className="text-sm text-muted-foreground">
                       {humanize(synonym.type)}
                     </span>
+                    <Cite
+                      sources={material.sources}
+                      sourceId={synonym.sourceId}
+                    />
                   </li>
                 ))}
               </ul>
