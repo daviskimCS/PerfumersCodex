@@ -773,7 +773,12 @@ export const correctionSubmissions = pgTable('correction_submissions', {
 /**
  * Drives the admin dashboard's "search count" and "top searches".
  * Privacy-deliberate: no user_id, no IP, no session key — just the query.
- * Rows older than ~90 days are purged by a Supabase scheduled job.
+ * Retention: rows are kept INDEFINITELY today. A ~90-day purge is intended
+ * but not built — checked 2026-09-05 against the live database: no pg_cron
+ * extension, no cron schema, no job, and the oldest row still present. This
+ * comment previously asserted the purge as fact, which the privacy policy
+ * would have repeated to readers as a promise. Until the job exists, say so
+ * (docs/maker-todo.md).
  */
 export const searchQueries = pgTable('search_queries', {
   id: uuid('id').primaryKey().defaultRandom(),

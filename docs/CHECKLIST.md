@@ -408,7 +408,19 @@ corpus's SMILES" is recorded there with its reasoning. Worth revisiting once
 P4-B lands and the corpus is real rather than two structure-bearing
 fixtures.
 
-### P4-E — Privacy policy, terms of service, `/blog` MDX route · **READY** _(copy is MAKER)_
+### P4-E — Privacy policy and terms · **DONE** _(2026-09-05)_
+
+- [x] `/privacy` and `/terms`, drafted from what the code does and marked as
+      drafts pending the maker's review. Footer links from every page.
+- [x] Four placeholders left marked for the maker: contact email, governing
+      law and venue, and an export-on-request commitment no route implements.
+- [x] The claim that search rows are purged after ~90 days was found false
+      and corrected at its source rather than repeated (maker-todo 6b).
+
+### P4-E2 — `/blog` · **DEFERRED** _(maker's call, 2026-09-05)_
+
+Skipped rather than adding `@next/mdx` for a route with no content. Revisit
+when there is a post to publish; the dependency decision comes first.
 
 ### P4-F — Admin dashboard `/admin` + submit-a-correction form · **READY**
 
