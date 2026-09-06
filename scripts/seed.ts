@@ -15,8 +15,9 @@
  *
  * Write order, and why it is not negotiable:
  *
- *   1. reference tables (families, usage_categories, hazard_codes) — the first
- *      family/limit/hazard insert FKs into them;
+ *   1. reference tables (families, usage_categories, hazard_codes,
+ *      chemical_classes) — the first family/limit/hazard/class insert FKs
+ *      into them;
  *   2. every material: its sources first (`materials.identity_source_id` FKs
  *      into them, so the row cannot be written before its citations exist),
  *      then the row, then its child rows;
@@ -56,6 +57,18 @@
  *   preserved); dropped from the input → soft-deleted. Hard-deleting it would
  *   both break the soft-delete rule and reset `created_at` on every run.
  *
+ * - **`material_chemical_classes` is derived, never read from the input.**
+ *   Structural class membership is a deterministic recomputation from
+ *   `materials.smiles`, so the seed computes it with `scripts/classify.ts` and
+ *   stamps the RDKit version onto every row — no data file can claim a class
+ *   its structure does not support (AGENTS.md, docs/database-schema.md).
+ *   Classification runs BEFORE the connection opens, alongside validation: a
+ *   corpus with a SMILES RDKit cannot parse is one this seed refuses to write
+ *   at all, rather than one it writes with a material silently classless.
+ *   RDKit is loaded once for the whole run, and not at all when no material
+ *   in the input carries a SMILES — there is nothing for 6.6 MB of
+ *   WebAssembly to do.
+ *
  * - **This file imports `db/schema.ts` directly**, which architecture D1
  *   otherwise reserves for `lib/db/`. D1 governs app code — pages and
  *   components go through `lib/db/` and receive `lib/types.ts` shapes. This is
@@ -74,9 +87,11 @@ import { config as loadEnvFile } from 'dotenv'
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import {
+  chemicalClasses,
   families,
   hazardCodes,
   landmarkUses,
+  materialChemicalClasses,
   materialComputedProperties,
   materialDescriptions,
   materialFamilies,
@@ -93,11 +108,13 @@ import {
 } from '@/db/schema'
 import { db } from '@/lib/db'
 import {
+  CHEMICAL_CLASSES_FILE,
   FAMILIES_FILE,
   HAZARD_CODES_FILE,
   REFERENCE_FILES,
   USAGE_CATEGORIES_FILE,
   validateMaterialData,
+  type ChemicalClassRecord,
   type FamilyRecord,
   type HazardCodeRecord,
   type MaterialDataBundle,
@@ -107,6 +124,13 @@ import {
   type MaterialSourceRecord,
   type UsageCategoryRecord,
 } from '@/lib/validation/material-data'
+import {
+  ClassificationError,
+  classifyMaterials,
+  isValidSmarts,
+  loadRdkit,
+  type MaterialClassification,
+} from '@/scripts/classify'
 
 const USAGE = `usage: npm run db:seed -- <data-directory> [--prune [--force-prune]]`
 
@@ -187,7 +211,7 @@ function readJsonFile(directory: string, filename: string): MaterialDataFile {
 }
 
 /**
- * A flat directory: the three reference files by their fixed names, and every
+ * A flat directory: the four reference files by their fixed names, and every
  * other `.json` file is one material. Sorted, so log order and the order two
  * materials contend for a shared source row are both stable across runs.
  */
@@ -215,8 +239,32 @@ function readInput(directory: string): MaterialDataInput {
     families: readJsonFile(directory, FAMILIES_FILE),
     usageCategories: readJsonFile(directory, USAGE_CATEGORIES_FILE),
     hazardCodes: readJsonFile(directory, HAZARD_CODES_FILE),
+    chemicalClasses: readJsonFile(directory, CHEMICAL_CLASSES_FILE),
     materials: materialFilenames.map((name) => readJsonFile(directory, name)),
   }
+}
+
+/**
+ * A pre-validation peek at the raw JSON: does any material file carry a
+ * SMILES at all?
+ *
+ * It decides one thing only — whether this run pays for RDKit. Deliberately
+ * lenient: a `smiles` that is present but malformed is caught by
+ * `validateMaterialData` and then by `classifyMaterials`, both of which run
+ * with RDKit loaded. The cost of being wrong in the lenient direction is a
+ * WASM load nobody needed; being wrong the other way would skip
+ * classification for a corpus that wanted it, so the test is "is there a
+ * string here", not "is it a valid SMILES".
+ */
+function inputHasSmiles(input: MaterialDataInput): boolean {
+  return input.materials.some((file) => {
+    const data = file.data
+    return (
+      typeof data === 'object' &&
+      data !== null &&
+      typeof (data as { smiles?: unknown }).smiles === 'string'
+    )
+  })
 }
 
 /* -------------------------------------------------------------------------
@@ -247,8 +295,10 @@ function firstRow<T>(rows: T[], what: string): T {
   return row
 }
 
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
+/** `plural(2, 'row')` → "2 rows"; the third argument covers "classes". */
+function plural(count: number, noun: string, pluralForm?: string): string {
+  if (count === 1) return `${count} ${noun}`
+  return `${count} ${pluralForm ?? `${noun}s`}`
 }
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -320,6 +370,38 @@ async function writeUsageCategories(
     .onConflictDoUpdate({
       target: usageCategories.id,
       set: { name: sql`excluded.name`, description: sql`excluded.description` },
+    })
+}
+
+/**
+ * Upserted on the slug, like the other reference tables — never deleted. A
+ * class dropped from the input keeps its row, because `material_chemical_classes`
+ * FKs into it and deleting one would take a live corpus's rows with it; a
+ * retired class costs one row and stops appearing the moment nothing matches it.
+ */
+async function writeChemicalClasses(
+  records: ChemicalClassRecord[]
+): Promise<void> {
+  if (records.length === 0) return
+  await db
+    .insert(chemicalClasses)
+    .values(
+      records.map((record) => ({
+        slug: record.slug,
+        name: record.name,
+        smarts: record.smarts,
+        description: record.description,
+        sortOrder: record.sort_order,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: chemicalClasses.slug,
+      set: {
+        name: sql`excluded.name`,
+        smarts: sql`excluded.smarts`,
+        description: sql`excluded.description`,
+        sortOrder: sql`excluded.sort_order`,
+      },
     })
 }
 
@@ -585,7 +667,8 @@ interface MaterialWriteReport {
  */
 async function writeMaterial(
   material: MaterialFile,
-  familyIdBySlug: Map<string, string>
+  familyIdBySlug: Map<string, string>,
+  classification: MaterialClassification | null
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
     const sourceIdByKey = await writeSources(tx, material.sources)
@@ -617,6 +700,12 @@ async function writeMaterial(
       .delete(materialComputedProperties)
       .where(eq(materialComputedProperties.materialId, id))
     await tx.delete(odorPredictions).where(eq(odorPredictions.materialId, id))
+    // Unconditional, even when this run classified nothing: a material whose
+    // SMILES was withdrawn must lose its class rows, not keep the ones a
+    // previous run derived from a structure the corpus no longer claims.
+    await tx
+      .delete(materialChemicalClasses)
+      .where(eq(materialChemicalClasses.materialId, id))
 
     let childRows = 0
 
@@ -739,6 +828,24 @@ async function writeMaterial(
       childRows += material.odor_predictions.length
     }
 
+    // Derived, not read from the file: `classification` came from the
+    // material's own SMILES via RDKit. A NULL-SMILES material has an empty
+    // list here, which is the correct answer for a mixture, not a gap.
+    if (classification !== null) {
+      const classSlugs =
+        classification.classesByMaterial.get(material.slug) ?? []
+      if (classSlugs.length > 0) {
+        await tx.insert(materialChemicalClasses).values(
+          classSlugs.map((classSlug) => ({
+            materialId: id,
+            classSlug,
+            rdkitVersion: classification.rdkitVersion,
+          }))
+        )
+        childRows += classSlugs.length
+      }
+    }
+
     const description = await writeDescription(tx, id, material, sourceIdByKey)
 
     return { slug: material.slug, id, outcome, description, childRows }
@@ -815,9 +922,21 @@ async function main(): Promise<void> {
   log(`reading ${options.directory}`)
   const input = readInput(options.directory)
 
+  // RDKit is loaded here, once for the whole run, and only when there is
+  // something to classify. It has two jobs downstream: compiling every class
+  // SMARTS as part of validation, and matching them against every structure.
+  // A corpus of nothing but naturals does neither, so it does not pay 6.6 MB
+  // of WebAssembly to write zero rows.
+  const rdkit = inputHasSmiles(input) ? await loadRdkit() : null
+
   // Everything is validated — structurally and referentially — before a
   // connection is opened. A bad input set must cost zero writes.
-  const result = validateMaterialData(input)
+  const result = validateMaterialData(input, {
+    smartsIsValid:
+      rdkit === null
+        ? undefined
+        : (smarts: string) => isValidSmarts(rdkit, smarts),
+  })
   if (!result.ok) {
     const detail = result.errors
       .map((error) => `  ${error.file}: ${error.path} — ${error.message}`)
@@ -831,10 +950,43 @@ async function main(): Promise<void> {
     `validated ${plural(bundle.materials.length, 'material')}, ` +
       `${bundle.families.length} families, ` +
       `${bundle.usageCategories.length} usage categories, ` +
-      `${plural(bundle.hazardCodes.length, 'hazard code')}`
+      `${plural(bundle.hazardCodes.length, 'hazard code')}, ` +
+      `${plural(bundle.chemicalClasses.length, 'chemical class', 'chemical classes')}`
   )
   if (bundle.materials.length === 0) {
     log('WARNING: the input set contains no material files')
+  }
+
+  // Before the connection, for the same reason validation is: a corpus with a
+  // structure RDKit cannot read is one this seed refuses to write at all.
+  let classification: MaterialClassification | null = null
+  if (rdkit === null) {
+    log(
+      'no material in the input carries a SMILES: RDKit not loaded, ' +
+        'no chemical-class rows, SMARTS patterns not compiled'
+    )
+  } else {
+    try {
+      classification = classifyMaterials(
+        rdkit,
+        bundle.materials,
+        bundle.chemicalClasses
+      )
+    } catch (cause) {
+      if (cause instanceof ClassificationError) {
+        throw new SeedAbort(`${cause.message}; nothing was written.`)
+      }
+      throw cause
+    }
+    const classified = [...classification.classesByMaterial.values()]
+    log(
+      `classified ${plural(classified.length, 'material')} with RDKit ` +
+        `${classification.rdkitVersion} ` +
+        `(${plural(
+          classified.reduce((total, slugs) => total + slugs.length, 0),
+          'class membership'
+        )})`
+    )
   }
 
   connectionOpened = true
@@ -866,15 +1018,18 @@ async function main(): Promise<void> {
   const familyIdBySlug = await writeFamilies(bundle.families)
   await writeUsageCategories(bundle.usageCategories)
   await writeHazardCodes(bundle.hazardCodes)
+  // Before the materials: material_chemical_classes FKs into this table.
+  await writeChemicalClasses(bundle.chemicalClasses)
   log(
     `reference tables written (families ${bundle.families.length}, ` +
       `usage categories ${bundle.usageCategories.length}, ` +
-      `hazard codes ${bundle.hazardCodes.length})`
+      `hazard codes ${bundle.hazardCodes.length}, ` +
+      `chemical classes ${bundle.chemicalClasses.length})`
   )
 
   const materialIdBySlug = new Map<string, string>()
   for (const material of bundle.materials) {
-    const report = await writeMaterial(material, familyIdBySlug)
+    const report = await writeMaterial(material, familyIdBySlug, classification)
     materialIdBySlug.set(report.slug, report.id)
     log(
       `  ${report.slug}: row ${report.outcome}, ` +

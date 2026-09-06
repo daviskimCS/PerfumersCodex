@@ -11,6 +11,7 @@ import {
 } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { listChemicalClasses } from '@/lib/db/chemical-classes'
 import { listFamilies } from '@/lib/db/families'
 import { DEFAULT_PAGE_SIZE, listMaterials } from '@/lib/db/materials'
 import type { MaterialSort } from '@/lib/db/materials'
@@ -18,8 +19,9 @@ import type { MaterialSort } from '@/lib/db/materials'
 /**
  * The browse index (W5-A / P2-H).
  *
- * **The URL is the state.** Sort, family filter and page all live in
- * `searchParams` and every control is a plain `<Link>`, so a filtered view is
+ * **The URL is the state.** Sort, the two filters (olfactive family and
+ * structural class, which compose) and page all live in `searchParams` and
+ * every control is a plain `<Link>`, so a filtered view is
  * a real address: sharable, bookmarkable, crawlable, and working with
  * scripting off. Nothing here fetches on the client.
  */
@@ -33,7 +35,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Materials',
   description:
-    'Browse every material in the Perfumers Codex by name or by olfactive family.',
+    'Browse every material in the Perfumers Codex by name, by olfactive family, or by structural class.',
 }
 
 /** Label for each sort the URL accepts. Order here is the order rendered. */
@@ -49,6 +51,8 @@ type RawSearchParams = Record<string, string | string[] | undefined>
 interface BrowseQuery {
   sort: MaterialSort
   family: string | null
+  /** The structural axis. Independent of `family`; the two compose. */
+  class: string | null
   page: number
 }
 
@@ -59,18 +63,23 @@ function first(value: string | string[] | undefined): string | undefined {
 
 /**
  * Parse leniently, never throw. A hand-mangled query string should show a
- * sensible page, not a 500 — the only value that survives unrecognised is the
- * family slug, because an unknown family has to reach the empty state rather
- * than silently widen to the whole corpus.
+ * sensible page, not a 500 — the only values that survive unrecognised are the
+ * family and class slugs, because an unknown one of either has to reach the
+ * empty state rather than silently widen to the whole corpus.
  */
 function readQuery(params: RawSearchParams): BrowseQuery {
   const sort = first(params.sort)
   const family = first(params.family)?.trim()
+  const chemicalClass = first(params.class)?.trim()
   const page = Number(first(params.page))
 
   return {
     sort: sort === 'recently-updated' ? 'recently-updated' : DEFAULT_SORT,
     family: family !== undefined && family !== '' ? family : null,
+    class:
+      chemicalClass !== undefined && chemicalClass !== ''
+        ? chemicalClass
+        : null,
     page: Number.isInteger(page) && page > 1 ? page : 1,
   }
 }
@@ -83,6 +92,7 @@ function browseHref(query: BrowseQuery): string {
   const params = new URLSearchParams()
   if (query.sort !== DEFAULT_SORT) params.set('sort', query.sort)
   if (query.family !== null) params.set('family', query.family)
+  if (query.class !== null) params.set('class', query.class)
   if (query.page > 1) params.set('page', String(query.page))
 
   const search = params.toString()
@@ -107,8 +117,23 @@ export default function MaterialsPage({
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
       <h1 className="text-3xl">Materials</h1>
       <p className="mt-3 max-w-measure text-muted-foreground">
-        Every published entry, filterable by olfactive family. Each one carries
-        its sources.
+        Every published entry, filterable by olfactive family and by structural
+        class. Each one carries its sources.
+      </p>
+
+      {/* Static, so it renders with the heading rather than waiting behind the
+          Suspense boundary below. The class row filters by the classes we
+          precomputed; this is the escape hatch for the ones we did not. */}
+      <p className="mt-3 max-w-measure text-sm text-muted-foreground">
+        Looking for a pattern that isn&rsquo;t listed?{' '}
+        <Link
+          href="/structure"
+          className="text-brand underline underline-offset-4 hover:no-underline"
+        >
+          Search by structure
+        </Link>{' '}
+        — type a SMARTS query and match it against every material with a known
+        structure.
       </p>
 
       {/*
@@ -146,24 +171,31 @@ async function Browse({
 }) {
   const query = readQuery(await searchParams)
 
-  const [{ items, total }, allFamilies] = await Promise.all([
+  const [{ items, total }, allFamilies, allClasses] = await Promise.all([
     listMaterials({
       sort: query.sort,
       familySlug: query.family,
+      classSlug: query.class,
       page: query.page,
       pageSize: DEFAULT_PAGE_SIZE,
     }),
     listFamilies(),
+    listChemicalClasses(),
   ])
 
   const pageCount = Math.max(Math.ceil(total / DEFAULT_PAGE_SIZE), 1)
   const activeFamily = allFamilies.find(
     (family) => family.slug === query.family
   )
+  // Undefined for a slug that is not a class at all — the heading then says
+  // only what it can vouch for, and the empty state below explains the rest.
+  const activeClass = allClasses.find(
+    (chemicalClass) => chemicalClass.slug === query.class
+  )
 
   return (
     <>
-      <Controls query={query} families={allFamilies} />
+      <Controls query={query} families={allFamilies} classes={allClasses} />
 
       {items.length === 0 ? (
         <EmptyResults query={query} total={total} />
@@ -175,6 +207,7 @@ async function Browse({
           >
             {total} {total === 1 ? 'material' : 'materials'}
             {activeFamily === undefined ? null : <> in {activeFamily.name}</>}
+            {activeClass === undefined ? null : <> · {activeClass.name}</>}
             {pageCount > 1 ? (
               <>
                 {' · '}page {query.page} of {pageCount}
@@ -204,9 +237,11 @@ async function Browse({
 function Controls({
   query,
   families,
+  classes,
 }: {
   query: BrowseQuery
   families: Awaited<ReturnType<typeof listFamilies>>
+  classes: Awaited<ReturnType<typeof listChemicalClasses>>
 }) {
   return (
     <div className="mt-8 flex flex-col gap-4 border-y border-border py-4">
@@ -244,6 +279,43 @@ function Controls({
                 className="text-muted-foreground tabular-nums"
               >
                 {family.materialCount}
+              </span>
+            </FilterLink>
+          ))}
+        </FilterRow>
+      ) : null}
+
+      {/* The structural axis, beside the olfactive one rather than nested in
+          it: the two are independent and compose, so a reader can hold both
+          ("woody" AND "macrocyclic") and drop either without losing the
+          other. Counts are rendered exactly as the family row renders them,
+          zeroes included — `listChemicalClasses` returns classes the corpus
+          does not yet exercise on purpose, and a "0" is a fact about the
+          corpus rather than a broken control. */}
+      {classes.length > 0 ? (
+        <FilterRow label="Class">
+          <FilterLink
+            href={browseHref({ ...query, class: null, page: 1 })}
+            active={query.class === null}
+          >
+            All
+          </FilterLink>
+          {classes.map((chemicalClass) => (
+            <FilterLink
+              key={chemicalClass.slug}
+              href={browseHref({
+                ...query,
+                class: chemicalClass.slug,
+                page: 1,
+              })}
+              active={chemicalClass.slug === query.class}
+            >
+              {chemicalClass.name}
+              <span
+                aria-hidden="true"
+                className="text-muted-foreground tabular-nums"
+              >
+                {chemicalClass.materialCount}
               </span>
             </FilterLink>
           ))}
@@ -345,7 +417,7 @@ function Pagination({
 }
 
 /* ---------------------------------------------------------------------------
-   The three ways this list can be empty — all through the one EmptyState
+   The four ways this list can be empty — all through the one EmptyState
    --------------------------------------------------------------------------- */
 
 function EmptyResults({ query, total }: { query: BrowseQuery; total: number }) {
@@ -362,6 +434,30 @@ function EmptyResults({ query, total }: { query: BrowseQuery; total: number }) {
           <Button asChild variant="outline" size="lg">
             <Link href={browseHref({ ...query, page: 1 })}>
               Back to the first page
+            </Link>
+          </Button>
+        }
+      />
+    )
+  }
+
+  // Class before family when both are set. Either message would be half-true
+  // for a two-filter view, so the tie goes to the action that recovers the
+  // most: clearing the class drops back to the family the reader chose, while
+  // clearing the family would leave them staring at the class that emptied
+  // the list. An unknown class slug lands here too — it matches nothing, and
+  // "empty" is the honest answer rather than silently widening the corpus.
+  if (query.class !== null) {
+    return (
+      <EmptyState
+        className="mt-6"
+        icon={SearchX}
+        title="No materials in this class"
+        description="Nothing published carries this structure — at least not with the other filters applied. The classes with entries are listed above, and a structure search will match patterns that aren't listed at all."
+        action={
+          <Button asChild variant="outline" size="lg">
+            <Link href={browseHref({ ...query, class: null, page: 1 })}>
+              Clear this class
             </Link>
           </Button>
         }
@@ -409,8 +505,9 @@ function BrowseSkeleton() {
   return (
     <>
       <div className="mt-8 flex flex-col gap-4 border-y border-border py-4">
-        {/* Two control rows: a label (text-2xs → 1rem) plus buttons at h-9. */}
-        {Array.from({ length: 2 }, (_, row) => (
+        {/* Three control rows — sort, family, class: a label (text-2xs →
+            1rem) plus buttons at h-9. */}
+        {Array.from({ length: 3 }, (_, row) => (
           <div key={row} className="flex flex-wrap items-center gap-3">
             <Skeleton className="h-4 w-12" />
             <Skeleton className="h-9 w-24" />

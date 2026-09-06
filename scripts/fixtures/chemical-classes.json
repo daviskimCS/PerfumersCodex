@@ -1,0 +1,65 @@
+[
+  {
+    "slug": "ester",
+    "name": "Ester",
+    "smarts": "[CX3](=O)[OX2H0][#6]",
+    "description": "A carbonyl carbon joined to an oxygen that carries another carbon — the linkage left behind when an acid meets an alcohol.",
+    "sort_order": 1
+  },
+  {
+    "slug": "lactone",
+    "name": "Lactone",
+    "smarts": "[CX3;R](=O)[OX2;R][#6;R]",
+    "description": "An ester whose linkage is closed inside a ring instead of joining two open chains.",
+    "sort_order": 2
+  },
+  {
+    "slug": "macrolactone",
+    "name": "Macrolactone",
+    "smarts": "[CX3;r{12-}](=O)[OX2;r{12-}]",
+    "description": "A lactone whose ring runs to twelve atoms or more — the large-ring esters.",
+    "sort_order": 3
+  },
+  {
+    "slug": "macrocyclic-ketone",
+    "name": "Macrocyclic ketone",
+    "smarts": "[#6;r{12-}][CX3;r{12-}](=O)[#6;r{12-}]",
+    "description": "A ketone whose carbonyl sits inside a ring of twelve atoms or more — the large-ring ketones.",
+    "sort_order": 4
+  },
+  {
+    "slug": "macrocycle",
+    "name": "Macrocyclic ring",
+    "smarts": "[r{12-}]",
+    "description": "Any ring of twelve atoms or more, whatever else the molecule carries.",
+    "sort_order": 5
+  },
+  {
+    "slug": "ketone",
+    "name": "Ketone",
+    "smarts": "[#6][CX3](=O)[#6]",
+    "description": "A carbonyl carbon with a carbon on either side — no hydrogen there, which is what separates it from an aldehyde.",
+    "sort_order": 6
+  },
+  {
+    "slug": "aldehyde",
+    "name": "Aldehyde",
+    "smarts": "[CX3H1](=O)[#6]",
+    "description": "A carbonyl carbon carrying one hydrogen and one carbon: the end of a chain rather than the middle of one.",
+    "sort_order": 7
+  },
+  {
+    "slug": "alcohol",
+    "name": "Alcohol",
+    "smarts": "[OX2H][CX4]",
+    "description": "A hydroxyl group on a saturated carbon.",
+    "sort_order": 8
+  },
+  {
+    "slug": "aromatic",
+    "name": "Aromatic ring",
+    "smarts": "c1ccccc1",
+    "description": "Contains a benzene ring.",
+    "sort_order": 9
+  }
+]

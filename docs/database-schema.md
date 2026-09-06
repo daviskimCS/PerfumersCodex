@@ -94,6 +94,33 @@ Per-material, per-category IFRA limits.
 
 UNIQUE (material_id, category_id, ifra_amendment_version).
 
+### `chemical_classes`
+
+Structural classes a molecule can belong to — "ester", "macrocyclic ketone", "contains a lactone ring" (migration `0006`, 2026-09-05). Reference data, seeded from `chemical-classes.json` like `usage_categories` and `hazard_codes`.
+
+| Column      | Type              | Notes                                                                                                                                                      |
+| ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| slug        | text PK           | URL identifier, e.g. "macrocyclic-ketone"                                                                                                                  |
+| name        | text NOT NULL     | Display name                                                                                                                                               |
+| smarts      | text NOT NULL     | The SMARTS pattern membership is computed from. Validated by compiling it before any write; an empty pattern is rejected because it matches every molecule |
+| description | text NOT NULL     | One line of plain language for the reader                                                                                                                  |
+| sort_order  | smallint NOT NULL | Display order; the list is curated, not alphabetical                                                                                                       |
+
+This is a **structural** axis, not an olfactive one — `families` remains the olfactive taxonomy and the two are independent.
+
+### `material_chemical_classes`
+
+Which materials belong to which class.
+
+| Column                                | Type                                | Notes                                                                              |
+| ------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
+| material_id                           | uuid FK → materials NOT NULL        |                                                                                    |
+| class_slug                            | text FK → chemical_classes NOT NULL |                                                                                    |
+| rdkit_version                         | text NOT NULL                       | Provenance, exactly as on `material_computed_properties` and `material_similarity` |
+| PRIMARY KEY (material_id, class_slug) |                                     |                                                                                    |
+
+**Not a cited fact and carries no `source_id`.** Membership is a deterministic recomputation from `materials.smiles` and the class's SMARTS, so it is stamped with the RDKit version that produced it (AGENTS.md). It is never authored by hand: the seed derives it, so a data file cannot claim a class the structure does not support. A NULL-SMILES material — a natural or any other mixture — simply has no rows here.
+
 ### `material_ifra_absences`
 
 A verified absence of an IFRA Standard, checked against one amendment's complete index (migration `0004`, 2026-09-05). Without it a material with no Standard was indistinguishable from one nobody had researched — zero `material_usage_limits` rows either way, and the safety panel said "none entered yet" to both.

@@ -14,8 +14,30 @@ turns that into a search axis no free perfumery reference has:
   "structurally similar materials" on every material page. Precomputed top-N
   in the data pipeline at seed time; served as plain rows.
 - **Substructure / class search.** "All esters," "macrocyclic musks,"
-  "contains a lactone ring." Runs client-side in RDKit.js (WASM) over the
-  corpus's SMILES — zero server cost, instant at this corpus size.
+  "contains a lactone ring." **Split in two, 2026-09-05** (P4-D). The fixed
+  class list is _precomputed at seed time_ into `material_chemical_classes`
+  and filtered in SQL at `/materials?class=…`; only arbitrary SMARTS queries
+  run client-side in RDKit.js (WASM), on `/structure`.
+
+  This revises the original "runs client-side over the corpus's SMILES".
+  Browsing "all macrocyclic musks" is the common path, and as rows it is
+  server-rendered, paginated, shareable, crawlable, works with scripting off,
+  and composes with the family filter — everything `/materials` already is
+  and would have forfeited. No reader should download 6.6 MB of WebAssembly
+  to see a list of names. Membership is also exactly the kind of value this
+  project already governs: a deterministic recomputation, so it is stamped
+  with `rdkit_version` and carries no citation, beside computed properties
+  and similarity. An arbitrary pattern genuinely cannot be precomputed, so
+  that — and only that — pays for the WASM, and when it fails to load the
+  page falls back to the precomputed class links rather than to nothing.
+
+  The class SMARTS live in `chemical-classes.json` and are validated by
+  compiling them before any write. Two traps, both measured: an empty pattern
+  compiles to a _valid_ query that matches nothing, so it would define a
+  permanently empty class rather than failing loudly; and ring-size queries
+  (`[r{12-}]`) do work in RDKit.js, which is what makes "macrocyclic"
+  expressible at all.
+
 - **Computed properties.** logP, TPSA, heavy-atom count — volatility-adjacent
   context (loose correlates of top/heart/base behavior), never presented as
   measured fact. Stamped with the RDKit version that produced them.

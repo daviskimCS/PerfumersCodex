@@ -43,6 +43,13 @@
       "when": 1788658233792,
       "tag": "0005_identity-sources-not-null",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788660353449,
+      "tag": "0006_chemical-classes",
+      "breakpoints": true
     }
   ]
 }

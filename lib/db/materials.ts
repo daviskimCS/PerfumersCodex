@@ -1,9 +1,21 @@
-import { and, asc, count, desc, eq, inArray, isNull } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  type SQL,
+} from 'drizzle-orm'
 
 import {
+  chemicalClasses,
   families,
   hazardCodes,
   landmarkUses,
+  materialChemicalClasses,
   materialComputedProperties,
   materialDescriptions,
   materialFamilies,
@@ -20,6 +32,7 @@ import {
 } from '@/db/schema'
 import { db } from '@/lib/db'
 import type {
+  ChemicalClassRef,
   Citation,
   FamilyRef,
   IfraAbsence,
@@ -70,6 +83,15 @@ export interface ListMaterialsOptions {
   sort?: MaterialSort
   /** Restrict to one olfactive family by slug. Omit/null = the whole corpus. */
   familySlug?: string | null
+  /**
+   * Restrict to one structural class by slug. Omit/null = every class.
+   *
+   * Independent of `familySlug` and composable with it: passing both narrows
+   * to materials that are in the family AND in the class. The two axes answer
+   * different questions ("what smells woody" vs "what is an ester"), so
+   * neither may quietly override the other.
+   */
+  classSlug?: string | null
   /** 1-based. Values below 1 are treated as 1. */
   page?: number
   /** Defaults to `DEFAULT_PAGE_SIZE`; clamped to `MAX_PAGE_SIZE`. */
@@ -104,42 +126,79 @@ type SummaryRow = {
   casNumber: string | null
 }
 
-/**
- * Attach each row's families in ONE extra round-trip, bucketed in TS.
- *
- * Every summary list goes through here, which is what keeps the index, the
- * family pages and `/saved` from drifting apart — and what keeps the fan-out
- * to `material_families` at one query per page instead of one per row.
- */
-async function withFamilies(rows: SummaryRow[]): Promise<MaterialSummary[]> {
-  if (rows.length === 0) return []
-
-  const familyRows = await db
-    .select({
-      materialId: materialFamilies.materialId,
-      slug: families.slug,
-      name: families.name,
-    })
-    .from(materialFamilies)
-    .innerJoin(families, eq(materialFamilies.familyId, families.id))
-    .where(
-      inArray(
-        materialFamilies.materialId,
-        rows.map((row) => row.id)
-      )
-    )
-    .orderBy(asc(families.name))
-
-  const familiesByMaterial = new Map<string, FamilyRef[]>()
-  for (const row of familyRows) {
-    const bucket = familiesByMaterial.get(row.materialId)
-    const ref: FamilyRef = { slug: row.slug, name: row.name }
+/** Bucket `{ materialId, ...ref }` rows by material, preserving row order. */
+function bucketByMaterial<Row extends { materialId: string }, Ref>(
+  rows: Row[],
+  toRef: (row: Row) => Ref
+): Map<string, Ref[]> {
+  const byMaterial = new Map<string, Ref[]>()
+  for (const row of rows) {
+    const bucket = byMaterial.get(row.materialId)
+    const ref = toRef(row)
     if (bucket) {
       bucket.push(ref)
     } else {
-      familiesByMaterial.set(row.materialId, [ref])
+      byMaterial.set(row.materialId, [ref])
     }
   }
+  return byMaterial
+}
+
+/**
+ * Attach each row's two taxonomies — olfactive families and structural
+ * classes — in ONE extra round-trip each, bucketed in TS.
+ *
+ * Every summary list goes through here, which is what keeps the index, the
+ * family pages and `/saved` from drifting apart — and what keeps the fan-out
+ * to `material_families` and `material_chemical_classes` at one query per
+ * page instead of one per row. The two queries run in parallel, so a page of
+ * 24 cards costs the same two round-trips as a page of one.
+ *
+ * (Was `withFamilies` until the structural axis landed. Renamed rather than
+ * paired with a second helper: a summary is only ever complete with both, and
+ * two helpers would let a caller build one with half its axes filled.)
+ */
+async function withRefs(rows: SummaryRow[]): Promise<MaterialSummary[]> {
+  if (rows.length === 0) return []
+
+  const ids = rows.map((row) => row.id)
+
+  const [familyRows, classRows] = await Promise.all([
+    db
+      .select({
+        materialId: materialFamilies.materialId,
+        slug: families.slug,
+        name: families.name,
+      })
+      .from(materialFamilies)
+      .innerJoin(families, eq(materialFamilies.familyId, families.id))
+      .where(inArray(materialFamilies.materialId, ids))
+      .orderBy(asc(families.name)),
+    // Curated order, matching the filter row and `listChemicalClasses` — the
+    // reader meets these classes in one order everywhere or in none.
+    db
+      .select({
+        materialId: materialChemicalClasses.materialId,
+        slug: chemicalClasses.slug,
+        name: chemicalClasses.name,
+      })
+      .from(materialChemicalClasses)
+      .innerJoin(
+        chemicalClasses,
+        eq(materialChemicalClasses.classSlug, chemicalClasses.slug)
+      )
+      .where(inArray(materialChemicalClasses.materialId, ids))
+      .orderBy(asc(chemicalClasses.sortOrder), asc(chemicalClasses.slug)),
+  ])
+
+  const familiesByMaterial = bucketByMaterial(familyRows, (row): FamilyRef => ({
+    slug: row.slug,
+    name: row.name,
+  }))
+  const classesByMaterial = bucketByMaterial(
+    classRows,
+    (row): ChemicalClassRef => ({ slug: row.slug, name: row.name })
+  )
 
   return rows.map((row) => ({
     id: row.id,
@@ -148,6 +207,9 @@ async function withFamilies(rows: SummaryRow[]): Promise<MaterialSummary[]> {
     materialType: row.materialType,
     casNumber: row.casNumber,
     families: familiesByMaterial.get(row.id) ?? [],
+    // Empty for a NULL-SMILES material by construction: a mixture has no
+    // single structure, so the seed derives no membership rows for it.
+    chemicalClasses: classesByMaterial.get(row.id) ?? [],
   }))
 }
 
@@ -160,32 +222,49 @@ async function withFamilies(rows: SummaryRow[]): Promise<MaterialSummary[]> {
  * reader can share and a crawler can follow — which keyset pagination does not
  * give without leaking row cursors into the URL.
  *
- * The family filter is a subquery rather than a join so a material in two
- * families cannot come back twice; `total` then needs no DISTINCT to be right.
+ * Both filters are subqueries rather than joins so a material in two families
+ * (or two classes) cannot come back twice; `total` then needs no DISTINCT to
+ * be right. They are separate `IN` predicates ANDed together, which is also
+ * what makes them compose: one subquery per axis, each narrowing the same set.
  */
 export async function listMaterials({
   sort = 'name',
   familySlug = null,
+  classSlug = null,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
 }: ListMaterialsOptions = {}): Promise<MaterialList> {
   const size = Math.min(Math.max(Math.trunc(pageSize), 1), MAX_PAGE_SIZE)
   const offset = (Math.max(Math.trunc(page), 1) - 1) * size
 
-  const where =
-    familySlug === null
-      ? isNull(materials.deletedAt)
-      : and(
-          isNull(materials.deletedAt),
-          inArray(
-            materials.id,
-            db
-              .select({ materialId: materialFamilies.materialId })
-              .from(materialFamilies)
-              .innerJoin(families, eq(materialFamilies.familyId, families.id))
-              .where(eq(families.slug, familySlug))
-          )
-        )
+  const filters: SQL[] = [isNull(materials.deletedAt)]
+  if (familySlug !== null) {
+    filters.push(
+      inArray(
+        materials.id,
+        db
+          .select({ materialId: materialFamilies.materialId })
+          .from(materialFamilies)
+          .innerJoin(families, eq(materialFamilies.familyId, families.id))
+          .where(eq(families.slug, familySlug))
+      )
+    )
+  }
+  if (classSlug !== null) {
+    // `class_slug` IS the class's primary key, so this needs no join to
+    // `chemical_classes` — and an unknown slug matches nothing, which is the
+    // empty state the browse page wants rather than a silently wider list.
+    filters.push(
+      inArray(
+        materials.id,
+        db
+          .select({ materialId: materialChemicalClasses.materialId })
+          .from(materialChemicalClasses)
+          .where(eq(materialChemicalClasses.classSlug, classSlug))
+      )
+    )
+  }
+  const where = and(...filters)
 
   // Slug is the tie-break in both orders: two materials can share a name, and
   // a whole seed run can share a second of `updated_at`. Without it the same
@@ -207,7 +286,7 @@ export async function listMaterials({
   ])
 
   return {
-    items: await withFamilies(rows),
+    items: await withRefs(rows),
     total: totalRows[0]?.value ?? 0,
   }
 }
@@ -232,12 +311,55 @@ export async function listMaterialsByIds(
     .from(materials)
     .where(and(inArray(materials.id, wanted), isNull(materials.deletedAt)))
 
-  const summaries = await withFamilies(rows)
+  const summaries = await withRefs(rows)
   const byId = new Map(summaries.map((summary) => [summary.id, summary]))
 
   return wanted
     .map((id) => byId.get(id))
     .filter((summary): summary is MaterialSummary => summary !== undefined)
+}
+
+/**
+ * Every material a structure query can possibly match, with its SMILES.
+ *
+ * The substructure page (`/structure`) runs arbitrary SMARTS through RDKit.js
+ * in the browser, which is the one thing SQL cannot answer: the pattern is
+ * typed by the reader, so no precomputed class covers it. That page therefore
+ * needs the whole matchable corpus in one payload, not a page of it — a
+ * partial list would silently under-report matches.
+ *
+ * NULL-SMILES materials are excluded rather than returned with a null: a
+ * natural is a mixture with no single structure, so it is not a candidate for
+ * *any* structural pattern, and the narrowed `smiles: string` return type is
+ * what stops the caller from having to decide that again per row.
+ *
+ * Ordered by canonical name so the client's filtered subset is already in
+ * reading order — it never re-sorts, it only hides rows.
+ *
+ * Deliberately unpaginated and deliberately not cached here: the corpus is a
+ * few thousand rows at its largest, and the caching pass (`cacheLife`/
+ * `cacheTag`) is a later, whole-app decision.
+ */
+export async function listStructureCandidates(): Promise<
+  Array<MaterialSummary & { smiles: string }>
+> {
+  const rows = await db
+    .select({ ...summaryColumns, smiles: materials.smiles })
+    .from(materials)
+    .where(and(isNull(materials.deletedAt), isNotNull(materials.smiles)))
+    .orderBy(asc(materials.canonicalName), asc(materials.slug))
+
+  const smilesById = new Map(rows.map((row) => [row.id, row.smiles] as const))
+  const summaries = await withRefs(rows)
+
+  return summaries.flatMap((summary) => {
+    const smiles = smilesById.get(summary.id)
+    // Unreachable — `isNotNull` above guarantees it. The guard is what
+    // narrows `string | null` to `string` without an assertion.
+    return smiles === null || smiles === undefined
+      ? []
+      : [{ ...summary, smiles }]
+  })
 }
 
 /** How many materials are published — the homepage's one number. */
@@ -267,6 +389,7 @@ export async function getMaterialBySlug(
 
   const [
     familyRows,
+    classRows,
     synonymRows,
     usageLimitRows,
     ifraAbsenceRows,
@@ -284,6 +407,18 @@ export async function getMaterialBySlug(
       .innerJoin(families, eq(materialFamilies.familyId, families.id))
       .where(eq(materialFamilies.materialId, material.id))
       .orderBy(asc(families.name)),
+    // Structural classes — the same shape the summary lists carry, in the
+    // same curated order. Membership is computed, so nothing here is cited
+    // and nothing here joins the citation walk below.
+    db
+      .select({ slug: chemicalClasses.slug, name: chemicalClasses.name })
+      .from(materialChemicalClasses)
+      .innerJoin(
+        chemicalClasses,
+        eq(materialChemicalClasses.classSlug, chemicalClasses.slug)
+      )
+      .where(eq(materialChemicalClasses.materialId, material.id))
+      .orderBy(asc(chemicalClasses.sortOrder), asc(chemicalClasses.slug)),
     db
       .select({
         name: materialSynonyms.name,
@@ -516,6 +651,7 @@ export async function getMaterialBySlug(
     materialType: material.materialType,
     casNumber: material.casNumber,
     families: familyRows,
+    chemicalClasses: classRows,
     iupacName: material.iupacName,
     smiles: material.smiles,
     molecularFormula: material.molecularFormula,
