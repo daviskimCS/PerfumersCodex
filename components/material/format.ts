@@ -1,3 +1,5 @@
+import type { SourceType, SynonymType } from '@/lib/types'
+
 /**
  * Display formatting shared by the material detail page and its panels.
  *
@@ -10,6 +12,40 @@
 /** `'very_high'` → `'very high'`, for rendering enum literals as prose. */
 export function humanize(value: string): string {
   return value.replaceAll('_', ' ')
+}
+
+/**
+ * Labels for the enums whose members are not prose once the underscores go:
+ * `iupac` is an acronym, `gsc` is opaque to a perfumer, and `ifra` names a
+ * document. Both maps are typed `Record<Enum, string>`, so adding a member to
+ * `lib/types.ts` without a label here is a compile error, not a raw key on the
+ * page.
+ */
+export const SYNONYM_TYPE_LABELS: Record<SynonymType, string> = {
+  trade_name: 'trade name',
+  iupac: 'IUPAC',
+  common_name: 'common name',
+  abbreviation: 'abbreviation',
+  supplier_name: 'supplier name',
+}
+
+export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
+  ifra: 'IFRA Standard',
+  sds: 'Safety data sheet',
+  pubchem: 'PubChem',
+  gsc: 'The Good Scents Company',
+  perfumer_blog: "Perfumer's blog",
+  book: 'Book',
+  interview: 'Interview',
+  other: 'Other',
+}
+
+export function synonymTypeLabel(type: SynonymType): string {
+  return SYNONYM_TYPE_LABELS[type]
+}
+
+export function sourceTypeLabel(type: SourceType): string {
+  return SOURCE_TYPE_LABELS[type]
 }
 
 /** ISO timestamp → the date part. Verification dates are day-resolution facts. */

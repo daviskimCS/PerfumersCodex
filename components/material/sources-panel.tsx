@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/empty-state'
 import type { Citation } from '@/lib/types'
 
 import { sourceAnchorId } from './citations'
-import { datePart, humanize } from './format'
+import { datePart, sourceTypeLabel } from './format'
 import { PanelSection } from './section'
 
 /**
@@ -64,7 +64,7 @@ export function SourcesPanel({ sources }: { sources: Citation[] }) {
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {source.author ? `${source.author} · ` : null}
-                    {humanize(source.type)}
+                    {sourceTypeLabel(source.type)}
                     {source.publishedAt
                       ? ` · published ${source.publishedAt}`
                       : null}
