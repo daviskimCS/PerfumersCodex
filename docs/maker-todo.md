@@ -172,7 +172,16 @@ describes option 2 and the docs used to describe option 1.
 Vercel has `www` as primary and 308-redirects the apex to it. The site
 currently advertises a URL that redirects. Dashboard fix, no code change.
 
-### 8. Synthetic test materials — now behind the gate; prune before launch
+### 8. Synthetic test materials — now beside the real ones; prune before launch
+
+**Update 2026-09-05:** Iso E Super, Javanol and Civetone are seeded into the
+live database (additively, behind the gate) so you can review them rendered.
+The four synthetic materials are still there beside them. **Nobody should
+re-seed `scripts/fixtures` against the live database now** — its
+`usage-categories.json` shares ids 1–11 with the real IFRA list and the seed
+upserts by id, so it would rename every real category to "Test Category N".
+A guard in the seed (refuse to overwrite a reference row's name without
+`--force`) is worth adding before the corpus grows; noted as debt.
 
 Four obviously-fake materials (`Test Material Alpha` / `Beta` / `Gamma` /
 `Delta`) are in the **live** database. Since 2026-09-03 they sit behind your
@@ -370,7 +379,10 @@ structure.
 ## Known debt (tracked, not blocking)
 
 - **Two different source keys with the same URL** are not caught before
-  writing. The old design merged those by URL; the new one surfaces them as a
+  writing. **This bit on 2026-09-13:** six research entries silently failed
+  to seed because each cited IFRA's index under a per-material key. Now
+  worth closing rather than tracking — a one-rule addition to
+  `checkSharedSourceKeys`. The old design merged those by URL; the new one surfaces them as a
   `sources_url_uniq` violation mid-transaction on the citing material — loud,
   but not the pre-write validation error every other cross-file rule gives.
   A small follow-up in `lib/validation/material-data.ts` when it matters.

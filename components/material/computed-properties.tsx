@@ -41,7 +41,11 @@ export function ComputedPropertiesModule({
     >
       <FieldList>
         <Field term="logP" value={computed.logp} mono />
-        <Field term="TPSA" value={computed.tpsa} mono />
+        <Field
+          term="TPSA"
+          value={computed.tpsa === null ? null : `${computed.tpsa} Å²`}
+          mono
+        />
         <Field term="Heavy atoms" value={computed.heavyAtomCount} mono />
       </FieldList>
       <p className="mt-5 max-w-measure text-sm text-muted-foreground">

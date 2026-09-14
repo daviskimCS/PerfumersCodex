@@ -1,7 +1,7 @@
 import type { MaterialDetail } from '@/lib/types'
 
 import { Cite } from './cite'
-import { humanize } from './format'
+import { synonymTypeLabel } from './format'
 import { Field, FieldList, PanelSection } from './section'
 
 /**
@@ -68,7 +68,7 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
                   <li key={`${synonym.type}:${synonym.name}`}>
                     {synonym.name}{' '}
                     <span className="text-sm text-muted-foreground">
-                      {humanize(synonym.type)}
+                      {synonymTypeLabel(synonym.type)}
                     </span>
                     <Cite
                       sources={material.sources}
