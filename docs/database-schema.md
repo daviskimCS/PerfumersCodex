@@ -333,7 +333,7 @@ Drives the admin dashboard's "search count" and "top searches." Privacy-delibera
 | result_count | int NOT NULL         | 0 = a miss — the most useful signal for synonym-table gaps |
 | created_at   | timestamptz NOT NULL |                                                            |
 
-Retention: purge rows older than ~90 days (Supabase scheduled job). Mention search logging in the privacy policy.
+Retention: **intended** to purge rows older than ~90 days via a Supabase scheduled job — **not implemented as of 2026-09-05** (verified against the live database: no `pg_cron`, no `cron` schema, no job). Rows are kept indefinitely until it is. `/privacy` says exactly that rather than promising a retention period nothing enforces; both need updating together when the job lands.
 
 ## Search infrastructure
 
