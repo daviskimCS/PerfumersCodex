@@ -357,7 +357,10 @@ structure.
 ## Known debt (tracked, not blocking)
 
 - **Two different source keys with the same URL** are not caught before
-  writing. The old design merged those by URL; the new one surfaces them as a
+  writing. **This bit on 2026-09-13:** six research entries silently failed
+  to seed because each cited IFRA's index under a per-material key. Now
+  worth closing rather than tracking — a one-rule addition to
+  `checkSharedSourceKeys`. The old design merged those by URL; the new one surfaces them as a
   `sources_url_uniq` violation mid-transaction on the citing material — loud,
   but not the pre-write validation error every other cross-file rule gives.
   A small follow-up in `lib/validation/material-data.ts` when it matters.
