@@ -23,7 +23,7 @@ Checking one material means switching between IFRA Standards, supplier pages, sa
 - **Computed values carry provenance, not citations.** Structural classes, similarity scores and computed properties are recomputed from each structure and stamped with the RDKit version that produced them.
 - **Model output stays separate.** Odor predictions live in their own table with a model version, render only in the labeled experimental module, and never mix with editorial descriptions.
 - **Row-level security on every table.** User-owned data (bookmarks, notes) is only read through the RLS-enforced client. A materialized view cannot carry row-level security, so views are closed to the public Data API by revoking access instead (migration `0007`).
-- **Nothing is published unreviewed.** A material reaches readers only after the maker runs `npm run db:review` on it, and only in the exact form reviewed. The seed records a fingerprint of each material's data; a later change hides the material again until it is re-reviewed. Families with no published material are hidden too.
+- **Nothing is published unreviewed.** A material reaches readers only after the maker reviews everything its page would show (`npm run db:review show`) and publishes that exact version. Any later change to what the page shows, including shared data such as family names, IFRA category names, hazard statements or a citation, hides it again until it is re-reviewed. Families with no published material are hidden too.
 - **Validate before writing.** The seed validates the whole input set before it opens a database connection.
 
 ## Known gaps
@@ -38,6 +38,7 @@ What is not built or not yet verified:
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
 - **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (an odour phrase) depends on descriptions that do not exist yet, so it cannot pass against the live corpus.
 - **The structure–odor experiment is not built.**
+- **The review gate has edges.** It lives in app code, so an older deployment pointed at the live database would show unreviewed material. List entries rely on a stored fingerprint that the seed refreshes, so a writer that skips that refresh can leave a list entry stale until the next refresh; detail pages re-check on every request. Structural-class names and descriptions are shown on the class filter and `/structure` without review.
 
 ## How it's built
 
@@ -59,17 +60,17 @@ cp .env.example .env.local   # fill in Supabase project values
 npm run dev
 ```
 
-| Script                        | Purpose                                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm run dev`                 | Dev server (Turbopack)                                                                     |
-| `npm run typecheck`           | TypeScript, no emit                                                                        |
-| `npm run lint`                | ESLint                                                                                     |
-| `npm run test`                | Vitest unit tests                                                                          |
-| `npm run db:generate`         | Generate Drizzle migration from schema                                                     |
-| `npm run db:migrate`          | Apply migrations (uses `DIRECT_URL`)                                                       |
-| `npm run db:seed -- <dir>`    | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input |
-| `npm run db:review -- <slug>` | Publish a reviewed material (`--list` shows status, `--revoke` hides it again)             |
-| `npm run db:studio`           | Drizzle Studio against `DIRECT_URL`                                                        |
+| Script                     | Purpose                                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm run dev`              | Dev server (Turbopack)                                                                         |
+| `npm run typecheck`        | TypeScript, no emit                                                                            |
+| `npm run lint`             | ESLint                                                                                         |
+| `npm run test`             | Vitest unit tests                                                                              |
+| `npm run db:generate`      | Generate Drizzle migration from schema                                                         |
+| `npm run db:migrate`       | Apply migrations (uses `DIRECT_URL`)                                                           |
+| `npm run db:seed -- <dir>` | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input     |
+| `npm run db:review <verb>` | Review gate: `list`, `show <slug>`, `publish <slug> <fingerprint>`, `revoke <slug>`, `refresh` |
+| `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                            |
 
 Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`. `SITE_GATE_PASSWORD` turns on the pre-launch password gate; leave it unset locally — unset means off.
 

@@ -1,188 +1,180 @@
 /**
- * The review gate's only writer (migration 0008).
+ * The review gate's command (migration 0008). The only way anything reaches
+ * readers.
  *
- *   npm run db:review -- --list
- *   npm run db:review -- iso-e-super javanol      # publish, after reviewing
- *   npm run db:review -- --revoke civetone        # hide again
+ *   npm run db:review list                          # where everything stands
+ *   npm run db:review show iso-e-super              # everything its page would show
+ *   npm run db:review publish iso-e-super <fp>      # publish what `show` printed
+ *   npm run db:review revoke civetone               # take it down again
+ *   npm run db:review refresh                       # recompute stored fingerprints
  *
- * Readers see a material only while `reviewed_hash = content_hash`. The seed
- * records `content_hash` from the data file on every run; this command copies
- * that hash into `reviewed_hash`, which is what "I reviewed this, in this
- * form" means. When the seed later writes different data, the hashes differ
- * and the page hides itself until the next review. No data file, seed flag
- * or app code path can publish a material. Only this command can.
+ * The fingerprint covers what the page RENDERS (lib/review/fingerprint.ts):
+ * the material's own rows and the shared ones it shows (family names, IFRA
+ * category names, hazard statements, class names, full citation rows,
+ * similar materials). `publish` refuses unless the fingerprint you pass is
+ * still the current one, so what goes live is exactly what `show` showed you.
+ * If anything changes afterwards, from any writer, the page hides itself.
  *
- * Review the data that was SEEDED, not a newer draft on disk: the hash binds
- * to what is in the database. If a draft changed after its last seed, seed it
- * first, then review it.
+ * Verbs are positional, never flags (lib/review/args.ts): npm swallows
+ * `--flags` typed without a separating `--`, which once turned a revoke into
+ * a publish.
  *
- * All-or-nothing, like the seed: every named slug is checked before anything
- * is written, and the writes share one transaction. The update also requires
- * `content_hash` to still be the value that was read, so a seed running
- * between the check and the write cannot get a newer, unreviewed version
- * published.
- *
- * Imports `db/schema.ts` directly, as the seed does: an operator tool,
- * outside architecture D1's app-code boundary. The client comes from lib/db.
+ * Operator tool: it imports the Drizzle client and review operations from
+ * lib/db, like the seed.
  */
 import { config as loadEnvFile } from 'dotenv'
-import { and, asc, eq, inArray } from 'drizzle-orm'
 
-import { materials } from '@/db/schema'
 import { db } from '@/lib/db'
-import { NEXT_STEP, reviewState } from '@/lib/review/state'
+import {
+  assertReviewGateMigrated,
+  listReviewStatus,
+  publishMaterial,
+  refreshFingerprints,
+  ReviewError,
+  revokeMaterial,
+  type ReviewStatus,
+} from '@/lib/db/review'
+import { loadMaterialForReview } from '@/lib/db/materials'
+import { parseReviewArgs, ReviewUsageError } from '@/lib/review/args'
+import { materialFingerprint, shortFingerprint } from '@/lib/review/fingerprint'
+import { NEXT_STEP } from '@/lib/review/state'
+import type { MaterialDetail } from '@/lib/types'
 
-const USAGE = [
-  'usage: npm run db:review -- --list',
-  '       npm run db:review -- <slug> [<slug> ...]',
-  '       npm run db:review -- --revoke <slug> [<slug> ...]',
-].join('\n')
-
-class ReviewAbort extends Error {}
-
-type Command =
-  | { kind: 'list' }
-  | { kind: 'publish'; slugs: string[] }
-  | { kind: 'revoke'; slugs: string[] }
-
-function parseArgs(argv: string[]): Command {
-  const flags = argv.filter((arg) => arg.startsWith('--'))
-  const slugs = [...new Set(argv.filter((arg) => !arg.startsWith('--')))]
-  const unknown = flags.filter(
-    (flag) => flag !== '--list' && flag !== '--revoke'
-  )
-  if (unknown.length > 0) {
-    throw new ReviewAbort(`unknown flag ${unknown.join(', ')}\n${USAGE}`)
-  }
-  if (flags.includes('--list')) {
-    if (flags.length > 1 || slugs.length > 0) {
-      throw new ReviewAbort(`--list takes no other arguments\n${USAGE}`)
-    }
-    return { kind: 'list' }
-  }
-  if (slugs.length === 0) throw new ReviewAbort(USAGE)
-  return flags.includes('--revoke')
-    ? { kind: 'revoke', slugs }
-    : { kind: 'publish', slugs }
-}
-
-const columns = {
-  id: materials.id,
-  slug: materials.slug,
-  canonicalName: materials.canonicalName,
-  casNumber: materials.casNumber,
-  contentHash: materials.contentHash,
-  reviewedHash: materials.reviewedHash,
-  reviewedAt: materials.reviewedAt,
-  deletedAt: materials.deletedAt,
-}
-
-/** The tail of a hash, enough to tell two versions apart in a log. */
-function short(hash: string | null): string {
-  return hash === null ? '—' : `…${hash.slice(-10)}`
-}
-
-async function list(): Promise<void> {
-  const rows = await db
-    .select(columns)
-    .from(materials)
-    .orderBy(asc(materials.slug))
-  if (rows.length === 0) {
+function printStatuses(statuses: ReviewStatus[]): void {
+  if (statuses.length === 0) {
     console.log('no materials in the database')
     return
   }
-  for (const row of rows) {
-    const state = reviewState(row)
-    const reviewed =
-      row.reviewedAt === null
-        ? ''
-        : ` (reviewed ${row.reviewedAt.toISOString()})`
+  for (const status of statuses) {
+    const fingerprint =
+      status.fingerprint === null ? '' : shortFingerprint(status.fingerprint)
     console.log(
-      `${row.slug.padEnd(28)} ${state.padEnd(22)} ${NEXT_STEP[state]}${reviewed}`
+      `${status.slug.padEnd(28)} ${status.state.padEnd(22)} ${fingerprint.padEnd(17)} ${NEXT_STEP[status.state]}`
     )
   }
-  const published = rows.filter((row) => reviewState(row) === 'published')
-  console.log(`\n${published.length} of ${rows.length} visible to readers`)
+  const published = statuses.filter((status) => status.state === 'published')
+  console.log(`\n${published.length} of ${statuses.length} visible to readers`)
 }
 
-async function publishOrRevoke(
-  kind: 'publish' | 'revoke',
-  slugs: string[]
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    const rows = await tx
-      .select(columns)
-      .from(materials)
-      .where(inArray(materials.slug, slugs))
-    const bySlug = new Map(rows.map((row) => [row.slug, row]))
+/** Everything the page would render, in page order, as plain text. */
+function printDetail(detail: MaterialDetail, unpublished: Set<string>): void {
+  const cite = (id: string | null): string => {
+    if (id === null) return ' [uncited]'
+    const index = detail.sources.findIndex((source) => source.id === id)
+    return index === -1 ? ' [?]' : ` [${index + 1}]`
+  }
+  const lines: string[] = []
+  const section = (title: string, rows: string[]): void => {
+    lines.push(`\n${title}`)
+    lines.push(
+      ...(rows.length === 0 ? ['  (none)'] : rows.map((row) => `  ${row}`))
+    )
+  }
 
-    // Check every slug before writing any: one bad name aborts the batch.
-    const problems: string[] = []
-    for (const slug of slugs) {
-      const row = bySlug.get(slug)
-      if (row === undefined) {
-        problems.push(`${slug}: no such material`)
-        continue
-      }
-      const state = reviewState(row)
-      if (
-        kind === 'publish' &&
-        (state === 'soft-deleted' || state === 'not fingerprinted')
-      ) {
-        problems.push(`${slug}: ${state} — ${NEXT_STEP[state]}`)
-      }
-    }
-    if (problems.length > 0) {
-      throw new ReviewAbort(
-        `nothing was changed:\n${problems.map((p) => `  ${p}`).join('\n')}`
-      )
-    }
-
-    for (const slug of slugs) {
-      const row = bySlug.get(slug)!
-      const state = reviewState(row)
-
-      if (kind === 'revoke') {
-        if (row.reviewedHash === null) {
-          console.log(`${slug}: was not reviewed; nothing to revoke`)
-          continue
-        }
-        await tx
-          .update(materials)
-          .set({ reviewedHash: null, reviewedAt: null })
-          .where(eq(materials.id, row.id))
-        console.log(`${slug}: review revoked — hidden from readers`)
-        continue
-      }
-
-      if (state === 'published') {
-        console.log(`${slug}: already published (${short(row.contentHash)})`)
-        continue
-      }
-      // `content_hash` must still be the value read above. If a seed ran in
-      // between, nothing matches, and the newer data stays unpublished.
-      const updated = await tx
-        .update(materials)
-        .set({ reviewedHash: row.contentHash, reviewedAt: new Date() })
-        .where(
-          and(
-            eq(materials.id, row.id),
-            eq(materials.contentHash, row.contentHash!)
-          )
-        )
-        .returning({ id: materials.id })
-      if (updated.length !== 1) {
-        throw new ReviewAbort(
-          `${slug}: its data changed while this ran; nothing was changed. Review it again.`
-        )
-      }
-      console.log(
-        `${slug}: published — ${row.canonicalName}` +
-          `${row.casNumber === null ? '' : `, CAS ${row.casNumber}`}` +
-          `, data ${short(row.contentHash)}`
-      )
-    }
-  })
+  lines.push(`${detail.canonicalName}  (/materials/${detail.slug})`)
+  section('Identity', [
+    `type: ${detail.materialType}`,
+    `CAS: ${detail.casNumber ?? '—'}${cite(detail.identitySourceId)}`,
+    `IUPAC: ${detail.iupacName ?? '—'}`,
+    `formula: ${detail.molecularFormula ?? '—'}   MW: ${detail.molecularWeight ?? '—'}`,
+    `SMILES: ${detail.smiles ?? '—'}`,
+  ])
+  section(
+    'Families (names are shared reference data)',
+    detail.families.map((f) => `${f.name}  (${f.slug})`)
+  )
+  section(
+    'Structural classes (computed)',
+    detail.chemicalClasses.map((c) => `${c.name}  (${c.slug})`)
+  )
+  section(
+    'Synonyms',
+    detail.synonyms.map((s) => `${s.name}  — ${s.type}${cite(s.sourceId)}`)
+  )
+  section(
+    'IFRA limits (category names are shared reference data)',
+    detail.usageLimits.map(
+      (l) =>
+        `Cat ${l.categoryId} ${l.categoryName}: ${l.restrictionType}` +
+        `${l.maxPct === null ? '' : ` ${l.maxPct}%`}, ${l.ifraAmendmentVersion} amendment, ` +
+        `verified ${l.verifiedAt}${l.notes ? ` — ${l.notes}` : ''}${cite(l.sourceId)}`
+    )
+  )
+  section(
+    'Verified IFRA absences',
+    detail.ifraAbsences.map(
+      (a) =>
+        `no Standard as of ${a.ifraAmendmentVersion}, verified ${a.verifiedAt}${a.notes ? ` — ${a.notes}` : ''}${cite(a.sourceId)}`
+    )
+  )
+  section(
+    'GHS hazards (statements are shared reference data)',
+    detail.hazards.map(
+      (h) => `${h.code} ${h.description} (${h.category})${cite(h.sourceId)}`
+    )
+  )
+  section(
+    'Olfactive description',
+    detail.olfactive === null
+      ? []
+      : [
+          `${detail.olfactive.description}${cite(detail.olfactive.sourceId)}`,
+          `tenacity ${detail.olfactive.tenacity ?? '—'}, projection ${detail.olfactive.projection ?? '—'}, facets ${detail.olfactive.keyFacets.join(', ') || '—'}`,
+        ]
+  )
+  section(
+    'Usage guidance',
+    detail.usageGuidance === null
+      ? []
+      : [
+          `typical ${detail.usageGuidance.typicalPctMin ?? '—'}–${detail.usageGuidance.typicalPctMax ?? '—'}%${cite(detail.usageGuidance.sourceId)}`,
+          ...(detail.usageGuidance.thresholdNote
+            ? [`threshold: ${detail.usageGuidance.thresholdNote}`]
+            : []),
+          ...(detail.usageGuidance.dilutionNote
+            ? [`dilution: ${detail.usageGuidance.dilutionNote}`]
+            : []),
+        ]
+  )
+  section(
+    'Landmark uses',
+    detail.landmarkUses.map(
+      (u) =>
+        `${u.perfumeName}${u.house ? `, ${u.house}` : ''}${u.year ? ` (${u.year})` : ''}${u.notes ? ` — ${u.notes}` : ''}${cite(u.sourceId)}`
+    )
+  )
+  section(
+    'Computed properties',
+    detail.computed === null
+      ? []
+      : [
+          `logP ${detail.computed.logp ?? '—'}, TPSA ${detail.computed.tpsa ?? '—'}, heavy atoms ${detail.computed.heavyAtomCount ?? '—'} (RDKit ${detail.computed.rdkitVersion})`,
+        ]
+  )
+  section(
+    'Similar materials',
+    detail.similar.map(
+      (n) =>
+        `${n.canonicalName} (${n.slug}) Tanimoto ${n.tanimoto}` +
+        `${unpublished.has(n.slug) ? '   [not published: hidden from the page until it is]' : ''}`
+    )
+  )
+  section(
+    'Odor predictions (experimental module)',
+    detail.odorPredictions.map(
+      (p) => `${p.descriptor} ${p.probability} (model ${p.modelVersion})`
+    )
+  )
+  section(
+    'Sources (as cited, numbered)',
+    detail.sources.map(
+      (s, i) =>
+        `[${i + 1}] ${s.title} — ${s.type}${s.author ? `, ${s.author}` : ''}` +
+        `${s.publishedAt ? `, published ${s.publishedAt}` : ''}, accessed ${s.accessedAt}` +
+        `${s.url ? `\n      ${s.url}` : ''}`
+    )
+  )
+  console.log(lines.join('\n'))
 }
 
 let connectionOpened = false
@@ -196,22 +188,66 @@ async function closeConnection(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const command = parseArgs(process.argv.slice(2))
+  const command = parseReviewArgs(process.argv.slice(2), process.env)
   // tsx is not Next.js: load .env.local the same way the seed does.
   loadEnvFile({ path: '.env.local', quiet: true })
   loadEnvFile({ quiet: true })
 
   connectionOpened = true
-  if (command.kind === 'list') await list()
-  else await publishOrRevoke(command.kind, command.slugs)
+  await assertReviewGateMigrated()
+
+  switch (command.verb) {
+    case 'list':
+      printStatuses(await listReviewStatus())
+      return
+    case 'refresh':
+      printStatuses(await refreshFingerprints())
+      return
+    case 'show': {
+      const loaded = await loadMaterialForReview(command.slug)
+      if (loaded === null) {
+        throw new ReviewError(
+          `${command.slug}: no live material with that slug`
+        )
+      }
+      printDetail(loaded.detail, loaded.unpublishedNeighbors)
+      const fingerprint = materialFingerprint(loaded.detail)
+      const live = loaded.reviewedHash === fingerprint
+      console.log(
+        `\nfingerprint: ${shortFingerprint(fingerprint)}  (${live ? 'published in exactly this form' : 'not published in this form'})` +
+          `\nto publish exactly this: npm run db:review publish ${command.slug} ${shortFingerprint(fingerprint)}`
+      )
+      return
+    }
+    case 'publish': {
+      const result = await publishMaterial(command.slug, command.fingerprint)
+      console.log(
+        result.alreadyPublished
+          ? `${command.slug}: already published in this form`
+          : `${command.slug}: published — ${result.loaded.detail.canonicalName} (${shortFingerprint(result.fingerprint)})`
+      )
+      return
+    }
+    case 'revoke': {
+      const outcome = await revokeMaterial(command.slug)
+      console.log(
+        outcome === 'revoked'
+          ? `${command.slug}: review revoked — hidden from readers`
+          : `${command.slug}: was not reviewed; nothing to revoke`
+      )
+      return
+    }
+  }
 }
 
 main()
   .then(closeConnection)
   .catch(async (error: unknown) => {
-    console.error(
-      error instanceof ReviewAbort ? `review: ${error.message}` : error
-    )
+    if (error instanceof ReviewUsageError || error instanceof ReviewError) {
+      console.error(`review: ${error.message}`)
+    } else {
+      console.error(error)
+    }
     process.exitCode = 1
     await closeConnection()
   })

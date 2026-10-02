@@ -1,6 +1,6 @@
 /**
  * Where one material stands at the review gate, for operator output (the
- * seed's report and `npm run db:review -- --list`).
+ * seed's report and `npm run db:review list`).
  *
  * This MUST agree with the SQL predicate readers are actually filtered by,
  * `materialIsPublished` in lib/db/published.ts:
@@ -25,8 +25,8 @@ export interface ReviewColumns {
 
 export function reviewState(row: ReviewColumns): ReviewState {
   if (row.deletedAt !== null) return 'soft-deleted'
-  // Seeded before migration 0008: there is nothing to review against until
-  // the seed runs again and records a fingerprint.
+  // Never fingerprinted (seeded before migration 0008, and neither the seed
+  // nor `db:review refresh` has run since).
   if (row.contentHash === null) return 'not fingerprinted'
   if (row.reviewedHash === null) return 'awaiting review'
   return row.reviewedHash === row.contentHash
@@ -37,9 +37,10 @@ export function reviewState(row: ReviewColumns): ReviewState {
 /** What the maker should do next, per state. */
 export const NEXT_STEP: Record<ReviewState, string> = {
   published: 'visible to readers',
-  'awaiting review': 'review it, then: npm run db:review -- <slug>',
+  'awaiting review':
+    'npm run db:review show <slug>, review it, then: npm run db:review publish <slug> <fingerprint>',
   'changed since review':
-    'its data changed after review — re-review, then: npm run db:review -- <slug>',
-  'not fingerprinted': 're-run the seed first so the review binds to its data',
+    'something it shows changed after review: show it again, re-review, then publish',
+  'not fingerprinted': 'npm run db:review refresh',
   'soft-deleted': 'pruned; re-seed it to bring it back',
 }

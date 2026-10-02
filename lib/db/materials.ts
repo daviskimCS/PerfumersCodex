@@ -7,6 +7,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  sql,
   type SQL,
 } from 'drizzle-orm'
 
@@ -32,6 +33,7 @@ import {
 } from '@/db/schema'
 import { db } from '@/lib/db'
 import { materialIsPublished } from '@/lib/db/published'
+import { materialFingerprint } from '@/lib/review/fingerprint'
 import type {
   ChemicalClassRef,
   Citation,
@@ -375,16 +377,21 @@ export async function countMaterials(): Promise<number> {
 }
 
 /**
- * One material with every satellite the detail page renders, or null when the
- * slug matches nothing (the route turns null into `notFound()`).
+ * One material exactly as its page would render it, IGNORING the review gate
+ * (soft-deleted rows are still excluded). `similar` lists every live
+ * neighbor; `unpublishedNeighbors` names the ones readers cannot see.
+ *
+ * OPERATOR USE ONLY: the review tooling fingerprints and prints this, and
+ * `getMaterialBySlug` verifies it. App code must call `getMaterialBySlug`,
+ * never this, or it renders unreviewed data.
  */
-export async function getMaterialBySlug(
+export async function loadMaterialForReview(
   slug: string
-): Promise<MaterialDetail | null> {
+): Promise<MaterialForReview | null> {
   const materialRows = await db
     .select()
     .from(materials)
-    .where(and(eq(materials.slug, slug), materialIsPublished()))
+    .where(and(eq(materials.slug, slug), isNull(materials.deletedAt)))
     .limit(1)
   const material = materialRows[0]
   if (!material) return null
@@ -535,17 +542,21 @@ export async function getMaterialBySlug(
         canonicalName: materials.canonicalName,
         tanimoto: materialSimilarity.tanimoto,
         rdkitVersion: materialSimilarity.rdkitVersion,
+        published: sql<boolean>`${materialIsPublished()}`,
       })
       .from(materialSimilarity)
       .innerJoin(
         materials,
         eq(materialSimilarity.similarMaterialId, materials.id)
       )
-      // The neighbor must be published too, or the link 404s.
+      // Every live neighbor, published or not: the fingerprint must not
+      // depend on whether OTHER materials are published, or publishing one
+      // would silently un-publish its neighbors. getMaterialBySlug drops
+      // the unpublished ones before render, or their links would 404.
       .where(
         and(
           eq(materialSimilarity.materialId, material.id),
-          materialIsPublished()
+          isNull(materials.deletedAt)
         )
       )
       .orderBy(desc(materialSimilarity.tanimoto), asc(materials.slug)),
@@ -646,7 +657,7 @@ export async function getMaterialBySlug(
     }
   })
 
-  return {
+  const detail: MaterialDetail = {
     id: material.id,
     slug: material.slug,
     canonicalName: material.canonicalName,
@@ -716,5 +727,54 @@ export async function getMaterialBySlug(
       modelVersion: row.modelVersion,
     })),
     sources: citations,
+  }
+
+  return {
+    detail,
+    unpublishedNeighbors: new Set(
+      similarRows.filter((row) => !row.published).map((row) => row.slug)
+    ),
+    contentHash: material.contentHash,
+    reviewedHash: material.reviewedHash,
+    reviewedAt: material.reviewedAt,
+  }
+}
+
+/** What the review tooling sees of one material. */
+export interface MaterialForReview {
+  /** Exactly what the page renders, before unpublished neighbors are dropped. */
+  detail: MaterialDetail
+  /** Slugs in `detail.similar` that readers cannot see. */
+  unpublishedNeighbors: Set<string>
+  contentHash: string | null
+  reviewedHash: string | null
+  reviewedAt: Date | null
+}
+
+/**
+ * One published material with every satellite the detail page renders, or
+ * null when the slug matches nothing a reader may see (the route turns null
+ * into `notFound()`).
+ *
+ * The review gate is checked TWICE here, and the second check is the one
+ * that matters. `reviewed_hash` must be set, and the fingerprint of what is
+ * about to render (lib/review/fingerprint.ts) must equal it. So any change
+ * to anything this page shows — the material's rows, a shared source, a
+ * family or IFRA category name, a hazard statement, a class — hides the page
+ * the moment it lands, whoever wrote it: this seed, an older checkout's seed,
+ * the SQL editor. Lists rely on the stored `content_hash` instead (too
+ * costly to recompute per row), which the seed refreshes after every run.
+ */
+export async function getMaterialBySlug(
+  slug: string
+): Promise<MaterialDetail | null> {
+  const loaded = await loadMaterialForReview(slug)
+  if (loaded === null || loaded.reviewedHash === null) return null
+  if (materialFingerprint(loaded.detail) !== loaded.reviewedHash) return null
+  return {
+    ...loaded.detail,
+    similar: loaded.detail.similar.filter(
+      (neighbor) => !loaded.unpublishedNeighbors.has(neighbor.slug)
+    ),
   }
 }

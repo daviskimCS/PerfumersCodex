@@ -28,12 +28,14 @@
  *
  * Five decisions worth knowing about:
  *
- * - **The seed never publishes** (migration 0008, the review gate). It writes
- *   each material's `content_hash`, a fingerprint of the validated record,
- *   and leaves `reviewed_hash` alone; only `npm run db:review` writes that.
- *   Readers see a material only while the two match, so new materials
- *   arrive hidden, and changing a reviewed one hides it until the maker
- *   reviews it again. The run ends with a per-material review report.
+ * - **The seed never publishes** (migration 0008, the review gate). After
+ *   every write it re-fingerprints EVERY live material from what its page
+ *   renders (`refreshFingerprints`, lib/db/review.ts) and stores that as
+ *   `content_hash`; it never writes `reviewed_hash`, which only
+ *   `npm run db:review publish` does. New materials arrive hidden, and any
+ *   change to what a reviewed page shows (its own rows or a shared one)
+ *   hides it until the maker reviews it again. It refuses to start when
+ *   migration 0008 is missing, and ends with a review report.
  *
  * - **Source identity is the input's `key`, globally** (maker decision,
  *   2026-09-02, `sources.key` + `sources_key_uniq`). The same key in two
@@ -114,8 +116,11 @@ import {
   usageCategories,
 } from '@/db/schema'
 import { db } from '@/lib/db'
-import { materialContentHash } from '@/lib/review/content-hash'
-import { reviewState, type ReviewState } from '@/lib/review/state'
+import {
+  assertReviewGateMigrated,
+  refreshFingerprints,
+  ReviewError,
+} from '@/lib/db/review'
 import {
   CHEMICAL_CLASSES_FILE,
   FAMILIES_FILE,
@@ -523,8 +528,7 @@ async function writeMaterialRow(
   tx: Transaction,
   material: MaterialFile,
   identitySourceId: string
-): Promise<{ id: string; outcome: RowOutcome; review: ReviewState }> {
-  const contentHash = materialContentHash(material)
+): Promise<{ id: string; outcome: RowOutcome }> {
   const next = {
     canonicalName: material.canonical_name,
     materialType: material.material_type,
@@ -548,23 +552,12 @@ async function writeMaterialRow(
     const row = firstRow(
       await tx
         .insert(materials)
-        .values({ slug: material.slug, ...next, contentHash })
+        .values({ slug: material.slug, ...next })
         .returning({ id: materials.id }),
       `material "${material.slug}"`
     )
-    return { id: row.id, outcome: 'created', review: 'awaiting review' }
+    return { id: row.id, outcome: 'created' }
   }
-
-  // The seed never publishes: it records `content_hash` and leaves
-  // `reviewed_hash` alone (only `npm run db:review` writes it). Keeping the
-  // old value is what lets the report say "changed since review" instead of
-  // forgetting a review ever happened. The state is computed as it will be
-  // AFTER this write: not deleted (the update below revives it), new hash.
-  const review = reviewState({
-    contentHash,
-    reviewedHash: existing.reviewedHash,
-    deletedAt: null,
-  })
 
   const unchanged =
     existing.deletedAt === null &&
@@ -577,24 +570,13 @@ async function writeMaterialRow(
     sameNumeric(existing.molecularWeight, material.molecular_weight) &&
     existing.identitySourceId === next.identitySourceId
 
-  if (unchanged) {
-    // The row's own columns are the same, but something below it (synonyms,
-    // limits, sources...) may not be. Record the new fingerprint WITHOUT
-    // bumping updated_at, which is search ranking rule 5's tie-break.
-    if (existing.contentHash !== contentHash) {
-      await tx
-        .update(materials)
-        .set({ contentHash })
-        .where(eq(materials.id, existing.id))
-    }
-    return { id: existing.id, outcome: 'unchanged', review }
-  }
+  if (unchanged) return { id: existing.id, outcome: 'unchanged' }
 
   await tx
     .update(materials)
-    .set({ ...next, contentHash, deletedAt: null, updatedAt: new Date() })
+    .set({ ...next, deletedAt: null, updatedAt: new Date() })
     .where(eq(materials.id, existing.id))
-  return { id: existing.id, outcome: 'updated', review }
+  return { id: existing.id, outcome: 'updated' }
 }
 
 /**
@@ -685,7 +667,6 @@ interface MaterialWriteReport {
   /** The material's row id — the similarity pass resolves slugs through it. */
   id: string
   outcome: RowOutcome
-  review: ReviewState
   description: Awaited<ReturnType<typeof writeDescription>>
   childRows: number
 }
@@ -707,7 +688,7 @@ async function writeMaterial(
     const sourceIdByKey = await writeSources(tx, material.sources)
     const source = (key: string): string =>
       resolveSource(sourceIdByKey, key, material.slug)
-    const { id, outcome, review } = await writeMaterialRow(
+    const { id, outcome } = await writeMaterialRow(
       tx,
       material,
       source(material.identity_source_key)
@@ -881,14 +862,7 @@ async function writeMaterial(
 
     const description = await writeDescription(tx, id, material, sourceIdByKey)
 
-    return {
-      slug: material.slug,
-      id,
-      outcome,
-      review,
-      description,
-      childRows,
-    }
+    return { slug: material.slug, id, outcome, description, childRows }
   })
 }
 
@@ -1030,6 +1004,9 @@ async function main(): Promise<void> {
   }
 
   connectionOpened = true
+  // Before any write: a database without the review gate's columns would
+  // otherwise take the reference-table writes and then fail mid-run.
+  await assertReviewGateMigrated()
 
   // Snapshot BEFORE writing: the prune guard has to weigh the input against
   // the corpus as it stands, not against the corpus this run just topped up.
@@ -1068,25 +1045,13 @@ async function main(): Promise<void> {
   )
 
   const materialIdBySlug = new Map<string, string>()
-  const hidden: string[] = []
   for (const material of bundle.materials) {
     const report = await writeMaterial(material, familyIdBySlug, classification)
     materialIdBySlug.set(report.slug, report.id)
-    if (report.review !== 'published') hidden.push(report.slug)
     log(
       `  ${report.slug}: row ${report.outcome}, ` +
         `${plural(report.childRows, 'child row')} replaced, ` +
-        `description ${report.description}, ${report.review}`
-    )
-  }
-  log(
-    `review gate: ${bundle.materials.length - hidden.length} of ` +
-      `${plural(bundle.materials.length, 'material')} published`
-  )
-  if (hidden.length > 0) {
-    log(
-      `  hidden from readers until reviewed: ${hidden.join(', ')}\n` +
-        `  after reviewing, publish with: npm run db:review -- <slug>`
+        `description ${report.description}`
     )
   }
 
@@ -1127,13 +1092,28 @@ async function main(): Promise<void> {
     sql`REFRESH MATERIALIZED VIEW CONCURRENTLY material_search_view`
   )
 
+  // Last, after every write: re-fingerprint EVERY live material from what
+  // its page renders. A shared row this run touched (a source, a family or
+  // category name, a hazard statement, a class) can change materials that
+  // were not in the input at all.
+  const statuses = await refreshFingerprints()
+  const hidden = statuses.filter((status) => status.state !== 'published')
+  log(
+    `review gate: ${statuses.length - hidden.length} of ` +
+      `${plural(statuses.length, 'live material')} published`
+  )
+  for (const status of hidden) log(`  hidden — ${status.slug}: ${status.state}`)
+  if (hidden.length > 0) {
+    log('  to review one: npm run db:review show <slug>')
+  }
+
   log(`done in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`)
 }
 
 main()
   .then(closeConnection)
   .catch(async (error: unknown) => {
-    if (error instanceof SeedAbort) {
+    if (error instanceof SeedAbort || error instanceof ReviewError) {
       console.error(`seed: ${error.message}`)
     } else {
       console.error(error)

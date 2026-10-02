@@ -194,13 +194,16 @@ export const materials = pgTable(
      *
      *   deleted_at IS NULL AND reviewed_hash = content_hash
      *
-     * `content_hash` is written by the seed from the validated data file
-     * (`materialContentHash`, lib/review/content-hash.ts) on every run.
-     * `reviewed_hash` is written ONLY by `npm run db:review`, which copies the
-     * current `content_hash` across. So a seed that changes a reviewed
-     * material's data makes the two differ, and the page hides itself until
-     * the maker reviews it again. NULL on either side means unreviewed: SQL
-     * equality with NULL is never true. The predicate lives in one place,
+     * Both hold a fingerprint of what the material's page RENDERS, its own
+     * rows plus the shared ones it shows (lib/review/fingerprint.ts).
+     * `content_hash` is the stored current value, refreshed by the seed for
+     * every live material after every run. `reviewed_hash` is written ONLY
+     * by `npm run db:review publish`, and only when the maker passes the
+     * fingerprint they were shown. Any later change to what the page shows
+     * makes the two differ and the page hides itself; the detail page also
+     * recomputes the fingerprint on every request, so a writer that skips
+     * the refresh cannot keep stale-reviewed facts live. NULL on either side
+     * means unreviewed. The list predicate lives in one place,
      * `materialIsPublished` (lib/db/published.ts).
      */
     contentHash: text('content_hash'),

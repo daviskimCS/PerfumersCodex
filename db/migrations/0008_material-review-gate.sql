@@ -1,7 +1,8 @@
 -- The review gate (2026-10-02). Readers see a material only when
 --   deleted_at IS NULL AND reviewed_hash = content_hash
--- content_hash is written by the seed from the validated data file;
--- reviewed_hash only by `npm run db:review`. All three columns are nullable,
+-- Both are fingerprints of what the material's page renders
+-- (lib/review/fingerprint.ts). content_hash is refreshed by the seed;
+-- reviewed_hash is written only by `npm run db:review publish`. All three columns are nullable,
 -- so every existing row arrives unreviewed (NULL never equals anything): the
 -- first deploy of the code that reads them hides everything until reviewed.
 -- See lib/db/published.ts and db/schema.ts.
