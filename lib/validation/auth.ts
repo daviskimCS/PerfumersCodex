@@ -70,25 +70,32 @@ export type AuthFormState = {
 
 export const initialAuthFormState: AuthFormState = {}
 
+/** Any origin works here; only "did resolving change it" matters. */
+const PROBE_ORIGIN = 'https://same-site.invalid'
+
 /**
- * Only same-site path targets; blocks `https://…` and `//host` redirects.
- *
- * DUPLICATED, deliberately, from the identical guard in
- * `app/auth/confirm/route.ts` (W3-A). That file is not this item's to edit,
- * so its copy stays where it is and this one serves the OAuth pair —
- * `signInWithGoogle` and `app/auth/callback/route.ts` — which both import
- * from here rather than writing a third copy. Folding the confirm route onto
- * this export is a one-line follow-up for whoever owns that file next; until
- * then the two copies must be changed together.
+ * Only same-site path targets — the one guard every auth redirect uses
+ * (`app/auth/confirm/route.ts`, `app/auth/callback/route.ts`,
+ * `signInWithGoogle`).
  *
  * An unvalidated `next` on an auth callback is an open redirect, not a lint
  * nit: `?next=//evil.com` is a protocol-relative URL the browser resolves to
  * another origin, which is why `startsWith('/')` alone is not enough.
+ *
+ * Nor is `startsWith('/') && !startsWith('//')`, which is what this was until
+ * 2026-10-02. Browsers parse a Location header with the WHATWG URL parser,
+ * which reads `\` as `/` and strips tab and newline, so `/\evil.com` and
+ * `/<TAB>/evil.com` both pass that test and land on https://evil.com/. Two
+ * layers now: refuse backslashes and control characters outright, then
+ * resolve the path against a probe origin and require that the origin did
+ * not change. The second catches whatever the first misses.
  */
 export function safeInternalPath(path: string | null): string | null {
-  return path !== null && path.startsWith('/') && !path.startsWith('//')
-    ? path
-    : null
+  if (path === null || !path.startsWith('/') || path.startsWith('//')) {
+    return null
+  }
+  if (/[\\\u0000-\u001f\u007f]/.test(path)) return null
+  return new URL(path, PROBE_ORIGIN).origin === PROBE_ORIGIN ? path : null
 }
 
 /**

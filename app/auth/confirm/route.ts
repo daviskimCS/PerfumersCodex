@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import type { EmailOtpType } from '@supabase/supabase-js'
 
 import { createClient } from '@/lib/supabase/server'
+import { safeInternalPath } from '@/lib/validation/auth'
 
 /**
  * Email-confirmation landing (W3-A), per current Supabase SSR guidance:
@@ -18,13 +19,6 @@ import { createClient } from '@/lib/supabase/server'
  * params, expired or reused link — lands on /login with a readable notice,
  * never a raw error.
  */
-
-/** Only same-site path targets; blocks `https://…` and `//host` redirects. */
-function safeInternalPath(path: string | null): string | null {
-  return path !== null && path.startsWith('/') && !path.startsWith('//')
-    ? path
-    : null
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
