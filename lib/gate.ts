@@ -104,9 +104,15 @@ export function isGateEnabled(): boolean {
  * card is drawn from a material's own name, so exempting the pattern rather
  * than the exact path would publish the corpus one share card at a time. The
  * allowlist is exact-match on purpose.
+ *
+ * `/api/keep-alive` is the one route exempted for a machine: Vercel Cron cannot
+ * enter a password. It returns no data, and the route itself refuses every
+ * request that does not carry CRON_SECRET (lib/cron.ts), so the exemption
+ * reveals nothing the gate exists to hide.
  */
 const ALLOWLISTED_PATHNAMES = new Set([
   UNLOCK_PATH,
+  '/api/keep-alive',
   '/icon.svg',
   '/apple-icon',
   '/opengraph-image',
