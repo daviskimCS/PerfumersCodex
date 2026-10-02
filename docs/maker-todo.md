@@ -104,6 +104,20 @@ Not yet applied live — an agent has no credentials.
    it must appear.
 5. Optional: the dashboard's Security Advisor should no longer list the view.
 
+### 0b. Migration 0009 (structure drawings) — before you publish anything
+
+PR #24 stores each 2D structure diagram, so it adds a field to what every
+material page renders. That changes every material's review fingerprint.
+Nothing is published yet, so this costs nothing if done in this order:
+
+1. `npm run db:migrate` (applies 0009). Before the deploy, or every material
+   page fails on the missing table.
+2. Merge and deploy PR #24.
+3. Re-seed from `perfumers-codex-data` (writes the drawings and fresh hashes).
+4. Only then `npm run db:review show` / `publish`.
+
+Anything published between 2 and 3 hides itself after the re-seed.
+
 ### 1. Verify account deletion actually deletes
 
 **Why it matters:** deletion is irreversible, and `ON DELETE CASCADE` is the
