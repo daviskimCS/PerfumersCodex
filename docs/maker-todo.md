@@ -14,6 +14,34 @@ Obsidian vault, not here.
 
 ## 🔴 Blocking — something is wrong or unproven until these are done
 
+### 0. Apply migration 0007 — the search view is probably public (2026-10-02)
+
+**Why it matters:** migration 0002 enabled RLS on every _table_, but
+`material_search_view` (0001) is a materialized view, which cannot carry
+RLS, and Supabase's default privileges grant anon access to every relation
+in `public`. So the Data API very likely serves slug, canonical name and CAS
+number for every live material to anyone holding the publishable key, which
+ships in the client bundle. That gets around the pre-launch gate. Supabase's
+security advisor flags this pattern ("materialized view in API").
+
+`0007_search-view-revoke-api` revokes it. Tested on a local Postgres 16 with
+Supabase-style default grants, where all eight migrations applied cleanly:
+anon could SELECT the view before 0007 and is refused after, the revoke
+survives `REFRESH`, and the `postgres` role the app uses keeps access.
+Not yet applied live — an agent has no credentials.
+
+**How:**
+
+1. Before applying, confirm the exposure (expect rows):
+   ```bash
+   curl "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/material_search_view?select=slug" \
+     -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+   ```
+2. `npm run db:migrate`
+3. Re-run the curl: expect a permission error, not rows.
+4. Open the site and run one search: results must still appear.
+5. Optional: the dashboard's Security Advisor should no longer list the view.
+
 ### 1. Verify account deletion actually deletes
 
 **Why it matters:** deletion is irreversible, and `ON DELETE CASCADE` is the
@@ -378,14 +406,21 @@ structure.
 
 ## Known debt (tracked, not blocking)
 
-- **Two different source keys with the same URL** are not caught before
-  writing. **This bit on 2026-09-13:** six research entries silently failed
-  to seed because each cited IFRA's index under a per-material key. Now
-  worth closing rather than tracking — a one-rule addition to
-  `checkSharedSourceKeys`. The old design merged those by URL; the new one surfaces them as a
-  `sources_url_uniq` violation mid-transaction on the citing material — loud,
-  but not the pre-write validation error every other cross-file rule gives.
-  A small follow-up in `lib/validation/material-data.ts` when it matters.
+- ~~**Two different source keys with the same URL**~~ — **closed 2026-10-02.**
+  It bit on 2026-09-13: six research entries failed to seed because each
+  cited IFRA's index under a per-material key and the second collided on
+  `sources_url_uniq` mid-transaction. `checkSharedSourceUrls` in
+  `lib/validation/material-data.ts` now rejects one url under two keys
+  (across files or within one) before any write, naming the key to reuse.
+  **Your action:** the affected files in `perfumers-codex-data/` will now fail
+  validation instead of failing mid-seed. For each error, do what it says:
+  across files, change the repeated source's key to the one named, copy that
+  source's title exactly, and point the file's `source_key` references at it;
+  within one file, delete the repeated entry and re-point its references.
+  The key named is always the first declaration in input order, which is the
+  one already in the database. Residual: the check sees only the input set,
+  so a url already in the database under a key no input file declares still
+  fails at write time.
 - **Every route is dynamically rendered.** The header's `getUser()` reads
   cookies, so `/`, `/login`, `/signup` lost static generation. Wave 4
   mandated the server-side check; this is its price. First item for the

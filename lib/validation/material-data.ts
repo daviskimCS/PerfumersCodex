@@ -45,7 +45,9 @@ import { z } from 'zod'
  *   Keys are unique within a file and *global* across the set (`sources.key`
  *   is UNIQUE): the same key in two files names the same document and seeds
  *   as one row, so the two declarations must agree on `url` and `title` —
- *   a key naming two different documents is a data error, not a merge.
+ *   a key naming two different documents is a data error, not a merge. The
+ *   converse holds too (`sources.url` is UNIQUE): one url under two keys is
+ *   rejected, because the second key would collide with the first's row.
  * - Cross-row references use slugs (`families`, `similar_slug`,
  *   `parent_slug`), never UUIDs — the input set predates any database ids.
  *
@@ -632,6 +634,9 @@ export function validateMaterialData(
   // same document. Disagreement on url or title means one file's citation
   // would silently be rewritten into the other's, so it fails here, by name.
   checkSharedSourceKeys(materials, errors)
+  // And the converse: sources.url is UNIQUE too, so one document must carry
+  // one key, or the seed aborts mid-transaction on the second key.
+  checkSharedSourceUrls(materials, errors)
 
   // similar_slug resolution needs the full slug universe. When any material
   // file failed to parse, its slug is unknown, and flagging every reference
@@ -854,6 +859,84 @@ interface ReferenceSets {
   familySlugs: Set<string> | null
   categoryIds: Set<number> | null
   hazardCodes: Set<string> | null
+}
+
+/**
+ * One document, one key — the converse of `checkSharedSourceKeys`.
+ *
+ * `sources_url_uniq` lets a url belong to at most one row, and the seed finds
+ * rows by key. So one url declared under two different keys, in two files or
+ * twice in one, passes every per-key check and then fails as a unique-index
+ * violation inside the second material's transaction, aborting that material
+ * and every later seed run. That happened on 2026-09-13: each research entry
+ * cited IFRA's 51st-Amendment index under its own key and six entries failed
+ * to seed (ceee802). Caught here instead, before any write, naming the key to
+ * reuse.
+ *
+ * Matching is exact, like the index: two spellings of one url (a trailing
+ * slash, a fragment) are two rows to Postgres and pass here too. url-less
+ * sources never collide, because the index is partial (`url IS NOT NULL`).
+ *
+ * The key it names is always a valid one. Declarations the other checks
+ * already reject — a duplicate key within a file, or a key whose url differs
+ * from that key's first declaration — are skipped here, so a correct file is
+ * never told to adopt a broken key. First-declared wins, in input order, which
+ * is the seed's write order: the key named is the one already in the database.
+ *
+ * The check sees only the input set. A url already seeded under a key that no
+ * file in this set declares still surfaces at write time, as before.
+ */
+function checkSharedSourceUrls(
+  materials: { filename: string; material: MaterialFile }[],
+  errors: MaterialDataError[]
+): void {
+  // Each key's first declaration — the one checkSharedSourceKeys holds every
+  // later declaration of that key to.
+  const keyFirst = new Map<string, { url: string | null; title: string }>()
+  for (const { material } of materials) {
+    for (const source of material.sources) {
+      if (!keyFirst.has(source.key)) {
+        keyFirst.set(source.key, { url: source.url, title: source.title })
+      }
+    }
+  }
+
+  const urlFirst = new Map<
+    string,
+    { file: string; key: string; title: string }
+  >()
+  for (const { filename, material } of materials) {
+    const keysInFile = new Set<string>()
+    material.sources.forEach((source, index) => {
+      const repeatInFile = keysInFile.has(source.key)
+      keysInFile.add(source.key)
+      if (source.url === null || repeatInFile) return
+      const canonical = keyFirst.get(source.key)
+      if (canonical === undefined || canonical.url !== source.url) return
+
+      const prior = urlFirst.get(source.url)
+      if (prior === undefined) {
+        urlFirst.set(source.url, {
+          file: filename,
+          key: source.key,
+          title: canonical.title,
+        })
+        return
+      }
+      // Same key across files is a shared document, which is the point.
+      if (prior.key === source.key) return
+
+      const fix =
+        prior.file === filename
+          ? `remove this entry and point its source_key references at "${prior.key}"`
+          : `cite it as "${prior.key}" from ${prior.file}, with its title ${JSON.stringify(prior.title)}, and point this file's "${source.key}" references at it`
+      errors.push({
+        file: filename,
+        path: `sources[${index}].url`,
+        message: `url ${JSON.stringify(source.url)} is already declared under source key "${prior.key}" — one document has one key; ${fix}`,
+      })
+    })
+  }
 }
 
 /**
