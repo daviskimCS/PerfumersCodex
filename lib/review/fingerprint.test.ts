@@ -59,6 +59,10 @@ function detail(): MaterialDetail {
     usageGuidance: null,
     landmarkUses: [],
     computed: { logp: 1, tpsa: 2, heavyAtomCount: 5, rdkitVersion: 'test' },
+    structure: {
+      svg: "<svg viewBox='0 0 640 480'><path d='M 0,0 L 1,1' /></svg>",
+      rdkitVersion: 'test',
+    },
     similar: [
       {
         slug: 'test-material-beta',
@@ -161,6 +165,15 @@ describe('materialFingerprint', () => {
       (d) => (d.similar[0].canonicalName = 'Renamed Beta'),
     ],
     ['computed properties', (d) => (d.computed = null)],
+    [
+      'the structure drawing (derived)',
+      (d) => (d.structure!.svg = d.structure!.svg.replace('1,1', '2,2')),
+    ],
+    [
+      'the RDKit version that drew the structure',
+      (d) => (d.structure!.rdkitVersion = 'next'),
+    ],
+    ['the structure drawing going missing', (d) => (d.structure = null)],
   ]
 
   it.each(changes)('changes when %s changes', (_name, mutate) => {

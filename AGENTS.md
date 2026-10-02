@@ -28,7 +28,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - GitHub Actions for typecheck + tests on PRs
 - Python data ingestion in separate repo: perfumers-codex-data
 - RDKit (Python, in perfumers-codex-data): fingerprints, Tanimoto similarity precompute, computed properties — stamped with rdkit_version
-- RDKit.js (WASM, lazy-loaded, client-side): 2D structure rendering + substructure search — never in the critical path
+- RDKit.js (WASM): the seed draws each 2D structure once in Node (`scripts/draw.ts` → `material_structure_drawings`, stamped with rdkit_version, migration 0009) and material pages inline that SVG server-side. The browser loads the WASM only on `/structure`, for patterns a reader types (lazy-loaded, never in the critical path). Never load it on a material page to redraw what the seed stored
 
 ## Architectural rules
 

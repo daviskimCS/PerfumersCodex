@@ -156,6 +156,16 @@ export interface ComputedProperties {
   rdkitVersion: string // provenance — always shown alongside the values
 }
 
+/**
+ * The 2D structure diagram, drawn once at seed time from `smiles` and stored
+ * (migration 0009). `svg` is inline-ready markup: already narrowed to the
+ * allowlist in `lib/structure/svg.ts` and inked with `currentColor`.
+ */
+export interface StructureDrawing {
+  svg: string
+  rdkitVersion: string // provenance — the drawing is a recomputation, not a cited fact
+}
+
 export interface SimilarMaterial {
   slug: string
   canonicalName: string
@@ -184,6 +194,8 @@ export interface MaterialDetail extends MaterialSummary {
   usageGuidance: UsageGuidance | null
   landmarkUses: LandmarkUse[]
   computed: ComputedProperties | null
+  /** null for every NULL-SMILES material, and for one the seed has not drawn yet. */
+  structure: StructureDrawing | null
   similar: SimilarMaterial[]
   odorPredictions: OdorPrediction[] // renders ONLY in the labeled experimental module
   /**

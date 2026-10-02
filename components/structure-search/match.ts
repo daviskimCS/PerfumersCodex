@@ -11,8 +11,8 @@ import type { JSMol, RDKitModule } from '@rdkit/rdkit'
  *
  * MEMORY. Every handle RDKit hands back is a C++ object on the WASM heap that
  * the JavaScript garbage collector knows nothing about, so each one is
- * `delete()`d in a `finally` — the house rule from
- * `components/material/structure-canvas.tsx`. Over ~50 candidates a leaked
+ * `delete()`d in a `finally` — the house rule `scripts/classify.ts` and
+ * `scripts/draw.ts` follow too. Over ~50 candidates a leaked
  * molecule per keystroke would be invisible right up until it wasn't.
  *
  * FAILURE POSTURE. Nothing here throws. An unparseable pattern is a *result*
