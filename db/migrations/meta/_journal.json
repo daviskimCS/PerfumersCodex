@@ -57,6 +57,13 @@
       "when": 1790905428323,
       "tag": "0007_search-view-revoke-api",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790906974911,
+      "tag": "0008_material-review-gate",
+      "breakpoints": true
     }
   ]
 }

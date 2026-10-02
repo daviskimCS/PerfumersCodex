@@ -1,7 +1,8 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 
 import { materials, searchQueries } from '@/db/schema'
 import { db } from '@/lib/db'
+import { materialIsPublished, materialIsPublishedAs } from '@/lib/db/published'
 import type { SearchCandidate } from '@/lib/search/types'
 
 /**
@@ -28,8 +29,8 @@ export type CasMatch = Pick<
 /**
  * Rule 0: exact match on the indexed `cas_number` column. The base table, not
  * the view — CAS numbers are deliberately absent from the tsvector
- * (docs/database-schema.md), and the view has no `deleted_at` column to
- * filter on anyway, so soft-deleted rows are excluded here explicitly.
+ * (docs/database-schema.md). Only a published material can match: soft-deleted
+ * and unreviewed rows are excluded here (`materialIsPublished`).
  *
  * Expects an already-normalized query (`normalizeQuery` output).
  */
@@ -42,7 +43,7 @@ export async function findByCasNumber(cas: string): Promise<CasMatch | null> {
       casNumber: materials.casNumber,
     })
     .from(materials)
-    .where(and(eq(materials.casNumber, cas), isNull(materials.deletedAt)))
+    .where(and(eq(materials.casNumber, cas), materialIsPublished()))
     // The schema does not force CAS uniqueness (the curated corpus treats it
     // as unique in practice); if duplicates ever exist, mirror rule 5's
     // most-recently-updated tie-break rather than returning an arbitrary row.
@@ -74,8 +75,9 @@ interface CandidateRow extends Record<string, unknown> {
  * - trigram `%` on `material_synonyms.name` (base table)
  * - full-text `@@` on `material_search_view.weighted_vector`
  *
- * The trigram legs hit base tables, so they filter `deleted_at IS NULL`
- * themselves; the materialized view already excludes soft-deleted rows.
+ * The trigram legs filter to published materials themselves. The view leg
+ * does not (the view predates the review gate and knows only `deleted_at`),
+ * so the final `WHERE` applies `materialIsPublished` to every candidate.
  *
  * The `%` operator uses `pg_trgm.similarity_threshold`, which we leave at the
  * Postgres default of 0.3 — the same value as `TRIGRAM_THRESHOLD` in
@@ -103,11 +105,11 @@ export async function fetchCandidates(
     candidate_ids AS (
       SELECT m.id
       FROM materials m, params p
-      WHERE m.deleted_at IS NULL AND m.canonical_name % p.q
+      WHERE ${materialIsPublishedAs('m')} AND m.canonical_name % p.q
       UNION
       SELECT s.material_id
       FROM material_synonyms s
-      JOIN materials m ON m.id = s.material_id AND m.deleted_at IS NULL
+      JOIN materials m ON m.id = s.material_id AND ${materialIsPublishedAs('m')}
       CROSS JOIN params p
       WHERE s.name % p.q
       UNION
@@ -154,7 +156,7 @@ export async function fetchCandidates(
       FROM material_search_view v
       WHERE v.id = m.id
     ) fts ON true
-    WHERE m.deleted_at IS NULL
+    WHERE ${materialIsPublishedAs('m')}
     -- Cap-eviction policy only, NOT an ordering promise (D2): when more than
     -- 50 rows qualify, keep the strongest evidence. rankCandidates re-sorts.
     ORDER BY trigram_similarity DESC, ts_rank DESC, m.id

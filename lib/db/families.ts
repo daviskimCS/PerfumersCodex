@@ -1,8 +1,9 @@
-import { and, asc, count, eq, isNull, type SQL } from 'drizzle-orm'
+import { and, asc, count, eq, gt, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import { families, materialFamilies, materials } from '@/db/schema'
 import { db } from '@/lib/db'
+import { materialIsPublished } from '@/lib/db/published'
 import type { FamilySummary } from '@/lib/types'
 
 /**
@@ -27,14 +28,18 @@ const parentFamilies = alias(families, 'parent_families')
 /**
  * The one query both exports run, with an optional predicate.
  *
- * Two things are load-bearing here:
+ * Three things are load-bearing here:
  *
  * - the count is `count(materials.id)`, not `count(*)` — a family with no
  *   materials still produces one row from the LEFT JOINs, and counting a
  *   NULL-able joined column is what makes that row count 0 rather than 1;
- * - the soft-delete filter lives in the JOIN condition, not in `where`.
- *   Moved to `where` it would turn the LEFT JOIN into an inner one and drop
- *   empty families off the list entirely.
+ * - the published filter (`materialIsPublished`) lives in the JOIN
+ *   condition, so only reviewed materials are counted;
+ * - `HAVING count > 0` then drops every family with no published material.
+ *   A family is editorial content too: until a reviewed material belongs to
+ *   it, its name (placeholders such as "PROPOSED — maker to replace", test
+ *   families) is unreviewed and stays off the site. `getFamilyBySlug`
+ *   inherits this, so an empty family's page is a 404, not an empty page.
  */
 function selectFamilies(where: SQL | undefined) {
   return db
@@ -49,18 +54,17 @@ function selectFamilies(where: SQL | undefined) {
     .leftJoin(materialFamilies, eq(materialFamilies.familyId, families.id))
     .leftJoin(
       materials,
-      and(
-        eq(materialFamilies.materialId, materials.id),
-        isNull(materials.deletedAt)
-      )
+      and(eq(materialFamilies.materialId, materials.id), materialIsPublished())
     )
     .where(where)
     .groupBy(families.id, families.slug, families.name, parentFamilies.slug)
+    .having(gt(count(materials.id), 0))
     .orderBy(asc(families.name))
 }
 
 /**
- * Every family, alphabetically, with its live material count.
+ * Every family with at least one published material, alphabetically, with
+ * its published material count.
  *
  * Alphabetical rather than hierarchical: the taxonomy is one level deep in
  * practice, and a flat A–Z list is what a filter row and a "browse another

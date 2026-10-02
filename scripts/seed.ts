@@ -26,7 +26,16 @@
  *   4. optional pruning, then `REFRESH MATERIALIZED VIEW CONCURRENTLY`
  *      (outside every transaction — Postgres refuses it inside one).
  *
- * Four decisions worth knowing about:
+ * Five decisions worth knowing about:
+ *
+ * - **The seed never publishes** (migration 0008, the review gate). After
+ *   every write it re-fingerprints EVERY live material from what its page
+ *   renders (`refreshFingerprints`, lib/db/review.ts) and stores that as
+ *   `content_hash`; it never writes `reviewed_hash`, which only
+ *   `npm run db:review publish` does. New materials arrive hidden, and any
+ *   change to what a reviewed page shows (its own rows or a shared one)
+ *   hides it until the maker reviews it again. It refuses to start when
+ *   migration 0008 is missing, and ends with a review report.
  *
  * - **Source identity is the input's `key`, globally** (maker decision,
  *   2026-09-02, `sources.key` + `sources_key_uniq`). The same key in two
@@ -107,6 +116,11 @@ import {
   usageCategories,
 } from '@/db/schema'
 import { db } from '@/lib/db'
+import {
+  assertReviewGateMigrated,
+  refreshFingerprints,
+  ReviewError,
+} from '@/lib/db/review'
 import {
   CHEMICAL_CLASSES_FILE,
   FAMILIES_FILE,
@@ -990,6 +1004,9 @@ async function main(): Promise<void> {
   }
 
   connectionOpened = true
+  // Before any write: a database without the review gate's columns would
+  // otherwise take the reference-table writes and then fail mid-run.
+  await assertReviewGateMigrated()
 
   // Snapshot BEFORE writing: the prune guard has to weigh the input against
   // the corpus as it stands, not against the corpus this run just topped up.
@@ -1075,13 +1092,28 @@ async function main(): Promise<void> {
     sql`REFRESH MATERIALIZED VIEW CONCURRENTLY material_search_view`
   )
 
+  // Last, after every write: re-fingerprint EVERY live material from what
+  // its page renders. A shared row this run touched (a source, a family or
+  // category name, a hazard statement, a class) can change materials that
+  // were not in the input at all.
+  const statuses = await refreshFingerprints()
+  const hidden = statuses.filter((status) => status.state !== 'published')
+  log(
+    `review gate: ${statuses.length - hidden.length} of ` +
+      `${plural(statuses.length, 'live material')} published`
+  )
+  for (const status of hidden) log(`  hidden — ${status.slug}: ${status.state}`)
+  if (hidden.length > 0) {
+    log('  to review one: npm run db:review show <slug>')
+  }
+
   log(`done in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`)
 }
 
 main()
   .then(closeConnection)
   .catch(async (error: unknown) => {
-    if (error instanceof SeedAbort) {
+    if (error instanceof SeedAbort || error instanceof ReviewError) {
       console.error(`seed: ${error.message}`)
     } else {
       console.error(error)

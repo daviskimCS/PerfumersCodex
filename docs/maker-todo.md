@@ -14,9 +14,70 @@ Obsidian vault, not here.
 
 ## 🔴 Blocking — something is wrong or unproven until these are done
 
-### 0. Apply migration 0007 — the search view is probably public (2026-10-02)
+### 0. Apply migrations 0007 and 0008, then deploy (2026-10-02)
 
-**Why it matters:** migration 0002 enabled RLS on every _table_, but
+Two migrations are written but not applied. Both live only on the
+`claude/eloquent-pasteur-rg57zs` branch until it merges, so **run
+`npm run db:migrate` from a checkout of that branch** (or of `main` after the
+merge). From an older checkout it reports success and applies nothing.
+
+**Order matters:** migrate first, then merge and deploy. The new code reads
+columns that 0008 adds, so code deployed before the migration errors on every
+page, including any Vercel preview of this branch that points at the live
+database. The migration on its own is harmless to the code running now.
+
+**0008: the review gate.** Nothing on the site has been reviewed by you, so
+nothing should be on it. Once the new code is deployed, a material reaches
+readers only after you have read everything its page would show and
+published that exact version. The fingerprint covers what the page renders,
+including shared data: family names, IFRA category names, hazard statements,
+structural classes, full citation rows and similar materials. If any of it
+changes later, from any writer, the page hides itself until you review it
+again. The first deploy hides every live material and every family at once;
+no data is deleted. Verified end to end on a local Postgres with the
+fixtures, through the real seed, the real queries and the running built app.
+
+**Do items 1–3 first**, while the materials are still visible behind the site
+password: they need a material page to bookmark and annotate. After the gate
+deploys, no page exists until you publish a real material.
+
+**How:**
+
+1. Check 0007's exposure (below), then `npm run db:migrate` from this branch.
+   Confirm it landed: `npm run db:review list` must print a table, not
+   "migration 0008 … is not applied".
+2. `npm run db:review refresh` fingerprints every live material. No re-seed
+   is needed, so this works even while the six 2026-09-13 entries still fail
+   validation. Every material is listed as "awaiting review".
+3. Merge and deploy. The site now shows "No materials published yet" and no
+   families.
+4. **Replace the `PROPOSED — maker to replace` families** in your
+   `families.json` and re-seed. `publish` refuses any material whose family
+   name still says PROPOSED.
+5. For each material, after reviewing the JSON, the dossier and its open
+   questions:
+   ```bash
+   npm run db:review show iso-e-super        # everything the page would show
+   npm run db:review publish iso-e-super 1a2b3c4d5e6f7a8b   # the fingerprint `show` printed
+   npm run db:review revoke javanol          # take one back down
+   npm run db:review list                    # where everything stands
+   ```
+   No dashes on the verbs: npm swallows `--flags` and the command refuses
+   them. `publish` only succeeds if nothing the page shows has changed since
+   `show` printed that fingerprint.
+6. The four synthetic fixtures stay hidden unless you publish them. Prune
+   them whenever you like (item 8). Never run the fixture seed against live.
+
+**After the gate is live, don't undo it by accident.** The gate lives in the
+app code, so an older deployment against the live database shows everything
+unreviewed. Don't Instant-Rollback production past this deploy, keep
+`SITE_GATE_PASSWORD` set on Preview, and close or rebase old branches whose
+previews use the live database. Seed only from checkouts that contain this
+change: an older seed doesn't refresh fingerprints. Detail pages still hide
+themselves, because they re-check on every request, but list entries can
+stay stale until the next `refresh`.
+
+**0007: the search view is probably public.** Migration 0002 enabled RLS on every _table_, but
 `material_search_view` (0001) is a materialized view, which cannot carry
 RLS, and Supabase's default privileges grant anon access to every relation
 in `public`. So the Data API very likely serves slug, canonical name and CAS
@@ -30,16 +91,17 @@ anon could SELECT the view before 0007 and is refused after, the revoke
 survives `REFRESH`, and the `postgres` role the app uses keeps access.
 Not yet applied live — an agent has no credentials.
 
-**How:**
+**How (0007):**
 
 1. Before applying, confirm the exposure (expect rows):
    ```bash
    curl "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/material_search_view?select=slug" \
      -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
    ```
-2. `npm run db:migrate`
+2. `npm run db:migrate` (applies 0008 too).
 3. Re-run the curl: expect a permission error, not rows.
-4. Open the site and run one search: results must still appear.
+4. After deploying, publish one reviewed material and run a search for it:
+   it must appear.
 5. Optional: the dashboard's Security Advisor should no longer list the view.
 
 ### 1. Verify account deletion actually deletes
