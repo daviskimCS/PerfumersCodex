@@ -1,17 +1,21 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { Bookmark, UserRound } from 'lucide-react'
 
 import { SearchCommand } from '@/components/search-command'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/server'
+import { Skeleton } from '@/components/ui/skeleton'
+import { getCurrentUserId } from '@/lib/db/bookmarks'
 
 /**
  * Whether there is a signed-in caller, verified server-side.
  *
- * `getUser()` and never `getSession()` (AGENTS.md): the former validates the
- * token against the Supabase auth server, the latter trusts whatever is in the
- * cookie.
+ * `getCurrentUserId` (lib/db/bookmarks.ts) rather than a second auth call of
+ * its own: it is `cache()`-deduped per request, so on a material page the
+ * header, the save button and the note editor share ONE token verification.
+ * Before this the header verified on its own and the page verified again —
+ * two auth round trips to draw one "Account" link.
  *
  * Unlike `/account` — which throws a transient auth-service failure to its
  * error boundary — this one degrades instead. The header renders on *every*
@@ -22,20 +26,16 @@ import { createClient } from '@/lib/supabase/server'
  */
 async function isSignedIn(): Promise<boolean> {
   try {
-    const supabase = await createClient()
-    const { data } = await supabase.auth.getUser()
-    return data.user !== null
+    return (await getCurrentUserId()) !== null
   } catch {
     return false
   }
 }
 
-export async function SiteHeader() {
+export function SiteHeader() {
   // `bg-chrome` is opaque on purpose. This bar sits above the textured canvas
   // and has to cover whatever scrolls beneath it — a translucent or absent
   // background lets content ghost through the wordmark.
-  const signedIn = await isSignedIn()
-
   return (
     <header className="site-chrome sticky top-0 z-40 border-b border-border">
       {/* First tab stop on every page: jump past the chrome to the content. */}
@@ -83,27 +83,54 @@ export async function SiteHeader() {
             Icon-only below `sm` for the same width reason as the account
             link, with the label kept for assistive tech.
           */}
-          {signedIn ? (
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/saved">
-                <Bookmark aria-hidden="true" className="sm:hidden" />
-                <span className="max-sm:sr-only">Saved</span>
-              </Link>
-            </Button>
-          ) : null}
-
-          <Button asChild variant="ghost" size="sm">
-            <Link href={signedIn ? '/account' : '/login'}>
-              <UserRound aria-hidden="true" className="sm:hidden" />
-              <span className="max-sm:sr-only">
-                {signedIn ? 'Account' : 'Sign in'}
-              </span>
-            </Link>
-          </Button>
+          {/*
+            Its own Suspense boundary, so the rest of the chrome — and the
+            page below it — never waits on the auth check. Everything else in
+            this header is static; this slot was the one `await` that held the
+            whole HTML stream back until Supabase had answered, on every page,
+            for every signed-in reader. The fallback is sized like the control
+            it stands in for, so nothing jumps when the real links arrive. For
+            a signed-out visitor there is no cookie, no round trip and no
+            visible fallback at all.
+          */}
+          <Suspense fallback={<AuthLinksSkeleton />}>
+            <AuthLinks />
+          </Suspense>
 
           <ThemeToggle />
         </div>
       </div>
     </header>
   )
+}
+
+async function AuthLinks() {
+  const signedIn = await isSignedIn()
+
+  return (
+    <>
+      {signedIn ? (
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/saved">
+            <Bookmark aria-hidden="true" className="sm:hidden" />
+            <span className="max-sm:sr-only">Saved</span>
+          </Link>
+        </Button>
+      ) : null}
+
+      <Button asChild variant="ghost" size="sm">
+        <Link href={signedIn ? '/account' : '/login'}>
+          <UserRound aria-hidden="true" className="sm:hidden" />
+          <span className="max-sm:sr-only">
+            {signedIn ? 'Account' : 'Sign in'}
+          </span>
+        </Link>
+      </Button>
+    </>
+  )
+}
+
+/** The footprint of the "Sign in" control: an icon button below `sm`, a short label above it. */
+function AuthLinksSkeleton() {
+  return <Skeleton aria-hidden="true" className="h-7 w-8 rounded-lg sm:w-16" />
 }
