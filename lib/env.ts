@@ -122,6 +122,15 @@ const schemas = {
    */
   SITE_GATE_PASSWORD: optionalSecret(),
   SITE_GATE_SECRET: optionalSecret(),
+
+  /**
+   * KEEP-ALIVE CRON (app/api/keep-alive, vercel.json). Optional, SERVER-ONLY.
+   *
+   * Vercel sends it as `Authorization: Bearer <CRON_SECRET>` on every cron
+   * invocation when the variable is set. Unset means the route refuses every
+   * request, so the endpoint is closed until the maker opts in.
+   */
+  CRON_SECRET: optionalSecret(),
 } as const
 
 type Schemas = typeof schemas
