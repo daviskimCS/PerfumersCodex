@@ -5,6 +5,7 @@
 - **Slugs as URL identifiers, not IDs.** `/materials/iso-e-super` is readable, SEO-friendly, stable.
 - **Citations are structural, not optional.** Every fact-bearing row has a non-nullable `source_id`.
 - **Soft deletes on editorial content.** `deleted_at` columns on materials and descriptions; never lose history.
+- **Nothing is published unreviewed** (migration `0008`, 2026-10-02). Readers see a material only when `deleted_at IS NULL AND reviewed_hash = content_hash`. The seed records `content_hash` from the data file; only `npm run db:review` sets `reviewed_hash`. A seed that changes a reviewed material's data hides it until it is reviewed again. One predicate, `materialIsPublished` in `lib/db/published.ts`, applies this everywhere. Families with no published material are hidden too.
 - **Constraints liberally applied.** NOT NULL, FOREIGN KEY, CHECK constraints are documentation that the database enforces.
 - **Timestamps everywhere.** `created_at` and `updated_at` on every mutable table.
 - **Row-Level Security on every table, deny-by-default** (migration `0002`, 2026-08-30). Supabase grants `anon` full DML over PostgREST, so a table without RLS is world-writable the moment the site is live. Editorial tables carry no policies — the app reads them through Drizzle, which connects as `postgres` and bypasses RLS; user tables carry owner-scoped policies. Never touch user tables through Drizzle.
@@ -30,6 +31,9 @@ The central table — one row per aromachemical or natural material.
 | created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
 | updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
 | deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                                                                                                 |
+| content_hash       | text NULLABLE                      | Review gate (`0008`): fingerprint of the validated data file, written by the seed on every run (`lib/review/content-hash.ts`)                                                                                               |
+| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review`, which copies `content_hash`. Readers see the row only while `reviewed_hash = content_hash`                                                                                |
+| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                                                                                          |
 
 ### `material_synonyms`
 

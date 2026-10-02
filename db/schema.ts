@@ -188,11 +188,34 @@ export const materials = pgTable(
       .defaultNow(),
     /** Soft delete — editorial content keeps its history for audit/recovery. */
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /**
+     * The review gate (migration 0008). Readers see a material only when the
+     * maker has reviewed it IN ITS CURRENT FORM:
+     *
+     *   deleted_at IS NULL AND reviewed_hash = content_hash
+     *
+     * `content_hash` is written by the seed from the validated data file
+     * (`materialContentHash`, lib/review/content-hash.ts) on every run.
+     * `reviewed_hash` is written ONLY by `npm run db:review`, which copies the
+     * current `content_hash` across. So a seed that changes a reviewed
+     * material's data makes the two differ, and the page hides itself until
+     * the maker reviews it again. NULL on either side means unreviewed: SQL
+     * equality with NULL is never true. The predicate lives in one place,
+     * `materialIsPublished` (lib/db/published.ts).
+     */
+    contentHash: text('content_hash'),
+    reviewedHash: text('reviewed_hash'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   },
   (t) => [
     // Search rule 0 short-circuits on an exact CAS match, so this lookup sits
     // in front of every query that starts with a CAS-shaped string.
     index('materials_cas_number_idx').on(t.casNumber),
+    // A review is a hash AND a moment; one without the other is a bug.
+    check(
+      'materials_review_stamp_check',
+      sql`(${t.reviewedHash} IS NULL) = (${t.reviewedAt} IS NULL)`
+    ),
   ]
 ).enableRLS()
 

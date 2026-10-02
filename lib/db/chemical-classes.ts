@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, eq } from 'drizzle-orm'
 
 import {
   chemicalClasses,
@@ -6,6 +6,7 @@ import {
   materials,
 } from '@/db/schema'
 import { db } from '@/lib/db'
+import { materialIsPublished } from '@/lib/db/published'
 import type { ChemicalClass } from '@/lib/types'
 
 /**
@@ -28,16 +29,16 @@ import type { ChemicalClass } from '@/lib/types'
  */
 
 /**
- * Every class in curated order, with its live material count.
+ * Every class in curated order, with its published material count.
  *
  * Two things are load-bearing, both inherited from `listFamilies`:
  *
  * - the count is `count(materials.id)`, not `count(*)` — a class with no
  *   members still produces one row from the LEFT JOINs, and counting a
  *   NULL-able joined column is what makes that row count 0 rather than 1;
- * - the soft-delete filter lives in the JOIN condition, not in `where`.
- *   Moved to `where` it would turn the LEFT JOIN into an inner one and drop
- *   empty classes off the list entirely.
+ * - the published filter (`materialIsPublished`) lives in the JOIN
+ *   condition, not in `where`. Moved to `where` it would turn the LEFT JOIN
+ *   into an inner one and drop empty classes off the list entirely.
  *
  * **Zero-count classes are returned.** The list is curated and short, and a
  * class the corpus does not yet exercise is information about the corpus —
@@ -70,7 +71,7 @@ export async function listChemicalClasses(): Promise<ChemicalClass[]> {
       materials,
       and(
         eq(materialChemicalClasses.materialId, materials.id),
-        isNull(materials.deletedAt)
+        materialIsPublished()
       )
     )
     .groupBy(

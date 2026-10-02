@@ -14,9 +14,42 @@ Obsidian vault, not here.
 
 ## 🔴 Blocking — something is wrong or unproven until these are done
 
-### 0. Apply migration 0007 — the search view is probably public (2026-10-02)
+### 0. Apply migrations 0007 and 0008, then deploy (2026-10-02)
 
-**Why it matters:** migration 0002 enabled RLS on every _table_, but
+Two migrations are written but not applied. `npm run db:migrate` applies both.
+**Order matters:** migrate first, then merge and deploy. The new code reads
+columns that 0008 adds, so code deployed before the migration errors on every
+page, including any Vercel preview of this branch that points at the live
+database. The migration on its own is harmless to the code running now.
+
+**0008: the review gate.** Nothing on the site has been reviewed by you, so
+nothing should be on it. 0008 adds `content_hash`, `reviewed_hash` and
+`reviewed_at` to `materials`. Once the new code is deployed, readers see a
+material only after you review it, and only in the exact form you reviewed.
+The first deploy after it hides all seven live materials and their
+placeholder families at once; no data is deleted. Verified end to end on a local Postgres with the
+fixtures, through the real seed, the real queries and the running built app.
+
+**How:**
+
+1. Check 0007's exposure first (see below), then `npm run db:migrate`.
+2. Merge and deploy the branch. The site now shows "No materials published
+   yet" and an empty families list.
+3. Re-seed from your data directory so each material gets its fingerprint.
+   The seed ends with a review report; every material is listed as hidden.
+4. After you review a material (the JSON, the dossier and its open
+   questions), publish it:
+   ```bash
+   npm run db:review -- --list          # where everything stands
+   npm run db:review -- iso-e-super     # publish one you have reviewed
+   npm run db:review -- --revoke javanol  # take one back down
+   ```
+   Review what you SEEDED. If you edit a file afterwards, re-seed it, and it
+   goes back to "changed since review" until you publish it again.
+5. The four synthetic fixtures stay hidden forever unless you publish them.
+   Prune them whenever you like (item 8).
+
+**0007: the search view is probably public.** Migration 0002 enabled RLS on every _table_, but
 `material_search_view` (0001) is a materialized view, which cannot carry
 RLS, and Supabase's default privileges grant anon access to every relation
 in `public`. So the Data API very likely serves slug, canonical name and CAS
@@ -30,16 +63,17 @@ anon could SELECT the view before 0007 and is refused after, the revoke
 survives `REFRESH`, and the `postgres` role the app uses keeps access.
 Not yet applied live — an agent has no credentials.
 
-**How:**
+**How (0007):**
 
 1. Before applying, confirm the exposure (expect rows):
    ```bash
    curl "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/material_search_view?select=slug" \
      -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
    ```
-2. `npm run db:migrate`
+2. `npm run db:migrate` (applies 0008 too).
 3. Re-run the curl: expect a permission error, not rows.
-4. Open the site and run one search: results must still appear.
+4. After deploying, publish one reviewed material and run a search for it:
+   it must appear.
 5. Optional: the dashboard's Security Advisor should no longer list the view.
 
 ### 1. Verify account deletion actually deletes

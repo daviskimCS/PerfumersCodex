@@ -4,7 +4,7 @@ A curated, citation-driven aromachemical reference for working perfumers.
 
 Checking one material means switching between IFRA Standards, supplier pages, safety data sheets and scent databases. Perfumers Codex aims to put that in one searchable reference. Identity, IFRA usage limits, GHS hazards and landmark uses each cite a source. Olfactive descriptions and usage guidance, as they are written, come from bench experience.
 
-**Status:** in development, behind a pre-launch password gate. Public launch planned for Spring 2027. As of 2026-09-05 the live database held three material drafts awaiting the maker's review, plus four synthetic test fixtures. The drafts were researched by AI agents from primary sources, and their olfactive families are placeholders. No real olfactive descriptions have been written yet.
+**Status:** in development, behind a pre-launch password gate. Public launch planned for Spring 2027. No material has been reviewed and published yet. As of 2026-09-05 the database held three drafts researched by AI agents from primary sources, with placeholder olfactive families, plus four synthetic test fixtures. All of them stay hidden from readers until the maker reviews them (see the review gate below). No real olfactive descriptions have been written yet.
 
 ## What exists today
 
@@ -23,13 +23,14 @@ Checking one material means switching between IFRA Standards, supplier pages, sa
 - **Computed values carry provenance, not citations.** Structural classes, similarity scores and computed properties are recomputed from each structure and stamped with the RDKit version that produced them.
 - **Model output stays separate.** Odor predictions live in their own table with a model version, render only in the labeled experimental module, and never mix with editorial descriptions.
 - **Row-level security on every table.** User-owned data (bookmarks, notes) is only read through the RLS-enforced client. A materialized view cannot carry row-level security, so views are closed to the public Data API by revoking access instead (migration `0007`).
+- **Nothing is published unreviewed.** A material reaches readers only after the maker runs `npm run db:review` on it, and only in the exact form reviewed. The seed records a fingerprint of each material's data; a later change hides the material again until it is re-reviewed. Families with no published material are hidden too.
 - **Validate before writing.** The seed validates the whole input set before it opens a database connection.
 
 ## Known gaps
 
 What is not built or not yet verified:
 
-- **Migration `0007` is written but not yet applied** to the live database. Until it is, the search view (material names and CAS numbers) is likely readable through the public Data API.
+- **Migrations `0007` and `0008` are written but not yet applied** to the live database. Until 0007 is, the search view (material names and CAS numbers) is likely readable through the public Data API. Until 0008 is applied and this code deployed, the review gate is not in force.
 - **Performance is unmeasured.** The search budget is 150 ms p95, but nothing has been measured, and pages render per request with no caching layer.
 - **Signed-in flows are unverified end to end.** Bookmarks, notes, and the cleanup of user data on account deletion have not been run with real accounts. Row-level security was probed for anonymous access and forged inserts. Isolation between two real accounts, and the notes UPDATE policy, are not yet verified.
 - **No rate limiting anywhere:** sign-up, login, search, note saves, account changes, and the gate's unlock form are all unthrottled.
@@ -58,16 +59,17 @@ cp .env.example .env.local   # fill in Supabase project values
 npm run dev
 ```
 
-| Script                     | Purpose                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm run dev`              | Dev server (Turbopack)                                                                     |
-| `npm run typecheck`        | TypeScript, no emit                                                                        |
-| `npm run lint`             | ESLint                                                                                     |
-| `npm run test`             | Vitest unit tests                                                                          |
-| `npm run db:generate`      | Generate Drizzle migration from schema                                                     |
-| `npm run db:migrate`       | Apply migrations (uses `DIRECT_URL`)                                                       |
-| `npm run db:seed -- <dir>` | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input |
-| `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                        |
+| Script                        | Purpose                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run dev`                 | Dev server (Turbopack)                                                                     |
+| `npm run typecheck`           | TypeScript, no emit                                                                        |
+| `npm run lint`                | ESLint                                                                                     |
+| `npm run test`                | Vitest unit tests                                                                          |
+| `npm run db:generate`         | Generate Drizzle migration from schema                                                     |
+| `npm run db:migrate`          | Apply migrations (uses `DIRECT_URL`)                                                       |
+| `npm run db:seed -- <dir>`    | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input |
+| `npm run db:review -- <slug>` | Publish a reviewed material (`--list` shows status, `--revoke` hides it again)             |
+| `npm run db:studio`           | Drizzle Studio against `DIRECT_URL`                                                        |
 
 Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`. `SITE_GATE_PASSWORD` turns on the pre-launch password gate; leave it unset locally — unset means off.
 

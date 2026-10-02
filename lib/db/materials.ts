@@ -31,6 +31,7 @@ import {
   usageCategories,
 } from '@/db/schema'
 import { db } from '@/lib/db'
+import { materialIsPublished } from '@/lib/db/published'
 import type {
   ChemicalClassRef,
   Citation,
@@ -45,9 +46,10 @@ import type {
  *
  * Drizzle only — materials are public editorial data, the correct side of the
  * RLS boundary. Raw Drizzle rows never escape this file: everything maps to
- * the contract-locked shapes in `lib/types.ts`. Soft-deleted rows
- * (`deleted_at IS NOT NULL`) are excluded everywhere, including the
- * similar-materials join and the active-description lookup.
+ * the contract-locked shapes in `lib/types.ts`. Only published materials
+ * (`materialIsPublished`: not soft-deleted, and reviewed in their current
+ * form) are ever returned, including through the similar-materials join;
+ * retired descriptions are excluded by their own `deleted_at`.
  *
  * Two mapping conventions (see db/schema.ts header):
  * - `numeric` columns arrive from postgres-js as strings → `toNumber`.
@@ -237,7 +239,7 @@ export async function listMaterials({
   const size = Math.min(Math.max(Math.trunc(pageSize), 1), MAX_PAGE_SIZE)
   const offset = (Math.max(Math.trunc(page), 1) - 1) * size
 
-  const filters: SQL[] = [isNull(materials.deletedAt)]
+  const filters: SQL[] = [materialIsPublished()]
   if (familySlug !== null) {
     filters.push(
       inArray(
@@ -298,7 +300,7 @@ export async function listMaterials({
  * and needs the editorial half of each; the ordering promise is what lets the
  * caller decide the order (most-recently-saved first) without this file
  * knowing anything about bookmarks. Ids that match nothing — or that match a
- * soft-deleted row — are dropped rather than returned as holes.
+ * row that is not published — are dropped rather than returned as holes.
  */
 export async function listMaterialsByIds(
   ids: string[]
@@ -309,7 +311,7 @@ export async function listMaterialsByIds(
   const rows = await db
     .select(summaryColumns)
     .from(materials)
-    .where(and(inArray(materials.id, wanted), isNull(materials.deletedAt)))
+    .where(and(inArray(materials.id, wanted), materialIsPublished()))
 
   const summaries = await withRefs(rows)
   const byId = new Map(summaries.map((summary) => [summary.id, summary]))
@@ -346,7 +348,7 @@ export async function listStructureCandidates(): Promise<
   const rows = await db
     .select({ ...summaryColumns, smiles: materials.smiles })
     .from(materials)
-    .where(and(isNull(materials.deletedAt), isNotNull(materials.smiles)))
+    .where(and(materialIsPublished(), isNotNull(materials.smiles)))
     .orderBy(asc(materials.canonicalName), asc(materials.slug))
 
   const smilesById = new Map(rows.map((row) => [row.id, row.smiles] as const))
@@ -367,7 +369,7 @@ export async function countMaterials(): Promise<number> {
   const rows = await db
     .select({ value: count() })
     .from(materials)
-    .where(isNull(materials.deletedAt))
+    .where(materialIsPublished())
 
   return rows[0]?.value ?? 0
 }
@@ -382,7 +384,7 @@ export async function getMaterialBySlug(
   const materialRows = await db
     .select()
     .from(materials)
-    .where(and(eq(materials.slug, slug), isNull(materials.deletedAt)))
+    .where(and(eq(materials.slug, slug), materialIsPublished()))
     .limit(1)
   const material = materialRows[0]
   if (!material) return null
@@ -539,11 +541,11 @@ export async function getMaterialBySlug(
         materials,
         eq(materialSimilarity.similarMaterialId, materials.id)
       )
-      // The neighbor itself must not be soft-deleted, or the link 404s.
+      // The neighbor must be published too, or the link 404s.
       .where(
         and(
           eq(materialSimilarity.materialId, material.id),
-          isNull(materials.deletedAt)
+          materialIsPublished()
         )
       )
       .orderBy(desc(materialSimilarity.tanimoto), asc(materials.slug)),

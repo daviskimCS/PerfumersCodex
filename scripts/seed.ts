@@ -26,7 +26,14 @@
  *   4. optional pruning, then `REFRESH MATERIALIZED VIEW CONCURRENTLY`
  *      (outside every transaction — Postgres refuses it inside one).
  *
- * Four decisions worth knowing about:
+ * Five decisions worth knowing about:
+ *
+ * - **The seed never publishes** (migration 0008, the review gate). It writes
+ *   each material's `content_hash`, a fingerprint of the validated record,
+ *   and leaves `reviewed_hash` alone; only `npm run db:review` writes that.
+ *   Readers see a material only while the two match, so new materials
+ *   arrive hidden, and changing a reviewed one hides it until the maker
+ *   reviews it again. The run ends with a per-material review report.
  *
  * - **Source identity is the input's `key`, globally** (maker decision,
  *   2026-09-02, `sources.key` + `sources_key_uniq`). The same key in two
@@ -107,6 +114,8 @@ import {
   usageCategories,
 } from '@/db/schema'
 import { db } from '@/lib/db'
+import { materialContentHash } from '@/lib/review/content-hash'
+import { reviewState, type ReviewState } from '@/lib/review/state'
 import {
   CHEMICAL_CLASSES_FILE,
   FAMILIES_FILE,
@@ -514,7 +523,8 @@ async function writeMaterialRow(
   tx: Transaction,
   material: MaterialFile,
   identitySourceId: string
-): Promise<{ id: string; outcome: RowOutcome }> {
+): Promise<{ id: string; outcome: RowOutcome; review: ReviewState }> {
+  const contentHash = materialContentHash(material)
   const next = {
     canonicalName: material.canonical_name,
     materialType: material.material_type,
@@ -538,12 +548,23 @@ async function writeMaterialRow(
     const row = firstRow(
       await tx
         .insert(materials)
-        .values({ slug: material.slug, ...next })
+        .values({ slug: material.slug, ...next, contentHash })
         .returning({ id: materials.id }),
       `material "${material.slug}"`
     )
-    return { id: row.id, outcome: 'created' }
+    return { id: row.id, outcome: 'created', review: 'awaiting review' }
   }
+
+  // The seed never publishes: it records `content_hash` and leaves
+  // `reviewed_hash` alone (only `npm run db:review` writes it). Keeping the
+  // old value is what lets the report say "changed since review" instead of
+  // forgetting a review ever happened. The state is computed as it will be
+  // AFTER this write: not deleted (the update below revives it), new hash.
+  const review = reviewState({
+    contentHash,
+    reviewedHash: existing.reviewedHash,
+    deletedAt: null,
+  })
 
   const unchanged =
     existing.deletedAt === null &&
@@ -556,13 +577,24 @@ async function writeMaterialRow(
     sameNumeric(existing.molecularWeight, material.molecular_weight) &&
     existing.identitySourceId === next.identitySourceId
 
-  if (unchanged) return { id: existing.id, outcome: 'unchanged' }
+  if (unchanged) {
+    // The row's own columns are the same, but something below it (synonyms,
+    // limits, sources...) may not be. Record the new fingerprint WITHOUT
+    // bumping updated_at, which is search ranking rule 5's tie-break.
+    if (existing.contentHash !== contentHash) {
+      await tx
+        .update(materials)
+        .set({ contentHash })
+        .where(eq(materials.id, existing.id))
+    }
+    return { id: existing.id, outcome: 'unchanged', review }
+  }
 
   await tx
     .update(materials)
-    .set({ ...next, deletedAt: null, updatedAt: new Date() })
+    .set({ ...next, contentHash, deletedAt: null, updatedAt: new Date() })
     .where(eq(materials.id, existing.id))
-  return { id: existing.id, outcome: 'updated' }
+  return { id: existing.id, outcome: 'updated', review }
 }
 
 /**
@@ -653,6 +685,7 @@ interface MaterialWriteReport {
   /** The material's row id — the similarity pass resolves slugs through it. */
   id: string
   outcome: RowOutcome
+  review: ReviewState
   description: Awaited<ReturnType<typeof writeDescription>>
   childRows: number
 }
@@ -674,7 +707,7 @@ async function writeMaterial(
     const sourceIdByKey = await writeSources(tx, material.sources)
     const source = (key: string): string =>
       resolveSource(sourceIdByKey, key, material.slug)
-    const { id, outcome } = await writeMaterialRow(
+    const { id, outcome, review } = await writeMaterialRow(
       tx,
       material,
       source(material.identity_source_key)
@@ -848,7 +881,14 @@ async function writeMaterial(
 
     const description = await writeDescription(tx, id, material, sourceIdByKey)
 
-    return { slug: material.slug, id, outcome, description, childRows }
+    return {
+      slug: material.slug,
+      id,
+      outcome,
+      review,
+      description,
+      childRows,
+    }
   })
 }
 
@@ -1028,13 +1068,25 @@ async function main(): Promise<void> {
   )
 
   const materialIdBySlug = new Map<string, string>()
+  const hidden: string[] = []
   for (const material of bundle.materials) {
     const report = await writeMaterial(material, familyIdBySlug, classification)
     materialIdBySlug.set(report.slug, report.id)
+    if (report.review !== 'published') hidden.push(report.slug)
     log(
       `  ${report.slug}: row ${report.outcome}, ` +
         `${plural(report.childRows, 'child row')} replaced, ` +
-        `description ${report.description}`
+        `description ${report.description}, ${report.review}`
+    )
+  }
+  log(
+    `review gate: ${bundle.materials.length - hidden.length} of ` +
+      `${plural(bundle.materials.length, 'material')} published`
+  )
+  if (hidden.length > 0) {
+    log(
+      `  hidden from readers until reviewed: ${hidden.join(', ')}\n` +
+        `  after reviewing, publish with: npm run db:review -- <slug>`
     )
   }
 
