@@ -14,6 +14,34 @@ Obsidian vault, not here.
 
 ## 🔴 Blocking — something is wrong or unproven until these are done
 
+### 0. Apply migration 0007 — the search view is probably public (2026-10-02)
+
+**Why it matters:** migration 0002 enabled RLS on every _table_, but
+`material_search_view` (0001) is a materialized view, which cannot carry
+RLS, and Supabase's default privileges grant anon access to every relation
+in `public`. So the Data API very likely serves slug, canonical name and CAS
+number for every live material to anyone holding the publishable key, which
+ships in the client bundle. That gets around the pre-launch gate. Supabase's
+security advisor flags this pattern ("materialized view in API").
+
+`0007_search-view-revoke-api` revokes it. Tested on a local Postgres 16 with
+Supabase-style default grants, where all eight migrations applied cleanly:
+anon could SELECT the view before 0007 and is refused after, the revoke
+survives `REFRESH`, and the `postgres` role the app uses keeps access.
+Not yet applied live — an agent has no credentials.
+
+**How:**
+
+1. Before applying, confirm the exposure (expect rows):
+   ```bash
+   curl "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/material_search_view?select=slug" \
+     -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+   ```
+2. `npm run db:migrate`
+3. Re-run the curl: expect a permission error, not rows.
+4. Open the site and run one search: results must still appear.
+5. Optional: the dashboard's Security Advisor should no longer list the view.
+
 ### 1. Verify account deletion actually deletes
 
 **Why it matters:** deletion is irreversible, and `ON DELETE CASCADE` is the

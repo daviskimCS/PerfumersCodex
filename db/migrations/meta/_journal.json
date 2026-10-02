@@ -50,6 +50,13 @@
       "when": 1788660353449,
       "tag": "0006_chemical-classes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790905428323,
+      "tag": "0007_search-view-revoke-api",
+      "breakpoints": true
     }
   ]
 }

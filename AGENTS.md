@@ -20,7 +20,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Postgres on Supabase + Drizzle ORM (table definitions in `db/schema.ts`; all access via `lib/db/` — see below)
 - Supabase Auth via `@supabase/ssr` (email/password + Google OAuth) — never use the deprecated auth-helpers packages
 - Supabase API keys: new-style `sb_publishable_` / `sb_secret_` only
-- Row-Level Security on **every** public table (deny-by-default since migration 0002, 2026-08-30) — Supabase grants anon full DML over PostgREST by default, so a table without RLS is world-writable once the site is live. Editorial tables carry no policies (the app reads them through Drizzle, which bypasses RLS); user tables carry owner-scoped policies
+- Row-Level Security on **every** public table (deny-by-default since migration 0002, 2026-08-30) — Supabase grants anon full DML over PostgREST by default, so a table without RLS is world-writable once the site is live. Editorial tables carry no policies (the app reads them through Drizzle, which bypasses RLS); user tables carry owner-scoped policies. Views and materialized views cannot carry RLS, so every one created in `public` must `REVOKE ALL … FROM anon, authenticated` in the same migration (`material_search_view`: migration 0007, written 2026-10-02 — maker to apply, maker-todo item 0)
 - Vercel deployment (function region matches Supabase region)
 - Upstash Redis (Vercel Marketplace) for rate limiting only — not a cache
 - Vitest for unit tests (node environment, colocated `*.test.ts`)

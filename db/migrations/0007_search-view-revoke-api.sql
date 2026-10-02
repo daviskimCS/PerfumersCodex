@@ -1,0 +1,19 @@
+-- Close the Data API to material_search_view (migration 0001).
+--
+-- 0002 enabled RLS on every TABLE, but a materialized view cannot carry RLS,
+-- and Supabase's default privileges grant anon and authenticated access to
+-- every relation created in `public`, views and materialized views included.
+-- So PostgREST very likely serves this view to anyone holding the publishable
+-- key, which ships in the client bundle: slug, canonical name and CAS number
+-- for every live material, around the pre-launch gate and against
+-- deny-by-default. Supabase's own security advisor flags this pattern
+-- ("materialized view in API").
+--
+-- Nothing in the app reads the view through the Data API. lib/db/search.ts
+-- reads it through Drizzle as the postgres role, and scripts/seed.ts refreshes
+-- it as the owner, so neither is affected.
+--
+-- REVOKE survives REFRESH MATERIALIZED VIEW, which keeps the same relation.
+-- A future migration that DROPs and re-CREATEs the view must repeat it,
+-- because default privileges would grant access to the new relation again.
+REVOKE ALL ON material_search_view FROM anon, authenticated;
