@@ -215,6 +215,25 @@ describe('validateMaterialData — fixture set', () => {
     expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
   })
 
+  it('compares urls exactly, as the unique index does', () => {
+    const input = makeInput()
+    // Case and a trailing slash make different strings, so Postgres stores
+    // two rows. The validator must not refuse what the index accepts.
+    const alphaUrl = rows(material(input, ALPHA).sources)[1].url as string
+    for (const [key, url] of [
+      ['test-source-10', alphaUrl.toUpperCase()],
+      ['test-source-11', `${alphaUrl}/`],
+    ]) {
+      const source = structuredClone(rows(material(input, ALPHA).sources)[1])
+      source.key = key
+      source.url = url
+      rows(material(input, BETA).sources).push(source)
+    }
+
+    const result = validateMaterialData(input)
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+  })
+
   it('applies defaults for omitted collections and singletons', () => {
     const result = validateMaterialData(makeInput())
     expect(result.ok).toBe(true)
@@ -474,8 +493,23 @@ const failureCases: FailureCase[] = [
         'https://example.com/test-source-2'
     },
     at: { file: BETA, path: 'sources[0].url' },
+    // The advice must be complete: reusing a key also means matching its
+    // title (checkSharedSourceKeys) and re-pointing the references.
     message:
-      /already declared under source key "test-source-2" in test-material-alpha\.json/,
+      /already declared under source key "test-source-2" — .*cite it as "test-source-2" from test-material-alpha\.json, with its title "Test Source Two", and point this file's "test-source-3" references at it/,
+  },
+  {
+    // A/B/B: the advice names the FIRST declaration (the key the seed wrote
+    // first, so the one already in the database), not the nearest one.
+    name: 'one url under a second key in two later files',
+    mutate: (input) => {
+      const shared = structuredClone(rows(material(input, ALPHA).sources)[1])
+      shared.key = 'test-source-7'
+      rows(material(input, GAMMA).sources).push(structuredClone(shared))
+      rows(material(input, DELTA).sources).push(structuredClone(shared))
+    },
+    at: { file: DELTA, path: 'sources[2].url' },
+    message: /cite it as "test-source-2" from test-material-alpha\.json/,
   },
   {
     name: 'one url under two source keys within a file',
@@ -486,8 +520,10 @@ const failureCases: FailureCase[] = [
       sources.push(copy)
     },
     at: { file: ALPHA, path: 'sources[2].url' },
+    // Renaming the entry to the existing key would only trade this error for
+    // "duplicate source key"; the fix within a file is to delete it.
     message:
-      /already declared under source key "test-source-2" earlier in this file/,
+      /remove this entry and point its source_key references at "test-source-2"/,
   },
   {
     name: 'malformed CAS number',
@@ -662,5 +698,49 @@ describe('validateMaterialData — rejections', () => {
     if (failureCase.message !== undefined) {
       expect(hit?.message).toMatch(failureCase.message)
     }
+  })
+})
+
+/**
+ * Cases the table cannot express: it finds one expected error, so it cannot
+ * notice an extra error or a missing one.
+ */
+describe('validateMaterialData — shared source urls', () => {
+  it('reports a repeated key once, not again as a url collision', () => {
+    const input = makeInput()
+    const sources = rows(material(input, ALPHA).sources)
+    sources.push(structuredClone(sources[1]))
+
+    const result = validateMaterialData(input)
+    const errors: MaterialDataError[] = result.ok ? [] : result.errors
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatchObject({ file: ALPHA, path: 'sources[2].key' })
+    expect(errors[0].message).toMatch(/duplicate source key/)
+  })
+
+  it('never tells a correct file to adopt a key that is itself wrong', () => {
+    const input = makeInput()
+    const other = 'https://example.com/test-source-6'
+    // Beta reuses alpha's key for a different document: wrong, and reported
+    // by the shared-key check. Gamma declares that document under its own
+    // key: right. Gamma must not be told to cite it as "test-source-2".
+    const misused = structuredClone(rows(material(input, ALPHA).sources)[1])
+    misused.url = other
+    rows(material(input, BETA).sources).push(misused)
+    const correct = structuredClone(rows(material(input, GAMMA).sources)[0])
+    correct.key = 'test-source-6'
+    correct.url = other
+    correct.title = 'Test Source Six'
+    rows(material(input, GAMMA).sources).push(correct)
+
+    const result = validateMaterialData(input)
+    const errors: MaterialDataError[] = result.ok ? [] : result.errors
+    expect(errors.filter((error) => error.file === GAMMA)).toEqual([])
+    expect(
+      errors.some(
+        (error) =>
+          error.file === BETA && /but the url differs/.test(error.message)
+      )
+    ).toBe(true)
   })
 })

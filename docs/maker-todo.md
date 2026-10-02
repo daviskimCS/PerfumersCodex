@@ -385,10 +385,14 @@ structure.
   `lib/validation/material-data.ts` now rejects one url under two keys
   (across files or within one) before any write, naming the key to reuse.
   **Your action:** the affected files in `perfumers-codex-data/` will now fail
-  validation instead of failing mid-seed — re-key each repeated document to
-  the key the error names. Residual: the check sees only the input set, so a
-  url already in the database under a key no input file declares still fails
-  at write time.
+  validation instead of failing mid-seed. For each error, do what it says:
+  across files, change the repeated source's key to the one named, copy that
+  source's title exactly, and point the file's `source_key` references at it;
+  within one file, delete the repeated entry and re-point its references.
+  The key named is always the first declaration in input order, which is the
+  one already in the database. Residual: the check sees only the input set,
+  so a url already in the database under a key no input file declares still
+  fails at write time.
 - **Every route is dynamically rendered.** The header's `getUser()` reads
   cookies, so `/`, `/login`, `/signup` lost static generation. Wave 4
   mandated the server-side check; this is its price. First item for the

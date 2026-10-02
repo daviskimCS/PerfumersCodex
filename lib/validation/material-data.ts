@@ -877,6 +877,12 @@ interface ReferenceSets {
  * slash, a fragment) are two rows to Postgres and pass here too. url-less
  * sources never collide, because the index is partial (`url IS NOT NULL`).
  *
+ * The key it names is always a valid one. Declarations the other checks
+ * already reject — a duplicate key within a file, or a key whose url differs
+ * from that key's first declaration — are skipped here, so a correct file is
+ * never told to adopt a broken key. First-declared wins, in input order, which
+ * is the seed's write order: the key named is the one already in the database.
+ *
  * The check sees only the input set. A url already seeded under a key that no
  * file in this set declares still surfaces at write time, as before.
  */
@@ -884,24 +890,50 @@ function checkSharedSourceUrls(
   materials: { filename: string; material: MaterialFile }[],
   errors: MaterialDataError[]
 ): void {
-  const first = new Map<string, { file: string; key: string }>()
+  // Each key's first declaration — the one checkSharedSourceKeys holds every
+  // later declaration of that key to.
+  const keyFirst = new Map<string, { url: string | null; title: string }>()
+  for (const { material } of materials) {
+    for (const source of material.sources) {
+      if (!keyFirst.has(source.key)) {
+        keyFirst.set(source.key, { url: source.url, title: source.title })
+      }
+    }
+  }
+
+  const urlFirst = new Map<
+    string,
+    { file: string; key: string; title: string }
+  >()
   for (const { filename, material } of materials) {
+    const keysInFile = new Set<string>()
     material.sources.forEach((source, index) => {
-      if (source.url === null) return
-      const prior = first.get(source.url)
+      const repeatInFile = keysInFile.has(source.key)
+      keysInFile.add(source.key)
+      if (source.url === null || repeatInFile) return
+      const canonical = keyFirst.get(source.key)
+      if (canonical === undefined || canonical.url !== source.url) return
+
+      const prior = urlFirst.get(source.url)
       if (prior === undefined) {
-        first.set(source.url, { file: filename, key: source.key })
+        urlFirst.set(source.url, {
+          file: filename,
+          key: source.key,
+          title: canonical.title,
+        })
         return
       }
-      // Same key: a shared document (cross-file) or a duplicate key (same
-      // file, already reported by checkMaterial). Neither is this error.
+      // Same key across files is a shared document, which is the point.
       if (prior.key === source.key) return
-      const where =
-        prior.file === filename ? 'earlier in this file' : `in ${prior.file}`
+
+      const fix =
+        prior.file === filename
+          ? `remove this entry and point its source_key references at "${prior.key}"`
+          : `cite it as "${prior.key}" from ${prior.file}, with its title ${JSON.stringify(prior.title)}, and point this file's "${source.key}" references at it`
       errors.push({
         file: filename,
         path: `sources[${index}].url`,
-        message: `url ${JSON.stringify(source.url)} is already declared under source key "${prior.key}" ${where} — one document has one key; cite it as "${prior.key}" instead of "${source.key}"`,
+        message: `url ${JSON.stringify(source.url)} is already declared under source key "${prior.key}" — one document has one key; ${fix}`,
       })
     })
   }
