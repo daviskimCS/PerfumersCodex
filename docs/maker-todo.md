@@ -378,14 +378,17 @@ structure.
 
 ## Known debt (tracked, not blocking)
 
-- **Two different source keys with the same URL** are not caught before
-  writing. **This bit on 2026-09-13:** six research entries silently failed
-  to seed because each cited IFRA's index under a per-material key. Now
-  worth closing rather than tracking — a one-rule addition to
-  `checkSharedSourceKeys`. The old design merged those by URL; the new one surfaces them as a
-  `sources_url_uniq` violation mid-transaction on the citing material — loud,
-  but not the pre-write validation error every other cross-file rule gives.
-  A small follow-up in `lib/validation/material-data.ts` when it matters.
+- ~~**Two different source keys with the same URL**~~ — **closed 2026-10-02.**
+  It bit on 2026-09-13: six research entries failed to seed because each
+  cited IFRA's index under a per-material key and the second collided on
+  `sources_url_uniq` mid-transaction. `checkSharedSourceUrls` in
+  `lib/validation/material-data.ts` now rejects one url under two keys
+  (across files or within one) before any write, naming the key to reuse.
+  **Your action:** the affected files in `perfumers-codex-data/` will now fail
+  validation instead of failing mid-seed — re-key each repeated document to
+  the key the error names. Residual: the check sees only the input set, so a
+  url already in the database under a key no input file declares still fails
+  at write time.
 - **Every route is dynamically rendered.** The header's `getUser()` reads
   cookies, so `/`, `/login`, `/signup` lost static generation. Wave 4
   mandated the server-side check; this is its price. First item for the

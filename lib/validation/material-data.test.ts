@@ -202,6 +202,19 @@ describe('validateMaterialData — fixture set', () => {
     expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
   })
 
+  it('accepts url-less sources under different keys', () => {
+    const input = makeInput()
+    // Two books with no url are two documents, not one: sources_url_uniq is
+    // partial (url IS NOT NULL), so null urls can never collide.
+    const book = structuredClone(rows(material(input, ALPHA).sources)[0])
+    book.key = 'test-source-8'
+    book.title = 'Test Source Eight (another url-less book)'
+    rows(material(input, BETA).sources).push(book)
+
+    const result = validateMaterialData(input)
+    expect(result.ok, JSON.stringify(!result.ok && result.errors)).toBe(true)
+  })
+
   it('applies defaults for omitted collections and singletons', () => {
     const result = validateMaterialData(makeInput())
     expect(result.ok).toBe(true)
@@ -450,6 +463,31 @@ const failureCases: FailureCase[] = [
     },
     at: { file: DELTA, path: 'sources[0].url' },
     message: /shared with test-material-alpha\.json but the url differs/,
+  },
+  {
+    // The converse again: one document under two keys. Each key passes the
+    // per-key checks, and the second would collide on sources_url_uniq
+    // mid-transaction — the 2026-09-13 failure (ceee802).
+    name: 'one url under two source keys across files',
+    mutate: (input) => {
+      rows(material(input, BETA).sources)[0].url =
+        'https://example.com/test-source-2'
+    },
+    at: { file: BETA, path: 'sources[0].url' },
+    message:
+      /already declared under source key "test-source-2" in test-material-alpha\.json/,
+  },
+  {
+    name: 'one url under two source keys within a file',
+    mutate: (input) => {
+      const sources = rows(material(input, ALPHA).sources)
+      const copy = structuredClone(sources[1])
+      copy.key = 'test-source-9'
+      sources.push(copy)
+    },
+    at: { file: ALPHA, path: 'sources[2].url' },
+    message:
+      /already declared under source key "test-source-2" earlier in this file/,
   },
   {
     name: 'malformed CAS number',

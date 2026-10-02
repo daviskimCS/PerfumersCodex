@@ -45,7 +45,9 @@ import { z } from 'zod'
  *   Keys are unique within a file and *global* across the set (`sources.key`
  *   is UNIQUE): the same key in two files names the same document and seeds
  *   as one row, so the two declarations must agree on `url` and `title` —
- *   a key naming two different documents is a data error, not a merge.
+ *   a key naming two different documents is a data error, not a merge. The
+ *   converse holds too (`sources.url` is UNIQUE): one url under two keys is
+ *   rejected, because the second key would collide with the first's row.
  * - Cross-row references use slugs (`families`, `similar_slug`,
  *   `parent_slug`), never UUIDs — the input set predates any database ids.
  *
@@ -632,6 +634,9 @@ export function validateMaterialData(
   // same document. Disagreement on url or title means one file's citation
   // would silently be rewritten into the other's, so it fails here, by name.
   checkSharedSourceKeys(materials, errors)
+  // And the converse: sources.url is UNIQUE too, so one document must carry
+  // one key, or the seed aborts mid-transaction on the second key.
+  checkSharedSourceUrls(materials, errors)
 
   // similar_slug resolution needs the full slug universe. When any material
   // file failed to parse, its slug is unknown, and flagging every reference
@@ -854,6 +859,52 @@ interface ReferenceSets {
   familySlugs: Set<string> | null
   categoryIds: Set<number> | null
   hazardCodes: Set<string> | null
+}
+
+/**
+ * One document, one key — the converse of `checkSharedSourceKeys`.
+ *
+ * `sources_url_uniq` lets a url belong to at most one row, and the seed finds
+ * rows by key. So one url declared under two different keys, in two files or
+ * twice in one, passes every per-key check and then fails as a unique-index
+ * violation inside the second material's transaction, aborting that material
+ * and every later seed run. That happened on 2026-09-13: each research entry
+ * cited IFRA's 51st-Amendment index under its own key and six entries failed
+ * to seed (ceee802). Caught here instead, before any write, naming the key to
+ * reuse.
+ *
+ * Matching is exact, like the index: two spellings of one url (a trailing
+ * slash, a fragment) are two rows to Postgres and pass here too. url-less
+ * sources never collide, because the index is partial (`url IS NOT NULL`).
+ *
+ * The check sees only the input set. A url already seeded under a key that no
+ * file in this set declares still surfaces at write time, as before.
+ */
+function checkSharedSourceUrls(
+  materials: { filename: string; material: MaterialFile }[],
+  errors: MaterialDataError[]
+): void {
+  const first = new Map<string, { file: string; key: string }>()
+  for (const { filename, material } of materials) {
+    material.sources.forEach((source, index) => {
+      if (source.url === null) return
+      const prior = first.get(source.url)
+      if (prior === undefined) {
+        first.set(source.url, { file: filename, key: source.key })
+        return
+      }
+      // Same key: a shared document (cross-file) or a duplicate key (same
+      // file, already reported by checkMaterial). Neither is this error.
+      if (prior.key === source.key) return
+      const where =
+        prior.file === filename ? 'earlier in this file' : `in ${prior.file}`
+      errors.push({
+        file: filename,
+        path: `sources[${index}].url`,
+        message: `url ${JSON.stringify(source.url)} is already declared under source key "${prior.key}" ${where} — one document has one key; cite it as "${prior.key}" instead of "${source.key}"`,
+      })
+    })
+  }
 }
 
 /**
