@@ -41,13 +41,19 @@ turns that into a search axis no free perfumery reference has:
 - **Computed properties.** logP, TPSA, heavy-atom count — volatility-adjacent
   context (loose correlates of top/heart/base behavior), never presented as
   measured fact. Stamped with the RDKit version that produced them.
-- **2D structure rendering.** Table stakes for a chemical reference. Rendered
-  client-side from SMILES via RDKit.js, replacing hotlinked images as the
-  primary structure display.
+- **2D structure rendering.** Table stakes for a chemical reference. Drawn
+  from SMILES by RDKit.js in Node at seed time (`scripts/draw.ts`), stored in
+  `material_structure_drawings` with its `rdkit_version`, and inlined into the
+  material page's server render, replacing hotlinked images as the primary
+  structure display. Until 2026-10-02 it was drawn in the browser, which made
+  every reader download the 6.6 MB WASM after hydration to redraw a picture
+  that only changes when the seed runs.
 
-Split of labor: RDKit (Python) computes in `perfumers-codex-data`; RDKit.js
-renders and filters in the browser. The WASM bundle is heavy — it is
-lazy-loaded and kept out of the critical path (Lighthouse >90 stands).
+Split of labor: RDKit (Python) computes in `perfumers-codex-data`; the seed
+draws structures and classifies them with RDKit.js in Node; the browser runs
+RDKit.js only on `/structure`, where the reader's pattern cannot be
+precomputed. There the WASM is lazy-loaded and kept out of the critical path
+(Lighthouse >90 stands).
 
 The first three cited drafts (2026-09-05) were computed with RDKit.js
 2025.03.4 in Node as a stopgap — Crippen logP, TPSA, heavy atoms, and

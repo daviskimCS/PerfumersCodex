@@ -19,7 +19,7 @@ import {
   MaterialCardGrid,
   MaterialCardSkeleton,
 } from '@/components/material-card'
-import { loadRDKit } from '@/components/material/rdkit'
+import { loadRDKit } from './rdkit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

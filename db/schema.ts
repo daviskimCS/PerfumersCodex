@@ -613,6 +613,35 @@ export const materialComputedProperties = pgTable(
   }
 ).enableRLS()
 
+/**
+ * The 2D structure diagram, drawn once by the seed (`scripts/draw.ts`) from
+ * `materials.smiles` and inlined by the material page (migration 0009). It
+ * replaced drawing it in every reader's browser with the 6.6 MB RDKit WASM.
+ * Derived, never authored: no data file supplies it. One row per material with
+ * SMILES; a mixture has none. `svg` is already narrowed to the allowlist in
+ * `lib/structure/svg.ts`; the CHECKs only guard the shape. Editorial table:
+ * RLS enabled, no policies; the app reads it through Drizzle.
+ */
+export const materialStructureDrawings = pgTable(
+  'material_structure_drawings',
+  {
+    materialId: uuid('material_id')
+      .primaryKey()
+      .references(() => materials.id),
+    svg: text('svg').notNull(),
+    rdkitVersion: text('rdkit_version').notNull(),
+    drawnAt: timestamp('drawn_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      'material_structure_drawings_svg_check',
+      sql`${t.svg} LIKE '<svg %' AND ${t.svg} LIKE '%</svg>'`
+    ),
+  ]
+).enableRLS()
+
 /** Precomputed top-N (N≈10) Tanimoto neighbors, refreshed by the seed pipeline. */
 export const materialSimilarity = pgTable(
   'material_similarity',

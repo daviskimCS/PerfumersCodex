@@ -141,11 +141,11 @@ export default async function MaterialPage({
             </div>
           </div>
 
-          {/* Statically imported; the RDKit chunk and its 6.6 MB WASM load
-              only once this mounts, and nothing renders at all when the
-              material has no SMILES. */}
+          {/* Drawn at seed time and inlined here; nothing renders at all
+              when the material has no SMILES. */}
           <MaterialStructure
             smiles={material.smiles}
+            structure={material.structure}
             name={material.canonicalName}
           />
         </div>

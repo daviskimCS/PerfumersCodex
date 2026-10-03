@@ -247,6 +247,17 @@ Backs the v1 cheminformatics scope ([scope.md](./scope.md), [cheminformatics.md]
 | rdkit_version    | text NOT NULL           | Provenance                       |
 | computed_at      | timestamptz NOT NULL    |                                  |
 
+### `material_structure_drawings`
+
+The 2D structure diagram, drawn by the seed (`scripts/draw.ts`) and inlined by the material page (migration 0009). Derived from `materials.smiles`, never authored. Part of `MaterialDetail`, so it is covered by the review fingerprint: a redraw (a new SMILES or a new RDKit version) hides the page until it is reviewed again.
+
+| Column        | Type                    | Notes                                                                                          |
+| ------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| material_id   | uuid PK, FK → materials | One row per material with SMILES                                                               |
+| svg           | text NOT NULL           | Inline-ready markup, narrowed to the allowlist in `lib/structure/svg.ts`; CHECK `<svg …</svg>` |
+| rdkit_version | text NOT NULL           | Provenance                                                                                     |
+| drawn_at      | timestamptz NOT NULL    |                                                                                                |
+
 ### `material_similarity`
 
 Precomputed top-N (N≈10) Tanimoto neighbors per material, refreshed by the seed pipeline.

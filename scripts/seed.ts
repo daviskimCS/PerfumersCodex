@@ -78,6 +78,13 @@
  *   in the input carries a SMILES — there is nothing for 6.6 MB of
  *   WebAssembly to do.
  *
+ * - **`material_structure_drawings` is derived the same way.** The 2D
+ *   diagram is drawn here by `scripts/draw.ts` from the same RDKit load, in
+ *   the same pre-connection pass, and stamped with the RDKit version. The page
+ *   inlines the stored SVG instead of downloading 6.6 MB of WebAssembly to
+ *   redraw it on every visit. A SMILES RDKit cannot draw stops the run before
+ *   anything is written.
+ *
  * - **This file imports `db/schema.ts` directly**, which architecture D1
  *   otherwise reserves for `lib/db/`. D1 governs app code — pages and
  *   components go through `lib/db/` and receive `lib/types.ts` shapes. This is
@@ -107,6 +114,7 @@ import {
   materialHazards,
   materialIfraAbsences,
   materialSimilarity,
+  materialStructureDrawings,
   materialSynonyms,
   materialUsageGuidance,
   materialUsageLimits,
@@ -145,6 +153,11 @@ import {
   loadRdkit,
   type MaterialClassification,
 } from '@/scripts/classify'
+import {
+  DrawingError,
+  drawMaterials,
+  type MaterialDrawings,
+} from '@/scripts/draw'
 
 const USAGE = `usage: npm run db:seed -- <data-directory> [--prune [--force-prune]]`
 
@@ -682,7 +695,8 @@ interface MaterialWriteReport {
 async function writeMaterial(
   material: MaterialFile,
   familyIdBySlug: Map<string, string>,
-  classification: MaterialClassification | null
+  classification: MaterialClassification | null,
+  drawings: MaterialDrawings | null
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
     const sourceIdByKey = await writeSources(tx, material.sources)
@@ -720,6 +734,10 @@ async function writeMaterial(
     await tx
       .delete(materialChemicalClasses)
       .where(eq(materialChemicalClasses.materialId, id))
+    // Unconditional for the same reason: a withdrawn SMILES loses its drawing.
+    await tx
+      .delete(materialStructureDrawings)
+      .where(eq(materialStructureDrawings.materialId, id))
 
     let childRows = 0
 
@@ -860,6 +878,18 @@ async function writeMaterial(
       }
     }
 
+    // Derived like the classes: drawn from the material's own SMILES. A
+    // NULL-SMILES material has no entry, and no row is the right answer.
+    const svg = drawings?.svgByMaterial.get(material.slug)
+    if (drawings !== null && svg !== undefined) {
+      await tx.insert(materialStructureDrawings).values({
+        materialId: id,
+        svg,
+        rdkitVersion: drawings.rdkitVersion,
+      })
+      childRows += 1
+    }
+
     const description = await writeDescription(tx, id, material, sourceIdByKey)
 
     return { slug: material.slug, id, outcome, description, childRows }
@@ -937,9 +967,10 @@ async function main(): Promise<void> {
   const input = readInput(options.directory)
 
   // RDKit is loaded here, once for the whole run, and only when there is
-  // something to classify. It has two jobs downstream: compiling every class
-  // SMARTS as part of validation, and matching them against every structure.
-  // A corpus of nothing but naturals does neither, so it does not pay 6.6 MB
+  // something to classify. It has three jobs downstream: compiling every
+  // class SMARTS as part of validation, matching them against every
+  // structure, and drawing every structure's 2D diagram.
+  // A corpus of nothing but naturals does none, so it does not pay 6.6 MB
   // of WebAssembly to write zero rows.
   const rdkit = inputHasSmiles(input) ? await loadRdkit() : null
 
@@ -974,10 +1005,11 @@ async function main(): Promise<void> {
   // Before the connection, for the same reason validation is: a corpus with a
   // structure RDKit cannot read is one this seed refuses to write at all.
   let classification: MaterialClassification | null = null
+  let drawings: MaterialDrawings | null = null
   if (rdkit === null) {
     log(
       'no material in the input carries a SMILES: RDKit not loaded, ' +
-        'no chemical-class rows, SMARTS patterns not compiled'
+        'no chemical-class rows or structure drawings, SMARTS patterns not compiled'
     )
   } else {
     try {
@@ -1000,6 +1032,18 @@ async function main(): Promise<void> {
           classified.reduce((total, slugs) => total + slugs.length, 0),
           'class membership'
         )})`
+    )
+
+    try {
+      drawings = drawMaterials(rdkit, bundle.materials)
+    } catch (cause) {
+      if (cause instanceof DrawingError) {
+        throw new SeedAbort(`${cause.message}; nothing was written.`)
+      }
+      throw cause
+    }
+    log(
+      `drew ${plural(drawings.svgByMaterial.size, 'structure diagram')} with RDKit ${drawings.rdkitVersion}`
     )
   }
 
@@ -1046,7 +1090,12 @@ async function main(): Promise<void> {
 
   const materialIdBySlug = new Map<string, string>()
   for (const material of bundle.materials) {
-    const report = await writeMaterial(material, familyIdBySlug, classification)
+    const report = await writeMaterial(
+      material,
+      familyIdBySlug,
+      classification,
+      drawings
+    )
     materialIdBySlug.set(report.slug, report.id)
     log(
       `  ${report.slug}: row ${report.outcome}, ` +

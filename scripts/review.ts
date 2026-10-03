@@ -151,6 +151,16 @@ function printDetail(detail: MaterialDetail, unpublished: Set<string>): void {
           `logP ${detail.computed.logp ?? '—'}, TPSA ${detail.computed.tpsa ?? '—'}, heavy atoms ${detail.computed.heavyAtomCount ?? '—'} (RDKit ${detail.computed.rdkitVersion})`,
         ]
   )
+  // The drawing is markup, so the review prints its provenance, not the SVG.
+  // It is drawn from the SMILES above; checking that is checking the drawing.
+  section(
+    'Structure diagram (drawn from the SMILES)',
+    detail.structure === null
+      ? []
+      : [
+          `drawn by RDKit ${detail.structure.rdkitVersion} (${detail.structure.svg.length} bytes of SVG)`,
+        ]
+  )
   section(
     'Similar materials',
     detail.similar.map(

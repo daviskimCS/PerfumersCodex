@@ -23,6 +23,7 @@ import {
   materialHazards,
   materialIfraAbsences,
   materialSimilarity,
+  materialStructureDrawings,
   materialSynonyms,
   materialUsageGuidance,
   materialUsageLimits,
@@ -41,6 +42,7 @@ import type {
   IfraAbsence,
   MaterialDetail,
   MaterialSummary,
+  StructureDrawing,
 } from '@/lib/types'
 
 /**
@@ -388,13 +390,28 @@ export async function countMaterials(): Promise<number> {
 export async function loadMaterialForReview(
   slug: string
 ): Promise<MaterialForReview | null> {
+  // The drawing rides on the first round trip as a left join rather than
+  // joining the parallel fan-out below, which already outnumbers the pool.
   const materialRows = await db
-    .select()
+    .select({
+      material: materials,
+      structureSvg: materialStructureDrawings.svg,
+      structureRdkitVersion: materialStructureDrawings.rdkitVersion,
+    })
     .from(materials)
+    .leftJoin(
+      materialStructureDrawings,
+      eq(materialStructureDrawings.materialId, materials.id)
+    )
     .where(and(eq(materials.slug, slug), isNull(materials.deletedAt)))
     .limit(1)
-  const material = materialRows[0]
-  if (!material) return null
+  const row = materialRows[0]
+  if (!row) return null
+  const material = row.material
+  const structure: StructureDrawing | null =
+    row.structureSvg !== null && row.structureRdkitVersion !== null
+      ? { svg: row.structureSvg, rdkitVersion: row.structureRdkitVersion }
+      : null
 
   const [
     familyRows,
@@ -715,6 +732,7 @@ export async function loadMaterialForReview(
           rdkitVersion: computed.rdkitVersion,
         }
       : null,
+    structure,
     similar: similarRows.map((row) => ({
       slug: row.slug,
       canonicalName: row.canonicalName,
