@@ -247,8 +247,8 @@ export function SafetyPanel({
           <EmptyState
             icon={TriangleAlert}
             headingLevel={3}
-            title="No hazard codes recorded yet"
-            description="GHS codes are read off supplier safety data sheets and cited to the sheet they came from. None have been entered for this material."
+            title="No GHS hazard codes recorded"
+            description="Hazard codes are recorded only when a cited safety data sheet or majority classification states them. Check a current supplier SDS before use."
           />
         ) : (
           <ul className="divide-y divide-border/60">
