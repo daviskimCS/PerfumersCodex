@@ -8,7 +8,9 @@ export default defineConfig({
     // data normalization, citation handling). See docs/architecture.md D5.
     environment: 'node',
     include: ['**/*.test.ts'],
-    exclude: ['node_modules', '.next'],
+    // Globbed so nested installs are skipped too; .claude/ holds agent
+    // worktrees, each a full checkout with its own node_modules.
+    exclude: ['**/node_modules/**', '**/.next/**', '.claude/**'],
     // CI stays green before the first test lands (runbook Week 1 step 8).
     passWithNoTests: true,
   },
