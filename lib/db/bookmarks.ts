@@ -46,13 +46,25 @@ export type BookmarkWriteResult =
   { ok: true } | { ok: false; reason: 'unauthenticated' | 'failed' }
 
 /**
- * The signed-in user's id, verified against the auth server — or null when
- * nobody is signed in.
+ * The signed-in user's id, from a verified token — or null when nobody is
+ * signed in.
  *
- * `getUser()`, never `getSession()`: `getSession()` trusts whatever the cookie
- * claims (AGENTS.md, auth and security). Wrapped in React's `cache()` so a
- * page that gates on this and a bookmark read that needs the same id cost one
- * round trip rather than two.
+ * `getClaims()`, never `getSession()`: `getSession()` trusts whatever the
+ * cookie claims, `getClaims()` verifies the token's signature against the
+ * project's public signing keys before believing its `sub` (AGENTS.md, auth
+ * and security). It is the read-side check: it decides what the page SHOWS
+ * (the header's links, the save button's state, which note to load), and RLS
+ * — which PostgREST enforces from the same token — decides what the reader can
+ * actually touch. A token revoked elsewhere stays verifiable until it expires
+ * (an hour at most); the writes where that hour matters (`app/account/`) call
+ * `getUser()` themselves.
+ *
+ * Until asymmetric signing keys are turned on (docs/maker-todo.md item 11)
+ * the token is HS256 and the client falls back to `getUser()` internally, so
+ * this is never less safe than the old call — only faster once it can be.
+ *
+ * Wrapped in React's `cache()` so the header, the save button and the note
+ * editor — all on one material page — share one verification per request.
  *
  * Throws **only** when the auth service itself is unreachable — "no session"
  * is not an error, it is `null`. That distinction is `app/account/page.tsx`'s
@@ -62,7 +74,7 @@ export type BookmarkWriteResult =
  */
 export const getCurrentUserId = cache(async (): Promise<string | null> => {
   const supabase = await createClient()
-  const { data, error } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getClaims()
 
   if (error && isAuthRetryableFetchError(error)) {
     throw new Error('Could not reach the authentication service', {
@@ -70,7 +82,7 @@ export const getCurrentUserId = cache(async (): Promise<string | null> => {
     })
   }
 
-  return data.user?.id ?? null
+  return data?.claims.sub ?? null
 })
 
 /**

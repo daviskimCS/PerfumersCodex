@@ -4,8 +4,10 @@ import { cookies } from 'next/headers'
 import { env } from '@/lib/env'
 
 // Server client — for Server Components, Server Actions, and Route Handlers.
-// Always verify auth with supabase.auth.getUser() (validates against the auth
-// server), never getSession() (reads the cookie unverified).
+// Verify auth with supabase.auth.getClaims() for reads and gating (verifies
+// the token's signature locally) and supabase.auth.getUser() before sensitive
+// writes (asks the auth server, so a revoked session is refused at once).
+// Never getSession(), which reads the cookie unverified. See AGENTS.md.
 export async function createClient() {
   const cookieStore = await cookies()
 

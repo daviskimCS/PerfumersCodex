@@ -300,6 +300,36 @@ The dashboard allows 6; `lib/validation/auth.ts` requires 8. Our forms
 enforce 8, so this only matters for flows that bypass them. Set the dashboard
 to 8 so the two agree.
 
+### 11. Turn on asymmetric JWT signing keys in Supabase (2026-10-02)
+
+The app now checks a signed-in reader's token with `getClaims()` instead of
+`getUser()` on every read (the proxy, the header, the save button, the note
+editor — AGENTS.md, auth and security). `getClaims()` verifies the token's
+signature locally against the project's public keys, so a signed-in page
+view stops paying two to three Supabase Auth round trips before it renders.
+**That only happens once the project signs tokens with an asymmetric key.**
+Today it signs with the legacy shared HS256 secret, which cannot be verified
+without the secret, and the client quietly falls back to `getUser()` — same
+behaviour as before this change, same cost, no gain yet.
+
+Dashboard → Project Settings → **JWT Keys** (the "JWT Signing Keys" tab).
+Create a new asymmetric key (ECC P-256 is the default and the smaller
+token), then **rotate** so it becomes the current signing key. Existing
+sessions keep working: the old secret stays valid for verifying tokens
+already issued until you revoke it, which you need not rush. Nothing in the
+code reads the secret, so no environment variable changes.
+
+Verify: sign in, then in the browser's cookies decode the access token's
+header (first segment, base64url) — `"alg":"ES256"` with a `"kid"` means
+local verification is on; `"alg":"HS256"` means it is not yet.
+
+What you give up, and why it is fine here: a token revoked elsewhere (sign
+out on another device, a banned user) stays verifiable until it expires — an
+hour at most. That changes what the header SHOWS, not what the reader can
+DO: RLS is enforced by PostgREST from the same token either way, and the
+writes where that hour matters (delete account, change email or password)
+still call `getUser()`.
+
 ---
 
 ## 🟢 Scheduled / not yet urgent
@@ -483,11 +513,17 @@ structure.
   one already in the database. Residual: the check sees only the input set,
   so a url already in the database under a key no input file declares still
   fails at write time.
-- **Every route is dynamically rendered.** The header's `getUser()` reads
+- **Every route is dynamically rendered.** The header's auth check reads
   cookies, so `/`, `/login`, `/signup` lost static generation. Wave 4
-  mandated the server-side check; this is its price. First item for the
-  deferred caching pass, where partial prerendering can keep the shell static
-  and stream just the auth affordance.
+  mandated the server-side check; this is its price. Since 2026-10-02 the
+  check sits in its own Suspense boundary (`components/site-header.tsx`), so
+  it no longer holds the HTML stream back — but the routes are still
+  request-rendered. Partial prerendering (`cacheComponents`) would keep the
+  shell static and stream just that slot; it is a whole-app mode switch and
+  deferred until there are per-route timings to justify it. A **data** cache
+  over editorial reads is NOT planned: the review gate promises a changed
+  page hides itself the moment the change lands, and the review tooling runs
+  outside the Next runtime, where it could not invalidate one.
 - **`notFound()` returns HTTP 200** on streamed routes, with `noindex` as the
   documented mitigation. Next behaviour, not ours.
 - **The icon is SVG-only.** `favicon.ico` was create-next-app's default and is
