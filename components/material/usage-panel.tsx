@@ -35,22 +35,32 @@ function GuidanceFields({
   // row a label and a citation with no value between them.
   const range = dosageRange(guidance)
 
+  // The one source cites the whole row, so its superscript goes on the first
+  // field that renders. With no range, a note-only row (a recommended ceiling
+  // kept out of the typical-use fields) would otherwise show no citation.
+  const cite = <Cite sources={sources} sourceId={guidance.sourceId} />
+  const citeOn =
+    range !== null ? 'range' : guidance.thresholdNote ? 'threshold' : 'dilution'
+  const cited = (text: string | null, field: typeof citeOn) =>
+    text === null || text === '' ? null : (
+      <>
+        {text}
+        {citeOn === field ? cite : null}
+      </>
+    )
+
   return (
     <>
       <FieldList>
+        <Field term="Typical use" value={cited(range, 'range')} />
         <Field
-          term="Typical use"
-          value={
-            range === null ? null : (
-              <>
-                {range}
-                <Cite sources={sources} sourceId={guidance.sourceId} />
-              </>
-            )
-          }
+          term="Threshold"
+          value={cited(guidance.thresholdNote, 'threshold')}
         />
-        <Field term="Threshold" value={guidance.thresholdNote} />
-        <Field term="Dilution" value={guidance.dilutionNote} />
+        <Field
+          term="Dilution"
+          value={cited(guidance.dilutionNote, 'dilution')}
+        />
       </FieldList>
       {guidance.sourceId === null ? (
         <p className="mt-6 max-w-measure text-sm text-muted-foreground">

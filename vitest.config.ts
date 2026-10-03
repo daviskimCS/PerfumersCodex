@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -8,7 +8,19 @@ export default defineConfig({
     // data normalization, citation handling). See docs/architecture.md D5.
     environment: 'node',
     include: ['**/*.test.ts'],
-    exclude: ['node_modules', '.next'],
+    // Setting exclude replaces Vitest's defaults, so spread them back in
+    // (nested node_modules, .git, dist, caches). The rest are this project's
+    // build output, and .claude/, which holds agent worktrees — each a full
+    // checkout whose tests would otherwise run twice.
+    exclude: [
+      ...configDefaults.exclude,
+      '**/.next/**',
+      '.claude/**',
+      '.vercel/**',
+      'coverage/**',
+      'out/**',
+      'build/**',
+    ],
     // CI stays green before the first test lands (runbook Week 1 step 8).
     passWithNoTests: true,
   },

@@ -15,6 +15,7 @@ A curated, public, open-source aromachemical reference web app for working perfu
 
 ## Stack
 
+- Node 24 (`engines.node: "24.x"` in package.json — Vercel and CI both read it; odd-numbered releases like 23 are EOL and unsupported on Vercel)
 - Next.js 16 (App Router, Turbopack), TypeScript strict
 - Tailwind CSS v4 (design tokens in `@theme` in globals.css — no tailwind.config.js) + shadcn/ui (components copied to /components/ui — they are owned, not vendored)
 - Postgres on Supabase + Drizzle ORM (table definitions in `db/schema.ts`; all access via `lib/db/` — see below)
