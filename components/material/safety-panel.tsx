@@ -234,6 +234,14 @@ export function SafetyPanel({
                 ))}
               </tbody>
             </table>
+            {/* Without this, a Standard issued under an older amendment (Iso E
+                Super's 49th) reads as stale beside materials checked against
+                the latest index. */}
+            <p className="mt-3 max-w-measure text-sm text-muted-foreground">
+              The amendment is the one that issued the Standard. A Standard
+              stays in force through later amendments until IFRA revises it; the
+              verified date is when it was last checked.
+            </p>
             {ifraAbsences.length > 0 ? (
               // A Standard under one amendment, none under another.
               <IfraAbsenceList absences={ifraAbsences} sources={sources} />

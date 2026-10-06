@@ -53,10 +53,7 @@ function GuidanceFields({
     <>
       <FieldList>
         <Field term="Typical use" value={cited(range, 'range')} />
-        <Field
-          term="Threshold"
-          value={cited(guidance.thresholdNote, 'threshold')}
-        />
+        <Field term="Note" value={cited(guidance.thresholdNote, 'threshold')} />
         <Field
           term="Dilution"
           value={cited(guidance.dilutionNote, 'dilution')}

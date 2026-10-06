@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useState } from 'react'
+import { useActionState, useState, type FormEvent } from 'react'
 import { MailCheck } from 'lucide-react'
 import { z } from 'zod'
 
@@ -19,8 +19,8 @@ import {
 
 /**
  * Sign-up (W3-A). A client component for the same reason as /login: the form
- * checklist demands blur-timed inline errors, a disabled-while-invalid
- * submit, and a loading state. The server action re-parses with the same
+ * checklist demands blur-timed inline errors, an invalid submit stopped
+ * with focus on the first error, and a loading state. The server action re-parses with the same
  * schema (D6).
  *
  * Email confirmation is ON, so success is not a session — it renders the
@@ -75,9 +75,30 @@ export function SignupForm() {
     }
   }
 
+  // Submit stays enabled: a disabled button can't be focused, and a
+  // screen-reader user is never told why it won't press. An invalid
+  // submission is stopped here instead, every field's error shown, and focus
+  // moved to the first one. A valid one drops stale local overrides so the
+  // server's verdict is what shows.
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const errors = {
+      email: clientErrorsFor(values, 'email'),
+      password: clientErrorsFor(values, 'password'),
+    }
+    const firstInvalid = (['email', 'password'] as const).find(
+      (field) => errors[field].length > 0
+    )
+    if (firstInvalid) {
+      event.preventDefault()
+      setLocalErrors(errors)
+      document.getElementById(`signup-${firstInvalid}`)?.focus()
+      return
+    }
+    setLocalErrors({})
+  }
+
   const emailError = errorsFor('email')[0]
   const passwordError = errorsFor('password')[0]
-  const formValid = signUpSchema.safeParse(values).success
   const sentTo = state.sentTo
 
   return (
@@ -117,7 +138,7 @@ export function SignupForm() {
               action={formAction}
               // Fresh submission, fresh verdict: drop stale local overrides
               // so whatever the server returns is what shows.
-              onSubmit={() => setLocalErrors({})}
+              onSubmit={handleSubmit}
               noValidate
               aria-busy={pending}
               className="mt-8 flex flex-col gap-6"
@@ -206,7 +227,7 @@ export function SignupForm() {
               <Button
                 type="submit"
                 size="lg"
-                disabled={pending || !formValid}
+                disabled={pending}
                 className="w-full"
               >
                 {pending ? 'Creating account…' : 'Create account'}

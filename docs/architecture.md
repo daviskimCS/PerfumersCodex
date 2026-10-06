@@ -280,12 +280,16 @@ divergence the orchestrator would otherwise have to reconcile after the fact.
   a skeleton matching the final layout (no visual jump). Skeletons compose
   the shadcn `Skeleton` primitive once Week 6 lands.
 - **Error:** every such segment ships `error.tsx` (client component): plain
-  language for what happened + a retry via **`unstable_retry()`**. Never render
+  language for what happened + a retry via **`retry()`**. Never render
   raw error messages or stack traces; log server-side instead.
   _(Corrected 2026-08-28: this decision originally said `reset()`. In Next 16.2
   `reset()` re-renders without re-fetching, so a failed database read re-throws
   immediately; `unstable_retry()` is the prop Next's own `error.js` convention
   documents as "re-fetching and re-rendering the segment". Found by W3-B.)_
+  _(Corrected 2026-10-05: Next 16.3 stabilised the prop as `retry` and stopped
+  passing `unstable_retry`, so after the 16.3.8 upgrade every "Try again"
+  button threw `unstable_retry is not a function`. All boundaries now use
+  `retry()`.)_
 - **Not-found:** global `app/not-found.tsx`; unknown slugs call `notFound()` —
   a wrong `/materials/[slug]` is a 404, not an error state.
 - **Empty:** one shared `components/empty-state.tsx` (title, description,

@@ -368,6 +368,20 @@ export async function listStructureCandidates(): Promise<
   })
 }
 
+/**
+ * Every published material's slug, for `app/sitemap.ts`. Slugs only: the
+ * sitemap needs nothing else, and `withRefs` would cost a query per call for
+ * families and classes it would throw away.
+ */
+export async function listPublishedMaterialSlugs(): Promise<string[]> {
+  const rows = await db
+    .select({ slug: materials.slug })
+    .from(materials)
+    .where(materialIsPublished())
+    .orderBy(asc(materials.slug))
+  return rows.map((row) => row.slug)
+}
+
 /** How many materials are published — the homepage's one number. */
 export async function countMaterials(): Promise<number> {
   const rows = await db
