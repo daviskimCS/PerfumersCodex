@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useActionState, useState } from 'react'
+import { Suspense, useActionState, useState, type FormEvent } from 'react'
 import { z } from 'zod'
 
 import { signIn } from '@/app/(auth)/actions'
@@ -18,8 +18,9 @@ import {
 
 /**
  * Sign-in (W3-A). A client component because the form checklist demands
- * interaction: inline errors on blur (not keystroke), submit disabled while
- * invalid, a loading state while the action runs. The server action re-parses
+ * interaction: inline errors on blur (not keystroke), an invalid submit
+ * stopped with focus on the first error, a loading state while the action
+ * runs. The server action re-parses
  * with the same schema (D6), so nothing here is load-bearing for safety.
  *
  * It lives here rather than in `app/(auth)/login/page.tsx` so that the page can
@@ -97,9 +98,30 @@ export function LoginForm() {
     }
   }
 
+  // Submit stays enabled: a disabled button can't be focused, and a
+  // screen-reader user is never told why it won't press. An invalid
+  // submission is stopped here instead, every field's error shown, and focus
+  // moved to the first one. A valid one drops stale local overrides so the
+  // server's verdict is what shows.
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const errors = {
+      email: clientErrorsFor(values, 'email'),
+      password: clientErrorsFor(values, 'password'),
+    }
+    const firstInvalid = (['email', 'password'] as const).find(
+      (field) => errors[field].length > 0
+    )
+    if (firstInvalid) {
+      event.preventDefault()
+      setLocalErrors(errors)
+      document.getElementById(`login-${firstInvalid}`)?.focus()
+      return
+    }
+    setLocalErrors({})
+  }
+
   const emailError = errorsFor('email')[0]
   const passwordError = errorsFor('password')[0]
-  const formValid = signInSchema.safeParse(values).success
 
   return (
     <div className="flex flex-1 items-center justify-center px-gutter py-section md:px-gutter-lg">
@@ -113,7 +135,7 @@ export function LoginForm() {
           action={formAction}
           // Fresh submission, fresh verdict: drop stale local overrides so
           // whatever the server returns is what shows.
-          onSubmit={() => setLocalErrors({})}
+          onSubmit={handleSubmit}
           noValidate
           aria-busy={pending}
           className="mt-8 flex flex-col gap-6"
@@ -187,12 +209,7 @@ export function LoginForm() {
             ) : null}
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending || !formValid}
-            className="w-full"
-          >
+          <Button type="submit" size="lg" disabled={pending} className="w-full">
             {pending ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
