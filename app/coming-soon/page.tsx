@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 
 import { HideSiteChrome } from '@/components/gate/hide-site-chrome'
+import { isGateEnabled } from '@/lib/gate'
 
 /**
  * The pre-launch page — everything the public sees while the gate is closed.
@@ -40,7 +43,14 @@ export const metadata: Metadata = {
   alternates: {},
 }
 
-export default function ComingSoonPage() {
+export default async function ComingSoonPage() {
+  // With the gate off, nothing rewrites here, and a direct visit would show a
+  // stale "launching Spring 2027" page on a live site. `connection()` keeps
+  // the check at request time, so a build without the env var cannot bake a
+  // 404 into a gated deployment (the trap app/unlock/page.tsx describes).
+  await connection()
+  if (!isGateEnabled()) notFound()
+
   return (
     <div className="flex flex-1 items-center justify-center px-gutter py-section md:px-gutter-lg">
       <HideSiteChrome />

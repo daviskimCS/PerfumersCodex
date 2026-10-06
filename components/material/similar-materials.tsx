@@ -15,7 +15,16 @@ import { PanelSection } from './section'
  *
  * Hidden entirely for NULL-SMILES materials: there is no fingerprint, so there
  * are no neighbours — an empty state would imply the data is merely missing.
+ *
+ * Neighbours below `MIN_TANIMOTO` are dropped here, not in the seed: the
+ * stored rows are fingerprinted for review, and a display threshold is a
+ * presentation choice. Below ~0.3 Morgan similarity is noise, and in a small
+ * corpus the "nearest" material can be barely related at all, so a module of
+ * 0.1s would claim a resemblance that isn't there. With nothing above the
+ * floor the module is hidden.
  */
+const MIN_TANIMOTO = 0.3
+
 export function SimilarMaterialsModule({
   similar,
   smiles,
@@ -23,9 +32,10 @@ export function SimilarMaterialsModule({
   similar: SimilarMaterial[]
   smiles: string | null
 }) {
-  if (smiles === null || similar.length === 0) return null
+  const shown = similar.filter((n) => n.tanimoto >= MIN_TANIMOTO)
+  if (smiles === null || shown.length === 0) return null
 
-  const rdkitVersions = [...new Set(similar.map((n) => n.rdkitVersion))]
+  const rdkitVersions = [...new Set(shown.map((n) => n.rdkitVersion))]
 
   return (
     <PanelSection
@@ -37,7 +47,7 @@ export function SimilarMaterialsModule({
       }
     >
       <ul className="divide-y divide-border/60">
-        {similar.map((neighbour) => (
+        {shown.map((neighbour) => (
           <li
             key={neighbour.slug}
             className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3"
@@ -56,9 +66,11 @@ export function SimilarMaterialsModule({
         ))}
       </ul>
       <p className="mt-5 max-w-measure text-sm text-muted-foreground">
-        Tanimoto similarity over Morgan fingerprints, computed at seed time.
-        Structural resemblance, not olfactive resemblance — near-identical
-        molecules can smell nothing alike.
+        The nearest materials in this reference, by Tanimoto similarity over
+        Morgan fingerprints computed at seed time; matches below{' '}
+        {MIN_TANIMOTO.toFixed(1)} are not shown. Structural resemblance, not
+        olfactive resemblance — near-identical molecules can smell nothing
+        alike.
       </p>
     </PanelSection>
   )

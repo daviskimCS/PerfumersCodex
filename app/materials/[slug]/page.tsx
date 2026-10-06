@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { getCurrentUserId, isMaterialSaved } from '@/lib/db/bookmarks'
 import { getMaterialBySlug } from '@/lib/db/materials'
 import { getNote } from '@/lib/db/notes'
+import type { MaterialDetail } from '@/lib/types'
 
 // Without this, `next build` statically prerenders the route and the DB query
 // runs at build time — so the build starts depending on a live database,
@@ -42,6 +43,25 @@ interface MaterialRouteProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
+/**
+ * Names only what this material's page actually carries: a fixed list would
+ * promise IFRA limits, hazards and guidance to search results for materials
+ * that have none.
+ */
+function metaDescription(material: MaterialDetail): string {
+  const parts = ['identifiers']
+  if (material.usageLimits.length > 0) parts.push('IFRA limits')
+  else if (material.ifraAbsences.length > 0) parts.push('IFRA status')
+  if (material.hazards.length > 0) parts.push('GHS hazards')
+  if (material.olfactive !== null) parts.push('an olfactive description')
+  if (material.usageGuidance !== null) parts.push('usage guidance')
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return `${material.canonicalName} in the Perfumers Codex: cited ${list}.`
+}
+
 export async function generateMetadata({
   params,
 }: MaterialRouteProps): Promise<Metadata> {
@@ -49,7 +69,7 @@ export async function generateMetadata({
   const material = await getMaterial(slug)
   if (!material) notFound()
 
-  const description = `${material.canonicalName} in the Perfumers Codex — identifiers, cited IFRA limits and GHS hazards, olfactive notes, and usage guidance.`
+  const description = metaDescription(material)
 
   return {
     // Exercises the root layout's title.template ("%s · Perfumers Codex").
@@ -63,7 +83,10 @@ export async function generateMetadata({
       url: `/materials/${material.slug}`,
     },
     twitter: {
-      card: 'summary',
+      // Inherited from the layout would be enough, but `twitter` here
+      // replaces the layout's object wholesale, so the card type is restated
+      // (see app/layout.tsx on why not `summary`).
+      card: 'summary_large_image',
       title: material.canonicalName,
       description,
     },

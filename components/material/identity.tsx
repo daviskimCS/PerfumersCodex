@@ -17,12 +17,18 @@ import { Field, FieldList, PanelSection } from './section'
  * of dashes.
  */
 export function MaterialIdentity({ material }: { material: MaterialDetail }) {
+  // The IUPAC name is also stored as an `iupac` synonym so search can find it
+  // (perfumers-codex-data DATA-DECISIONS D4); listing it twice here is noise.
+  const synonyms = material.synonyms.filter(
+    (synonym) =>
+      !(synonym.type === 'iupac' && synonym.name === material.iupacName)
+  )
   const hasAnyIdentifier =
     material.iupacName !== null ||
     material.molecularFormula !== null ||
     material.molecularWeight !== null ||
     material.smiles !== null ||
-    material.synonyms.length > 0
+    synonyms.length > 0
 
   // Not an empty state: an entry with no secondary identifiers is complete as
   // it stands (the hero already carries name, type, and CAS). A block
@@ -62,9 +68,9 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
         <Field
           term="Synonyms"
           value={
-            material.synonyms.length === 0 ? null : (
+            synonyms.length === 0 ? null : (
               <ul className="space-y-1">
-                {material.synonyms.map((synonym) => (
+                {synonyms.map((synonym) => (
                   <li key={`${synonym.type}:${synonym.name}`}>
                     {synonym.name}{' '}
                     <span className="text-sm text-muted-foreground">

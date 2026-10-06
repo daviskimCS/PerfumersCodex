@@ -40,7 +40,7 @@ const BRAND = '#7c4726' // brand
 const BRAND_SUBTLE = '#fde3d2' // brand-subtle
 const BRAND_MUTED = '#e9c3ab' // brand-muted
 
-export const alt = 'A material in the Perfumers Codex.'
+export const alt = 'Perfumers Codex card showing the material’s name and type.'
 export { size }
 export const contentType = 'image/png'
 

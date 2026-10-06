@@ -62,7 +62,7 @@ export default async function StructurePage({
           most perfumers have not. */}
       <p className="mt-3 max-w-measure text-muted-foreground">
         This finds every material whose molecule contains a particular
-        structural fragment — an ester group, a lactone ring, a substitution
+        structural fragment — a ketone, a macrocyclic ring, a substitution
         pattern — written as a SMARTS query. The presets are a starting point:
         each one loads the pattern behind a structural class we already index,
         and you can edit it from there.
@@ -70,7 +70,8 @@ export default async function StructurePage({
 
       <StructureSearch
         candidates={candidates}
-        classes={classes}
+        // Presets for empty classes would each match nothing published.
+        classes={classes.filter((c) => c.materialCount > 0)}
         pattern={readPattern(params)}
       />
     </div>
