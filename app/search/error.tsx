@@ -4,17 +4,17 @@ import { Button } from '@/components/ui/button'
 
 // Route-level error boundary (docs/architecture.md D4): plain language plus a
 // retry, never the raw error or a stack trace — the server already logs the
-// real failure. The retry is `unstable_retry()` per D4: `reset()` only
+// real failure. The retry is `retry()` per D4: `reset()` only
 // re-renders WITHOUT re-fetching, so a failed search would instantly re-throw.
 //
 // This is the *search failed* state, which is not the same thing as the
 // *no results* state — that one is an EmptyState in page.tsx and means the
 // query ran fine and matched nothing.
 export default function SearchError({
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  retry: () => void
 }) {
   return (
     <div className="flex flex-1 items-center justify-center px-gutter py-section md:px-gutter-lg">
@@ -25,7 +25,7 @@ export default function SearchError({
           temporary — trying again often fixes it.
         </p>
         <div className="mt-6">
-          <Button variant="outline" size="lg" onClick={() => unstable_retry()}>
+          <Button variant="outline" size="lg" onClick={() => retry()}>
             Try again
           </Button>
         </div>
