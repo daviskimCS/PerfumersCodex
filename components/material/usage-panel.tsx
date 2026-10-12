@@ -1,4 +1,4 @@
-import { Droplet, Library } from 'lucide-react'
+import { Droplet, Library, Pipette } from 'lucide-react'
 
 import { EmptyState } from '@/components/empty-state'
 import type { Citation, LandmarkUse, UsageGuidance } from '@/lib/types'
@@ -80,7 +80,7 @@ export function UsagePanel({
 }) {
   return (
     <div>
-      <PanelSection title="Usage guidance">
+      <PanelSection title="Usage guidance" icon={Pipette}>
         {usageGuidance === null ? (
           <EmptyState
             icon={Droplet}
@@ -93,7 +93,7 @@ export function UsagePanel({
         )}
       </PanelSection>
 
-      <PanelSection title="Landmark uses">
+      <PanelSection title="Landmark uses" icon={Library}>
         {landmarkUses.length === 0 ? (
           <EmptyState
             icon={Library}

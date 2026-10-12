@@ -66,9 +66,12 @@ export default function MaterialLoading() {
         </div>
       </div>
 
-      {/* Tab bar — h-11 on mobile, h-8 from md, matching MaterialTabs */}
+      {/* Tab bar — h-14 on mobile (icon over label), h-11 from md, on the
+          same full-width rule as MaterialTabs */}
       <div className="mt-14">
-        <Skeleton className="h-11 w-full rounded-lg md:h-8 md:w-72" />
+        <div className="border-b border-border pb-2 md:pb-3">
+          <Skeleton className="h-12 w-full md:h-9 md:w-md" />
+        </div>
 
         {/* One panel: a section heading plus a few rows */}
         <div className="mt-6">

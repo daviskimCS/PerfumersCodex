@@ -1,3 +1,5 @@
+import { Calculator } from 'lucide-react'
+
 import type { ComputedProperties } from '@/lib/types'
 
 import { Field, FieldList, PanelSection } from './section'
@@ -9,7 +11,8 @@ import { Field, FieldList, PanelSection } from './section'
  * facts, so they carry an `rdkitVersion` instead of a citation superscript
  * (AGENTS.md; docs/data-strategy.md's structural layer). The framing line is
  * part of the data: read as measurements they would be wrong, and read as
- * volatility predictions they would be worse.
+ * volatility predictions they would be worse. That framing and what each
+ * property means sit behind the heading's info button.
  *
  * Renders nothing without a SMILES string — a mixture has no structure to
  * compute from, so any value sitting against one would be meaningless.
@@ -33,6 +36,30 @@ export function ComputedPropertiesModule({
   return (
     <PanelSection
       title="Computed properties"
+      icon={Calculator}
+      info={
+        <div className="space-y-2">
+          <p>
+            Calculated from the structure with RDKit {computed.rdkitVersion}.
+            These are recomputable context, not measured values and not cited
+            facts: they carry a library version rather than a source.
+          </p>
+          <p>
+            <span className="text-foreground">logP</span> (Crippen): how
+            strongly the molecule prefers oil to water, on a log scale. Higher
+            is more oil-soluble; each step of 1 is ten times more.
+          </p>
+          <p>
+            <span className="text-foreground">TPSA</span>: topological polar
+            surface area, the surface contributed by oxygen and nitrogen atoms
+            and their hydrogens. Lower is less polar.
+          </p>
+          <p>
+            <span className="text-foreground">Heavy atoms</span>: every atom
+            except hydrogen, a rough measure of molecular size.
+          </p>
+        </div>
+      }
       aside={
         <span className="font-mono text-xs text-muted-foreground">
           RDKit {computed.rdkitVersion}
@@ -48,11 +75,6 @@ export function ComputedPropertiesModule({
         />
         <Field term="Heavy atoms" value={computed.heavyAtomCount} mono />
       </FieldList>
-      <p className="mt-5 max-w-measure text-sm text-muted-foreground">
-        Calculated from the structure with RDKit {computed.rdkitVersion}. These
-        are recomputable context, not measured values and not cited facts — they
-        carry a library version rather than a source.
-      </p>
     </PanelSection>
   )
 }
