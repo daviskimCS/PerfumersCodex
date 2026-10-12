@@ -120,6 +120,13 @@ Anything published between 2 and 3 hides itself after the re-seed.
 
 ### 1. Verify account deletion actually deletes
 
+> **Automated 2026-10-12.** `tests/integration/email-password.integration.test.ts`
+> deletes a real account on a local Supabase stack and checks every `public`
+> table with a `user_id`, plus Supabase's sessions, identities and refresh
+> tokens; it runs in CI on every PR. It also found the one thing that does
+> **not** go: `auth.audit_log_entries` keeps the email. See item 12. A single
+> manual run on production is still worth doing once, after launch.
+
 **Why it matters:** deletion is irreversible, and `ON DELETE CASCADE` is the
 only thing standing between "account deleted" and "rows orphaned in a
 database you told a user was wiped". That is a GDPR promise, not a feature.
@@ -146,6 +153,11 @@ and deletion is a lie — stop and fix before launch.
 
 ### 2. Verify the signed-in bookmark and note round trips
 
+> **Data layer automated 2026-10-12** (`tests/integration/rls.integration.test.ts`
+> runs `lib/db` reads as a real signed-in user). Still manual: the button and
+> `/saved` page in a browser, which a published material now makes possible
+> without a synthetic test material.
+
 **Why it matters:** the RLS boundary is proven (a forged write is refused
 `42501` while a legitimate one passes RLS and is stopped only by the foreign
 key — the pair is what makes it conclusive). What is **not** proven is the
@@ -156,6 +168,11 @@ wiring above it: that the button toggles, survives a reload, and that
 against the real database, and you are already authenticated to Vercel.
 
 ### 3. Two throwaway accounts for cross-account RLS verification
+
+> **Automated 2026-10-12.** `tests/integration/rls.integration.test.ts` creates
+> two accounts on a local stack and proves neither can read, change, delete,
+> forge or re-point the other's rows; anon reads and writes nothing. No
+> production accounts needed.
 
 **Why it matters:** #2 proves your own data round-trips. This proves someone
 _else's_ does not leak into it. Sign in as A, save something; sign in as B,
@@ -343,6 +360,29 @@ hour at most. That changes what the header SHOWS, not what the reader can
 DO: RLS is enforced by PostgREST from the same token either way, and the
 writes where that hour matters (delete account, change email or password)
 still call `getUser()`.
+
+### 12. Account data: close the audit-log gap and fill the legal blanks (2026-10-12)
+
+The full list, with reasons, is `docs/legal/account-data.md` section 3. In
+short, before launch:
+
+1. Supabase keeps an auth audit log (email, IP, action) that account deletion
+   does not clear. Schedule a nightly `pg_cron` delete of rows older than 30
+   days (SQL in that file), then put "30 days" in `/privacy`.
+1b. **Configure a real SMTP sender (Resend) before anyone else signs up.** The
+   built-in sender only delivers to your project team, so confirmation and
+   reset emails never reach real users. DNS records and settings: that file,
+   section 3 step 2. This moves the Week 20 Resend item forward to launch.
+2. Fill `/privacy` and `/terms` placeholders (contact email, Supabase region,
+   governing law), read both, remove the draft notice.
+3. Accept Supabase's and Vercel's DPAs.
+4. Point **all three** email templates (Confirm signup, Change email address,
+   Reset password) at `/auth/confirm`, with the exact values in that file,
+   section 3 step 3. Each spells out its own `type=`; there is no
+   `{{ .Type }}` variable. Then, and only then, the auth settings in step 4
+   there (Confirm email, Secure email change, 8-character minimum, redirect
+   URLs limited to the two site domains).
+5. One lawyer review of the items marked ⚖️ in that file.
 
 ---
 

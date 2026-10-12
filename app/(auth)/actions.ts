@@ -13,6 +13,10 @@ import {
   signUpSchema,
   type AuthFormState,
 } from '@/lib/validation/auth'
+import {
+  requestPasswordResetSchema,
+  type RequestPasswordResetState,
+} from '@/lib/validation/password-reset'
 
 /**
  * Auth server actions (W3-A). Server Functions are reachable via direct
@@ -117,6 +121,51 @@ export async function signIn(
   // The session cookie changed, so anything cached per-visitor is stale.
   revalidatePath('/', 'layout')
   redirect('/account')
+}
+
+/**
+ * Email a password-reset link.
+ *
+ * The link lands on `/auth/confirm` (token hash, verified server-side, so it
+ * works on a different device from the one that asked), which signs the
+ * reader in and forwards them to `/reset-password`. That forwarding comes
+ * from the Supabase "Reset password" email template, not from `redirectTo`:
+ * the template must link to
+ *
+ *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password
+ *
+ * (docs/legal/account-data.md, section 3). `redirectTo` is still passed so
+ * the default template also works: Supabase verifies the link itself and
+ * sends the reader to `/auth/confirm?code=…&next=/reset-password`.
+ *
+ * Success is reported for every well-formed address. Supabase itself answers
+ * "sent" for an address with no account, so that nobody can use this form to
+ * learn who has one; the copy stays truthful by saying "if an account uses
+ * this address".
+ */
+export async function requestPasswordReset(
+  _prevState: RequestPasswordResetState,
+  formData: FormData
+): Promise<RequestPasswordResetState> {
+  const parsed = requestPasswordResetSchema.safeParse({
+    email: formData.get('email'),
+  })
+  if (!parsed.success) {
+    return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
+  }
+
+  const supabase = await createClient()
+  const redirectTo = new URL('/auth/confirm', env.NEXT_PUBLIC_SITE_URL)
+  redirectTo.searchParams.set('next', '/reset-password')
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+    { redirectTo: redirectTo.toString() }
+  )
+
+  if (error) {
+    return { formError: formErrorFor(error) }
+  }
+  return { sentTo: parsed.data.email }
 }
 
 /**

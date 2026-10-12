@@ -151,9 +151,11 @@ export default function TermsPage() {
 
       <LegalSection id="accounts" heading="Accounts">
         <LegalList>
+          <li>You need to be 16 or over to make an account.</li>
           <li>
             Give a real email address you can receive mail at — it is how you
-            confirm the account and reset the password.
+            confirm the account and reset the password. If you sign in with
+            Google instead, Google’s terms also apply to that sign-in.
           </li>
           <li>
             Your password is yours to look after. What happens under your
@@ -170,7 +172,8 @@ export default function TermsPage() {
               account page
             </Link>
             . It is immediate and permanent, and it takes your saved materials
-            and notes with it.
+            and notes with it. The same page lets you download everything the
+            account holds first.
           </li>
           <li>
             I may suspend or remove an account being used to attack the site,

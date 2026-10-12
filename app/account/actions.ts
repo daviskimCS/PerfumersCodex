@@ -9,6 +9,7 @@ import {
 } from '@supabase/supabase-js'
 import { z } from 'zod'
 
+import { hasPasswordSignIn, isRecoverySessionNow } from '@/lib/account/identity'
 import { env } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -20,6 +21,11 @@ import {
   type ChangePasswordState,
   type DeleteAccountState,
 } from '@/lib/validation/account'
+import {
+  RESET_LINK_NEEDED_MESSAGE,
+  resetPasswordSchema,
+  type ResetPasswordState,
+} from '@/lib/validation/password-reset'
 
 /**
  * Account-management server actions (W6-B / P3-C).
@@ -48,6 +54,10 @@ import {
  * Supabase applies its own send-rate limits to the confirmation email in the
  * meantime, which is why `over_email_send_rate_limit` is mapped below.
  */
+
+/** Shown to an account that signs in with Google only. */
+const NO_PASSWORD_MESSAGE =
+  'This account signs in with Google, so it has no password to change.'
 
 /** Shown when the session is gone by the time an action runs. */
 const SIGNED_OUT_MESSAGE =
@@ -240,14 +250,13 @@ export async function changePassword(
     return { formError: caller.message }
   }
   const email = caller.user.email
-  if (!email) {
-    // A verified caller with no email address is an identity that cannot be
-    // re-verified by password at all (an OAuth-only account). Saying so beats
-    // failing the password check it can never pass.
-    return {
-      formError:
-        'This account doesn’t sign in with a password, so there is no password to change.',
-    }
+  // A Google-only account has an email address (Google's) but no password, so
+  // the check is on the identity, not on the address: otherwise the reader is
+  // sent through a current-password check they can never pass and told their
+  // password is wrong. `/account` hides this form for them; this is the
+  // server-side half, because the action is reachable by direct POST.
+  if (!email || !hasPasswordSignIn(caller.user)) {
+    return { formError: NO_PASSWORD_MESSAGE }
   }
 
   const { error: reauthError } = await supabase.auth.signInWithPassword({
@@ -278,6 +287,63 @@ export async function changePassword(
 
   // The session cookies were just rotated twice; anything cached per-visitor
   // is stale.
+  revalidatePath('/', 'layout')
+  return { changed: true }
+}
+
+// ---------------------------------------------------------------------------
+// Reset password (after following an emailed reset link)
+// ---------------------------------------------------------------------------
+
+/**
+ * Set a new password without the current one — only for a session that a
+ * reset link has just created.
+ *
+ * `changePassword` above demands the current password; this is the one path
+ * that does not, so it is gated on `isRecentRecoverySession`: the token must
+ * carry an `otp` sign-in (what `/auth/confirm` issues) made after a reset was
+ * requested, within the last 30 minutes. Without that gate a borrowed or
+ * stolen session could walk round the current-password check and lock the
+ * owner out.
+ *
+ * `getUser()` first (the sensitive-write rule, and the source of
+ * `recovery_sent_at`), then `getClaims()` for the token's `amr` claim, which
+ * `getUser()` does not return.
+ */
+export async function resetPassword(
+  _prevState: ResetPasswordState,
+  formData: FormData
+): Promise<ResetPasswordState> {
+  const parsed = resetPasswordSchema.safeParse({
+    newPassword: formData.get('newPassword'),
+    confirmPassword: formData.get('confirmPassword'),
+  })
+  if (!parsed.success) {
+    return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
+  }
+
+  const supabase = await createClient()
+  const caller = await verifiedCaller(supabase)
+  if (!caller.ok) {
+    return { formError: caller.message }
+  }
+
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const recovering = isRecoverySessionNow(
+    claimsData?.claims.amr,
+    caller.user.recovery_sent_at
+  )
+  if (!recovering) {
+    return { formError: RESET_LINK_NEEDED_MESSAGE }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.newPassword,
+  })
+  if (error) {
+    return { formError: formErrorFor(error) }
+  }
+
   revalidatePath('/', 'layout')
   return { changed: true }
 }

@@ -6,6 +6,8 @@ import { Suspense, useActionState, useState } from 'react'
 import { z } from 'zod'
 
 import { signIn } from '@/app/(auth)/actions'
+import { FormNotice } from '@/components/account/form-parts'
+import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,22 +46,51 @@ function clientErrorsFor(
 }
 
 /**
- * Notice for a failed email-confirmation link (`/auth/confirm` redirects here
- * with `?error=confirm`). Separate component so the `useSearchParams` read
+ * Notice for an email link that came back through `/auth/confirm`: a failed
+ * one (`?error=confirm`, `?error=reset`) or a confirmed one that could not
+ * sign this browser in (`?notice=confirmed`). Separate component so the `useSearchParams` read
  * sits under its own Suspense boundary and the rest of the page stays
  * prerenderable.
  */
 function ConfirmLinkNotice() {
   const searchParams = useSearchParams()
-  if (searchParams.get('error') !== 'confirm') return null
+  const code = searchParams.get('error')
+
+  // `/auth/confirm` sends `?notice=confirmed` when Supabase accepted the
+  // link but it was opened in a different browser from the one that signed
+  // up, so there is no session to hand over: the address is confirmed and
+  // signing in is all that is left.
+  if (!code && searchParams.get('notice') === 'confirmed') {
+    return (
+      <FormNotice tone="info">
+        Your email address is confirmed. Sign in to continue.
+      </FormNotice>
+    )
+  }
+  if (code !== 'confirm' && code !== 'reset') return null
 
   return (
     <div
       role="alert"
       className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
     >
-      That confirmation link is invalid or has expired. Try signing in — or sign
-      up again with the same email to get a fresh link.
+      {code === 'reset' ? (
+        <>
+          That password-reset link is invalid or has expired.{' '}
+          <Link
+            href="/forgot-password"
+            className="underline underline-offset-4"
+          >
+            Ask for a new one
+          </Link>
+          .
+        </>
+      ) : (
+        <>
+          That confirmation link is invalid or has expired. Try signing in — or
+          sign up again with the same email to get a fresh link.
+        </>
+      )}
     </div>
   )
 }
@@ -162,7 +193,15 @@ export function LoginForm() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="login-password">Password</Label>
+            <div className="flex items-baseline justify-between gap-4">
+              <Label htmlFor="login-password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-muted-foreground underline decoration-brand-muted underline-offset-4 hover:decoration-brand"
+              >
+                Forgot your password?
+              </Link>
+            </div>
             <Input
               id="login-password"
               name="password"
@@ -198,6 +237,8 @@ export function LoginForm() {
         </form>
 
         <GoogleAuth />
+
+        <AccountTermsNotice className="mt-6" />
 
         <p className="mt-6 text-sm text-muted-foreground">
           No account yet?{' '}

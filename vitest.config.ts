@@ -20,6 +20,8 @@ export default defineConfig({
       'coverage/**',
       'out/**',
       'build/**',
+      // Needs a running Supabase stack; `npm run test:integration` runs it.
+      '**/*.integration.test.ts',
     ],
     // CI stays green before the first test lands (runbook Week 1 step 8).
     passWithNoTests: true,

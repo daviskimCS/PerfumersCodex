@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  * Change it here when either one is revised, and say what changed in the
  * page's own "Changes" section.
  */
-export const LEGAL_LAST_UPDATED = '5 September 2026'
+export const LEGAL_LAST_UPDATED = '12 October 2026'
 
 /**
  * Link styling for prose. The same treatment as the footer's licence links

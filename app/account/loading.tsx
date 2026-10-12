@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * Skeleton for /account (D4): mirrors the final layout — title, one-line
- * description, then the four sections (email, password, sign out, delete) with
+ * description, then the five sections (email, password, your data, sign out, delete) with
  * their separators — so nothing jumps when `getUser()` resolves. Widths
  * approximate the real content; heights match the type scale's line heights
  * and the controls.
@@ -60,6 +60,13 @@ export default function AccountLoading() {
           <FieldSkeleton labelWidth="w-40" />
           <Skeleton className="h-8 w-36 rounded-lg" />
         </div>
+
+        <Separator className="my-10" />
+
+        {/* ── Your data ─────────────────────────────────────────────────── */}
+        <Skeleton className="h-7 w-28" />
+        <Skeleton className="mt-2 h-5 w-full" />
+        <Skeleton className="mt-6 h-8 w-44 rounded-lg" />
 
         <Separator className="my-10" />
 

@@ -6,6 +6,7 @@ import { MailCheck } from 'lucide-react'
 import { z } from 'zod'
 
 import { signUp } from '@/app/(auth)/actions'
+import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
@@ -211,6 +212,11 @@ export function SignupForm() {
               >
                 {pending ? 'Creating account…' : 'Create account'}
               </Button>
+
+              {/* Directly under the button that creates the account, and
+                  above the Google button, so the notice is in view at the
+                  moment of either click (the placement courts look at). */}
+              <AccountTermsNotice />
             </form>
 
             <GoogleAuth />
