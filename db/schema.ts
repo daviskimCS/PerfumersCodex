@@ -781,6 +781,12 @@ export const userNotes = pgTable(
   (t) => [
     // One note per user per material — the editor upserts against this.
     unique('user_notes_user_material_uniq').on(t.userId, t.materialId),
+    // The Zod cap (NOTE_MAX_LENGTH, lib/validation/notes.ts) only binds the
+    // server action. A signed-in reader can also write this table straight
+    // through the Data API with their own token, so the database holds the
+    // same ceiling. char_length counts code points, never more than the
+    // UTF-16 units Zod counts, so nothing the form accepts is refused here.
+    check('user_notes_body_length_check', sql`char_length(${t.body}) <= 4000`),
     pgPolicy('user_notes_select_own', {
       for: 'select',
       to: authenticatedRole,

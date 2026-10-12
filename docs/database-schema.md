@@ -308,14 +308,14 @@ RLS policy: SELECT/INSERT/DELETE allowed only when `auth.uid() = user_id`.
 
 Free-text private notes per material.
 
-| Column      | Type                                            | Notes |
-| ----------- | ----------------------------------------------- | ----- |
-| id          | uuid PK                                         |       |
-| user_id     | uuid FK → auth.users NOT NULL ON DELETE CASCADE |       |
-| material_id | uuid FK → materials NOT NULL                    |       |
-| body        | text NOT NULL                                   |       |
-| created_at  | timestamptz NOT NULL                            |       |
-| updated_at  | timestamptz NOT NULL                            |       |
+| Column      | Type                                            | Notes                                                                     |
+| ----------- | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| id          | uuid PK                                         |                                                                           |
+| user_id     | uuid FK → auth.users NOT NULL ON DELETE CASCADE |                                                                           |
+| material_id | uuid FK → materials NOT NULL                    |                                                                           |
+| body        | text NOT NULL, CHECK char_length(body) <= 4000  | Same cap as `NOTE_MAX_LENGTH`; the CHECK binds Data API writes too (0010) |
+| created_at  | timestamptz NOT NULL                            |                                                                           |
+| updated_at  | timestamptz NOT NULL                            |                                                                           |
 
 UNIQUE (user_id, material_id) — one note per user per material.
 RLS: same as above.

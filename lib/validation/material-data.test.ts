@@ -7,6 +7,7 @@ import {
   FAMILIES_FILE,
   HAZARD_CODES_FILE,
   REFERENCE_FILES,
+  materialSourceSchema,
   USAGE_CATEGORIES_FILE,
   validateMaterialData,
   type MaterialDataError,
@@ -742,5 +743,32 @@ describe('validateMaterialData — shared source urls', () => {
           error.file === BETA && /but the url differs/.test(error.message)
       )
     ).toBe(true)
+  })
+})
+
+describe('materialSourceSchema url', () => {
+  const source = (url: string) => ({
+    key: 'test-source',
+    type: 'sds',
+    title: 'Test source',
+    url,
+    accessed_at: '2026-01-01T00:00:00Z',
+  })
+
+  it.each(['https://example.org/sds.pdf', 'http://example.org/page.html'])(
+    'accepts %s',
+    (url) => {
+      expect(materialSourceSchema.safeParse(source(url)).success).toBe(true)
+    }
+  )
+
+  // The sources panel renders the url as a link: nothing but http(s) may
+  // reach an href from a data file.
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'ftp://example.org/file',
+  ])('rejects %s', (url) => {
+    expect(materialSourceSchema.safeParse(source(url)).success).toBe(false)
   })
 })

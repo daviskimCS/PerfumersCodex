@@ -250,7 +250,12 @@ export const materialSourceSchema = z.strictObject({
   key: slugSchema,
   type: sourceTypeSchema,
   title: textSchema,
-  url: z.url({ error: 'must be an absolute URL' }).nullable().default(null),
+  // http(s) only. The sources panel renders this as a link, and a
+  // `javascript:` or `data:` URL in a data file would otherwise reach an href.
+  url: z
+    .url({ protocol: /^https?$/, error: 'must be an absolute http(s) URL' })
+    .nullable()
+    .default(null),
   author: optionalTextSchema,
   published_at: dateSchema.nullable().default(null),
   accessed_at: timestampSchema,
