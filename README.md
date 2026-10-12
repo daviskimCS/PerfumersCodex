@@ -33,6 +33,7 @@ What is not built or not yet verified:
 
 - **Performance is not measured in production.** The search budget is 150 ms p95. Signed-in page views make fewer Supabase Auth round trips than they did, but pages still render per request with no data cache: a cache could serve a page after the review gate has hidden it, because reviews run outside the Next.js runtime and cannot invalidate it.
 - **The browser half of signed-in flows is unverified.** The integration suite proves the server side with real accounts (sign-up through deletion, and two-account isolation for bookmarks and notes), but it runs no browser, so the bookmark button, `/saved` and real Google sign-in are checked by hand only.
+- **Rate limiting is not in place yet.**
 - **No admin dashboard, correction form or error monitoring** yet.
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
 - **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (an odour phrase) depends on descriptions that do not exist yet, so it cannot pass against the live corpus.
