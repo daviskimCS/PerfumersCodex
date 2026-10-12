@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
     console.error('[auth] Email confirmation failed:', error)
   }
 
-  // /login reads this flag and shows the plain-language explanation.
-  redirect('/login?error=confirm')
+  // /login reads this flag and shows the plain-language explanation. A
+  // failed reset link gets its own wording: "sign up again" is the wrong
+  // advice for someone who already has an account and forgot the password.
+  redirect(type === 'recovery' ? '/login?error=reset' : '/login?error=confirm')
 }

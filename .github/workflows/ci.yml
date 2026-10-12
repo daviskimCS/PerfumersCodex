@@ -18,3 +18,40 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+
+  # Accounts and auth, for real: a local Supabase stack (auth server, database,
+  # Data API, mail catcher) started fresh on the runner, the app migrations
+  # applied, then tests/integration/. Nothing here can reach production — the
+  # suite refuses any non-loopback URL (tests/integration/env.ts).
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
+      - run: npm ci
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Export the local stack's URL and keys
+        run: |
+          supabase status -o env | sed 's/"//g' > /tmp/supabase.env
+          {
+            grep '^API_URL=' /tmp/supabase.env | sed 's/^API_URL=/NEXT_PUBLIC_SUPABASE_URL=/'
+            grep '^PUBLISHABLE_KEY=' /tmp/supabase.env | sed 's/^PUBLISHABLE_KEY=/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/'
+            grep '^SECRET_KEY=' /tmp/supabase.env | sed 's/^SECRET_KEY=/SUPABASE_SECRET_KEY=/'
+            grep '^DB_URL=' /tmp/supabase.env | sed 's/^DB_URL=/TEST_DATABASE_URL=/'
+          } >> "$GITHUB_ENV"
+      - name: Check the keys are new-style
+        run: |
+          case "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" in sb_publishable_*) ;; *) echo "no sb_publishable_ key from supabase status"; exit 1;; esac
+          case "$SUPABASE_SECRET_KEY" in sb_secret_*) ;; *) echo "no sb_secret_ key from supabase status"; exit 1;; esac
+      - name: Apply the app migrations
+        run: |
+          psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/integration/supabase-legacy-grants.sql
+          DIRECT_URL="$TEST_DATABASE_URL" npm run db:migrate
+      - run: npm run test:integration

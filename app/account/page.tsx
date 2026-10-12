@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isAuthRetryableFetchError } from '@supabase/supabase-js'
 
@@ -9,6 +10,7 @@ import { DeleteAccountForm } from '@/components/account/delete-account-form'
 import { FormNotice } from '@/components/account/form-parts'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { hasPasswordSignIn } from '@/lib/account/identity'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -18,8 +20,9 @@ import { createClient } from '@/lib/supabase/server'
  * the token against the Supabase auth server rather than trusting cookie
  * contents the way `getSession()` would.
  *
- * Four sections: the address on the account and how to move it, the password,
- * signing out of this browser, and deleting the account outright. The three
+ * Five sections: the address on the account and how to move it, the password
+ * (absent for a Google-only account), downloading everything the account
+ * holds, signing out of this browser, and deleting the account outright. The three
  * forms are client components because the per-form checklist needs interaction;
  * each one's server action re-parses with the same schema (D6), so nothing
  * rendered here is load-bearing for safety.
@@ -64,6 +67,8 @@ export default async function AccountPage() {
    * something a page reload can get wrong.
    */
   const pendingEmail = data.user.new_email
+  /** False for an account that signs in with Google only. */
+  const hasPassword = hasPasswordSignIn(data.user)
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -110,11 +115,48 @@ export default async function AccountPage() {
           <h2 id="account-password-heading" className="text-xl">
             Password
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            You&apos;ll need your current password to set a new one.
-          </p>
+          {hasPassword ? (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                You&apos;ll need your current password to set a new one.
+                Forgotten it? Sign out and use{' '}
+                <Link
+                  href="/forgot-password"
+                  className="text-foreground underline decoration-brand-muted underline-offset-4 hover:decoration-brand"
+                >
+                  Forgot your password?
+                </Link>{' '}
+                on the sign-in page.
+              </p>
 
-          <ChangePasswordForm />
+              <ChangePasswordForm />
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              This account signs in with Google, so it has no password here.
+              Google looks after that sign-in.
+            </p>
+          )}
+        </section>
+
+        <Separator className="my-10" />
+
+        <section aria-labelledby="account-data-heading">
+          <h2 id="account-data-heading" className="text-xl">
+            Your data
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Everything this account holds — the sign-in details, your saved
+            materials and your notes — as one JSON file you can keep or take
+            elsewhere.
+          </p>
+          <Button asChild variant="outline" className="mt-6">
+            {/* A plain link, not next/link: it is a file download from a route
+                handler, not a page navigation to prefetch. */}
+            <a href="/account/export" download>
+              Download your data
+            </a>
+          </Button>
         </section>
 
         <Separator className="my-10" />

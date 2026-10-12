@@ -6,6 +6,7 @@ import { MailCheck } from 'lucide-react'
 import { z } from 'zod'
 
 import { signUp } from '@/app/(auth)/actions'
+import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
@@ -214,6 +215,8 @@ export function SignupForm() {
             </form>
 
             <GoogleAuth />
+
+            <AccountTermsNotice />
 
             <p className="mt-6 text-sm text-muted-foreground">
               Already have an account?{' '}
