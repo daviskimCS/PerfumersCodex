@@ -13,16 +13,16 @@ import { Button } from '@/components/ui/button'
  * "Not signed in" never reaches this; it redirects to /login. An empty shelf
  * never reaches it either; that is an EmptyState on the page.
  *
- * The retry is Next 16's `unstable_retry()` per D4, which re-fetches and
+ * The retry is Next 16's `retry()` per D4, which re-fetches and
  * re-renders the segment. `reset()` only clears the error state without
  * re-fetching, so it cannot recover from a failed server read.
  */
 export default function SavedError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  retry: () => void
 }) {
   useEffect(() => {
     // Server-side details stay server-side; this is the client-visible echo
@@ -38,7 +38,7 @@ export default function SavedError({
         title="Couldn’t load your saved materials"
         description="Something went wrong while fetching your list. It’s likely temporary — nothing you saved has been lost."
         action={
-          <Button variant="outline" size="lg" onClick={() => unstable_retry()}>
+          <Button variant="outline" size="lg" onClick={() => retry()}>
             Try again
           </Button>
         }

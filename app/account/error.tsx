@@ -11,16 +11,16 @@ import { Button } from '@/components/ui/button'
  * error or stack trace. This catches real failures of the `getUser()` fetch
  * — "not signed in" never lands here, it redirects to /login instead.
  *
- * The retry is Next 16.2's `unstable_retry()` per D4, which re-fetches and
+ * The retry is Next 16.2's `retry()` per D4, which re-fetches and
  * re-renders the segment. `reset()` only clears error state without
  * re-fetching, so it cannot recover from a failed server fetch.
  */
 export default function AccountError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  retry: () => void
 }) {
   useEffect(() => {
     // Server-side details stay server-side; this is the client-visible echo
@@ -36,7 +36,7 @@ export default function AccountError({
         title="Couldn’t load your account"
         description="Something went wrong while checking who’s signed in. It’s likely temporary — your account itself is fine."
         action={
-          <Button variant="outline" size="lg" onClick={() => unstable_retry()}>
+          <Button variant="outline" size="lg" onClick={() => retry()}>
             Try again
           </Button>
         }
