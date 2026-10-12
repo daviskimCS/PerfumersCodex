@@ -367,8 +367,12 @@ The full list, with reasons, is `docs/legal/account-data.md` section 3. In
 short, before launch:
 
 1. Supabase keeps an auth audit log (email, IP, action) that account deletion
-   does not clear. Turn off writing it to the database if the dashboard
-   offers that, purge old rows, and put the retention period in `/privacy`.
+   does not clear. Schedule a nightly `pg_cron` delete of rows older than 30
+   days (SQL in that file), then put "30 days" in `/privacy`.
+1b. **Configure a real SMTP sender (Resend) before anyone else signs up.** The
+   built-in sender only delivers to your project team, so confirmation and
+   reset emails never reach real users. DNS records and settings: that file,
+   section 3 step 2. This moves the Week 20 Resend item forward to launch.
 2. Fill `/privacy` and `/terms` placeholders (contact email, Supabase region,
    governing law), read both, remove the draft notice.
 3. Accept Supabase's and Vercel's DPAs.

@@ -365,7 +365,7 @@ export default function PrivacyPage() {
               auth.refresh_tokens rows (tests/integration/email-password…),
               but auth.audit_log_entries is not keyed to the user and keeps
               the email address, including in the deletion event itself. The
-              fix is a dashboard setting plus a one-off purge
+              fix is a nightly pg_cron purge at 30 days
               (docs/maker-todo.md item 12). Update this item when it is done. */}
           <li>
             <strong className="font-medium">Sign-in records.</strong> Session

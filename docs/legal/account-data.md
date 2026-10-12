@@ -70,28 +70,51 @@ Not held anywhere: payment data, phone numbers, addresses, Google tokens
 
 ### Davis: before launch
 
-1. **Close the audit-log gap.** If the Supabase dashboard offers it
-   (Authentication → Audit Logs), turn off writing the audit log to the
-   project database; it then lives only in Supabase's platform logs with the
-   plan's short retention. (The auth server supports this:
-   `GOTRUE_AUDIT_LOG_DISABLE_POSTGRES`.) Then purge what is there:
-   `delete from auth.audit_log_entries where created_at < now() - interval '30 days';`
-   and fill the retention placeholder in `/privacy` (#retention). If you
-   prefer to keep the table, schedule that delete daily with `pg_cron` and
-   say 30 days.
-2. **Fill the placeholders on `/privacy` and `/terms`:** contact email (a
+1. **Bound the audit log to 30 days.** Keep writing it to the database
+   (switching it off leaves only the platform's own auth logs, kept about a
+   day on the free plan: too short to investigate a takeover reported a week
+   later). GDPR allows keeping security logs for a defined, disclosed period.
+   In the SQL editor (Database → Extensions → enable `pg_cron` first):
+
+   ```sql
+   select cron.schedule(
+     'purge-auth-audit-log', '23 3 * * *',
+     $$delete from auth.audit_log_entries where created_at < now() - interval '30 days'$$
+   );
+   ```
+
+   The first nightly run is also the one-off purge of everything older,
+   which cannot be undone. Then replace the retention placeholder in
+   `/privacy` (#retention) with "30 days".
+
+2. **Turn on a real email sender before inviting anyone.** Supabase's
+   built-in sender only delivers to members of the project's team and is
+   rate-limited ("not meant for production use", Supabase docs, _Configuring
+   a custom SMTP provider_). Until this is done, nobody else gets a
+   confirmation or reset email, so nobody else can finish signing up.
+   Recommended: Resend (already the Week 20 plan; its free tier covers a
+   small user base, check the current limits). Steps: add the domain
+   `auth.perfumerscodex.com` in Resend; add the DNS records Resend shows
+   (an MX and an SPF `TXT` on its `send` subdomain, and a DKIM `TXT` at
+   `resend._domainkey`), plus a DMARC `TXT` at `_dmarc.perfumerscodex.com`
+   (`v=DMARC1; p=none; rua=mailto:<your inbox>` to start); wait for
+   "Verified"; then Supabase → Authentication → SMTP settings: host
+   `smtp.resend.com`, port 465, user `resend`, password a Resend API key,
+   sender `no-reply@auth.perfumerscodex.com`. Supabase then caps sending at
+   30 per hour; raise it under Authentication → Rate Limits if needed.
+3. **Fill the placeholders on `/privacy` and `/terms`:** contact email (a
    real inbox you read), the Supabase project region (Project Settings →
    General), governing law. Then read both end to end and remove the draft
    notice (`components/legal/legal-page.tsx`).
-3. **Accept the processor terms:** Supabase's DPA (offered from the
+4. **Accept the processor terms:** Supabase's DPA (offered from the
    dashboard's organization settings and at supabase.com/legal/dpa) and
    Vercel's DPA (part of its terms; keep a copy for your records).
-4. **Password reset email template:** Supabase → Authentication → Email
+5. **Password reset email template:** Supabase → Authentication → Email
    Templates → Reset password: link to
    `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.
    Without this, reset links use the default PKCE link and the reset page
    will refuse them.
-5. **Google consent screen** (with maker-todo item 4): app name "Perfumers
+6. **Google consent screen** (with maker-todo item 4): app name "Perfumers
    Codex", support email, home page `https://perfumerscodex.com`, privacy
    `https://perfumerscodex.com/privacy`, terms
    `https://perfumerscodex.com/terms`, authorised domain
@@ -100,7 +123,7 @@ Not held anywhere: payment data, phone numbers, addresses, Google tokens
    picture). These scopes are non-sensitive, so verification is brand verification only (no
    security assessment). The gate must be down, or Google's reviewers cannot
    open the privacy page.
-6. **Keep a breach plan** (below) somewhere you will find it.
+7. **Keep a breach plan** (below) somewhere you will find it.
 
 ### ⚖️ For a lawyer (one short review covers all of it)
 
