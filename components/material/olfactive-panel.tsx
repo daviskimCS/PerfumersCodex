@@ -30,7 +30,7 @@ export function OlfactivePanel({
 }) {
   if (olfactive === null) {
     return (
-      <PanelSection title="Olfactive description">
+      <PanelSection title="Olfactive description" icon={SprayCan}>
         <EmptyState
           icon={SprayCan}
           headingLevel={3}
@@ -42,7 +42,7 @@ export function OlfactivePanel({
   }
 
   return (
-    <PanelSection title="Olfactive description">
+    <PanelSection title="Olfactive description" icon={SprayCan}>
       <p className="max-w-measure text-lg">
         {olfactive.description}
         <Cite sources={sources} sourceId={olfactive.sourceId} />

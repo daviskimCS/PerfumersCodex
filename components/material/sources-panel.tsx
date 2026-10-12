@@ -21,7 +21,7 @@ import { PanelSection } from './section'
  */
 export function SourcesPanel({ sources }: { sources: Citation[] }) {
   return (
-    <PanelSection title="Sources">
+    <PanelSection title="Sources" icon={BookOpen}>
       {sources.length === 0 ? (
         <EmptyState
           icon={BookOpen}

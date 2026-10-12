@@ -1,4 +1,4 @@
-import { ShieldAlert, TriangleAlert } from 'lucide-react'
+import { ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
@@ -156,6 +156,21 @@ export function SafetyPanel({
     <div>
       <PanelSection
         title="IFRA usage limits"
+        icon={ShieldCheck}
+        info={
+          usageLimits.length > 0 ? (
+            // Without this, a Standard issued under an older amendment (Iso E
+            // Super's 49th) reads as stale beside materials checked against
+            // the latest index.
+            <p>
+              Each limit is the maximum concentration in the finished product,
+              by IFRA product category. The amendment is the one that issued the
+              Standard: a Standard stays in force through later amendments until
+              IFRA revises it, and the verified date is when it was last
+              checked.
+            </p>
+          ) : undefined
+        }
         aside={<AmendmentBadges limits={usageLimits} absences={ifraAbsences} />}
       >
         {usageLimits.length === 0 && ifraAbsences.length === 0 ? (
@@ -170,8 +185,11 @@ export function SafetyPanel({
           // Looked, and found no Standard: a cited fact, not an empty state.
           <IfraAbsenceStatement absences={ifraAbsences} sources={sources} />
         ) : (
-          <div className="-mx-gutter overflow-x-auto px-gutter md:mx-0 md:px-0">
-            <table className="w-full min-w-144 border-collapse text-left">
+          // Below md the Amendment and Verified columns fold into a line
+          // under the limit: four columns at phone width left the category
+          // name a word per line and pushed the limit off the screen.
+          <div>
+            <table className="w-full border-collapse text-left">
               <caption className="sr-only">
                 IFRA category limits, with the amendment each was verified
                 against
@@ -184,10 +202,16 @@ export function SafetyPanel({
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Limit
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th
+                    scope="col"
+                    className="hidden py-2 pr-4 font-medium md:table-cell"
+                  >
                     Amendment
                   </th>
-                  <th scope="col" className="py-2 font-medium">
+                  <th
+                    scope="col"
+                    className="hidden py-2 font-medium md:table-cell"
+                  >
                     Verified
                   </th>
                 </tr>
@@ -198,14 +222,20 @@ export function SafetyPanel({
                     key={`${limit.categoryId}:${limit.ifraAmendmentVersion}`}
                     className="border-b border-border/60 align-top"
                   >
+                    {/* Wraps: IFRA's category names run to 80 characters
+                        ("Products applied to the face and body using the hands
+                        (palms), primarily leave-on"), and unwrapped they pushed
+                        the limit itself off the right edge. */}
                     <th
                       scope="row"
-                      className="py-3 pr-4 font-normal whitespace-nowrap"
+                      className="w-1/2 py-3 pr-4 font-normal md:w-[45%] md:pr-6"
                     >
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {limit.categoryId}
-                      </span>{' '}
-                      {limit.categoryName}
+                      <span className="grid grid-cols-[1.75rem_minmax(0,1fr)] md:grid-cols-[2rem_minmax(0,1fr)]">
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {limit.categoryId}
+                        </span>
+                        <span>{limit.categoryName}</span>
+                      </span>
                     </th>
                     <td className="py-3 pr-4">
                       <span
@@ -223,25 +253,21 @@ export function SafetyPanel({
                           {limit.notes}
                         </span>
                       ) : null}
+                      <span className="mt-1 block font-mono text-xs text-muted-foreground md:hidden">
+                        {limit.ifraAmendmentVersion} Amendment · verified{' '}
+                        {datePart(limit.verifiedAt)}
+                      </span>
                     </td>
-                    <td className="py-3 pr-4 font-mono text-sm whitespace-nowrap">
+                    <td className="hidden py-3 pr-4 font-mono text-sm whitespace-nowrap md:table-cell">
                       {limit.ifraAmendmentVersion}
                     </td>
-                    <td className="py-3 font-mono text-sm whitespace-nowrap text-muted-foreground">
+                    <td className="hidden py-3 font-mono text-sm whitespace-nowrap text-muted-foreground md:table-cell">
                       {datePart(limit.verifiedAt)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {/* Without this, a Standard issued under an older amendment (Iso E
-                Super's 49th) reads as stale beside materials checked against
-                the latest index. */}
-            <p className="mt-3 max-w-measure text-sm text-muted-foreground">
-              The amendment is the one that issued the Standard. A Standard
-              stays in force through later amendments until IFRA revises it; the
-              verified date is when it was last checked.
-            </p>
             {ifraAbsences.length > 0 ? (
               // A Standard under one amendment, none under another.
               <IfraAbsenceList absences={ifraAbsences} sources={sources} />
@@ -250,7 +276,7 @@ export function SafetyPanel({
         )}
       </PanelSection>
 
-      <PanelSection title="GHS hazards">
+      <PanelSection title="GHS hazards" icon={TriangleAlert}>
         {hazards.length === 0 ? (
           <EmptyState
             icon={TriangleAlert}

@@ -6,6 +6,7 @@ import {
   SOURCE_TYPE_LABELS,
   SYNONYM_TYPE_LABELS,
   humanize,
+  similarityBand,
   sourceTypeLabel,
   synonymTypeLabel,
 } from './format'
@@ -44,7 +45,7 @@ describe('synonymTypeLabel', () => {
 
   it('covers every synonym type and nothing else', () => {
     expect(Object.keys(SYNONYM_TYPE_LABELS).sort()).toEqual(
-      [...SYNONYM_TYPES].sort(),
+      [...SYNONYM_TYPES].sort()
     )
   })
 
@@ -63,7 +64,7 @@ describe('sourceTypeLabel', () => {
 
   it('covers every source type and nothing else', () => {
     expect(Object.keys(SOURCE_TYPE_LABELS).sort()).toEqual(
-      [...SOURCE_TYPES].sort(),
+      [...SOURCE_TYPES].sort()
     )
   })
 
@@ -77,5 +78,21 @@ describe('humanize', () => {
   it('still only replaces underscores (material_type labels depend on it)', () => {
     expect(humanize('synthetic')).toBe('synthetic')
     expect(humanize('very_high')).toBe('very high')
+  })
+})
+
+describe('similarityBand', () => {
+  it.each([
+    [0, 'unrelated'],
+    [0.11, 'unrelated'],
+    [0.2999, 'unrelated'],
+    [0.3, 'distant'],
+    [0.49, 'distant'],
+    [0.5, 'related'],
+    [0.6999, 'related'],
+    [0.7, 'close'],
+    [1, 'close'],
+  ] as const)('%d reads as %s', (tanimoto, band) => {
+    expect(similarityBand(tanimoto)).toBe(band)
   })
 })
