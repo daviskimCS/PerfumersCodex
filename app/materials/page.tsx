@@ -243,6 +243,11 @@ function Controls({
   families: Awaited<ReturnType<typeof listFamilies>>
   classes: Awaited<ReturnType<typeof listChemicalClasses>>
 }) {
+  const visibleClasses = classes.filter(
+    (chemicalClass) =>
+      chemicalClass.materialCount > 0 || chemicalClass.slug === query.class
+  )
+
   return (
     <div className="mt-8 flex flex-col gap-4 border-y border-border py-4">
       <FilterRow label="Sort">
@@ -288,11 +293,11 @@ function Controls({
       {/* The structural axis, beside the olfactive one rather than nested in
           it: the two are independent and compose, so a reader can hold both
           ("woody" AND "macrocyclic") and drop either without losing the
-          other. Counts are rendered exactly as the family row renders them,
-          zeroes included — `listChemicalClasses` returns classes the corpus
-          does not yet exercise on purpose, and a "0" is a fact about the
-          corpus rather than a broken control. */}
-      {classes.length > 0 ? (
+          other. Empty classes are hidden like empty families: with a small
+          corpus most of the curated list is empty, and a row of "0" links that
+          each lead to an empty page reads as broken. The active class stays,
+          so a shared ?class= link still shows what it is filtering on. */}
+      {visibleClasses.length > 0 ? (
         <FilterRow label="Class">
           <FilterLink
             href={browseHref({ ...query, class: null, page: 1 })}
@@ -300,7 +305,7 @@ function Controls({
           >
             All
           </FilterLink>
-          {classes.map((chemicalClass) => (
+          {visibleClasses.map((chemicalClass) => (
             <FilterLink
               key={chemicalClass.slug}
               href={browseHref({
@@ -453,7 +458,7 @@ function EmptyResults({ query, total }: { query: BrowseQuery; total: number }) {
         className="mt-6"
         icon={SearchX}
         title="No materials in this class"
-        description="Nothing published carries this structure — at least not with the other filters applied. The classes with entries are listed above, and a structure search will match patterns that aren't listed at all."
+        description="Nothing published carries this structure — at least not with the other filters applied. The classes listed above all have entries, and a structure search will match patterns that aren't listed at all."
         action={
           <Button asChild variant="outline" size="lg">
             <Link href={browseHref({ ...query, class: null, page: 1 })}>

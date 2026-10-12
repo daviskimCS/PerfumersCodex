@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 const LICENCE_LINK_CLASSNAME =
-  'text-foreground underline decoration-brand-muted underline-offset-4 transition-colors hover:decoration-brand'
+  // nowrap: "CC BY-SA 4.0" otherwise breaks at its hyphen on a phone.
+  'whitespace-nowrap text-foreground underline decoration-brand-muted underline-offset-4 transition-colors hover:decoration-brand'
 
 export function SiteFooter() {
   return (

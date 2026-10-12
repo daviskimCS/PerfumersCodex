@@ -32,7 +32,10 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 }
 
-/** Straight from docs/overview.md's "What makes this different". */
+/**
+ * From docs/overview.md's "What makes this different", limited to what is
+ * true today: the open-source card returns when the repositories go public.
+ */
 const PRINCIPLES = [
   {
     title: 'Citation-driven',
@@ -40,11 +43,11 @@ const PRINCIPLES = [
   },
   {
     title: 'Curated, not aggregated',
-    body: 'Hand-selected materials, written-from-experience descriptions, judgment-based landmark uses.',
+    body: 'Hand-selected materials, with descriptions written from the bench rather than compiled from catalogues.',
   },
   {
-    title: 'Open source, openly licensed',
-    body: 'Built for the community rather than extracted from it — the code and the data both.',
+    title: 'Reviewed before it’s published',
+    body: 'Nothing reaches the reference until it has been reviewed, and any later change takes it down until it is reviewed again.',
   },
 ]
 
@@ -61,9 +64,9 @@ export default async function HomePage() {
 
         <p className="mt-6 text-lg text-muted-foreground">
           A curated, citation-driven aromachemical reference for working
-          perfumers: one well-cited source of truth for safety data, olfactive
-          properties, usage guidance, and the landmark uses of the
-          aromachemicals and naturals used in modern perfumery.
+          perfumers: one well-cited source of truth for the identity, safety
+          data, olfactive character and usage of the aromachemicals and naturals
+          used in modern perfumery.
         </p>
 
         {/* The honest number. An empty corpus says so rather than boasting

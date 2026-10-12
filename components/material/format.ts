@@ -65,3 +65,27 @@ const VERSION_COLLATOR = new Intl.Collator('en', {
 export function compareVersions(a: string, b: string): number {
   return VERSION_COLLATOR.compare(a, b)
 }
+
+/**
+ * A reading of a Tanimoto score over Morgan fingerprints, for display only.
+ *
+ * The cut-offs are a rule of thumb for Morgan/ECFP4-style fingerprints, not a
+ * standard: around 0.3 and below, two molecules share little more than common
+ * fragments; from about 0.7 they are usually close analogues. The info text
+ * beside the scores says so, so a band never reads as a measured fact.
+ */
+export type SimilarityBand = 'unrelated' | 'distant' | 'related' | 'close'
+
+export const SIMILARITY_BAND_LABELS: Record<SimilarityBand, string> = {
+  unrelated: 'Unrelated',
+  distant: 'Distantly related',
+  related: 'Related',
+  close: 'Close analogue',
+}
+
+export function similarityBand(tanimoto: number): SimilarityBand {
+  if (tanimoto >= 0.7) return 'close'
+  if (tanimoto >= 0.5) return 'related'
+  if (tanimoto >= 0.3) return 'distant'
+  return 'unrelated'
+}

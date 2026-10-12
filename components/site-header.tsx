@@ -93,9 +93,13 @@ export function SiteHeader() {
             a signed-out visitor there is no cookie, no round trip and no
             visible fallback at all.
           */}
-          <Suspense fallback={<AuthLinksSkeleton />}>
-            <AuthLinks />
-          </Suspense>
+          {/* A landmark so screen-reader users can jump to the account links
+              (Sign in, or Saved and Account) from the rotor. */}
+          <nav aria-label="Account" className="flex items-center gap-1">
+            <Suspense fallback={<AuthLinksSkeleton />}>
+              <AuthLinks />
+            </Suspense>
+          </nav>
 
           <ThemeToggle />
         </div>

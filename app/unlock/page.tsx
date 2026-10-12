@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 
 import { HideSiteChrome } from '@/components/gate/hide-site-chrome'
 import { UnlockForm } from '@/components/gate/unlock-form'
+import { isGateEnabled } from '@/lib/gate'
 
 /**
  * `/unlock` — the one route the pre-launch gate leaves open.
@@ -10,12 +13,11 @@ import { UnlockForm } from '@/components/gate/unlock-form'
  * `components/gate/unlock-form.tsx` (the split
  * `app/(auth)/login/page.tsx` documents).
  *
- * IT DOES NOT READ THE GATE'S STATE. Rendering "the gate is off" or a 404
- * based on `isGateEnabled()` would be a build-time decision, not a run-time
- * one: `next build` runs with no environment (CI), so whatever this page
- * concluded at build time could be baked into a prerender and then served by a
- * gated deployment. The form renders unconditionally and the action decides —
- * where the answer is always current.
+ * It 404s when the gate is off, so a public site has no password prompt
+ * lying around. That check must run per request, not at build time: `next
+ * build` runs with no environment (CI), and a build-time answer could be baked
+ * into a prerender and served by a gated deployment. `connection()` makes the
+ * page wait for a request before it reads the gate's state.
  *
  * The chrome is hidden here for the same reason as on the pre-launch page: the
  * header's search field and "Sign in" link describe the site to someone who
@@ -30,7 +32,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function UnlockPage() {
+export default async function UnlockPage() {
+  await connection()
+  if (!isGateEnabled()) notFound()
+
   return (
     <>
       <HideSiteChrome />

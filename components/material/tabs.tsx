@@ -10,6 +10,8 @@ import {
   useState,
 } from 'react'
 import type { ReactNode } from 'react'
+import { BookOpen, Droplet, ShieldCheck, SprayCan } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -35,10 +37,21 @@ import {
  *   is a view preference, and four tabs' worth of history entries would turn
  *   the browser's Back button into "undo my last glance".
  *
- * Mobile is its own layout, not a squeezed desktop: the bar goes full width
- * with taller (44px) targets and scrolls horizontally if a future tab makes
- * the row overflow, and the panel below it is a single column.
+ * The bar is an underlined row with an icon per tab, not a muted pill: it is
+ * the page's section navigation and has to read as one. On a phone the four
+ * tabs split the width evenly, icon over label, so even a 320px screen fits
+ * all four without scrolling. Nothing in it scrolls: the
+ * old `overflow-x-auto` wrapper also made the box scroll vertically (CSS
+ * computes `overflow-y: auto` beside it), and the active underline and focus
+ * ring overflowed it by a few pixels, so the bar showed a scrollbar.
  */
+
+const TAB_ICONS: Record<MaterialTabId, LucideIcon> = {
+  safety: ShieldCheck,
+  olfactive: SprayCan,
+  usage: Droplet,
+  sources: BookOpen,
+}
 
 interface MaterialTabsControl {
   /** Switch tabs; with an anchor, also jump to that element once it mounts. */
@@ -141,18 +154,25 @@ export function MaterialTabs({
         onValueChange={(value) => show(value as MaterialTabId)}
         className="gap-6"
       >
-        {/* -mx-gutter + px-gutter: on a phone the bar runs to both edges of
-            the screen instead of sitting in a narrow inset, which is what
-            makes the scroll affordance readable when it is needed. */}
-        <div className="-mx-gutter overflow-x-auto px-gutter md:mx-0 md:px-0">
-          <TabsList className="w-full min-w-max group-data-horizontal/tabs:h-11 md:w-fit md:group-data-horizontal/tabs:h-8">
-            {MATERIAL_TAB_IDS.map((id) => (
-              <TabsTrigger key={id} value={id} className="px-3 md:px-2">
+        <TabsList
+          variant="line"
+          aria-label="Material sections"
+          className="grid w-full grid-cols-4 gap-0 rounded-none border-b border-border p-0 group-data-horizontal/tabs:h-auto md:flex md:justify-start md:gap-6"
+        >
+          {MATERIAL_TAB_IDS.map((id) => {
+            const Icon = TAB_ICONS[id]
+            return (
+              <TabsTrigger
+                key={id}
+                value={id}
+                className="h-14 flex-none flex-col gap-1 rounded-none px-0 text-xs group-data-horizontal/tabs:after:bottom-[-1px] md:h-12 md:flex-row md:gap-2 md:text-base"
+              >
+                <Icon aria-hidden="true" strokeWidth={1.75} />
                 {MATERIAL_TAB_LABELS[id]}
               </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+            )
+          })}
+        </TabsList>
         {MATERIAL_TAB_IDS.map((id) => (
           <TabsContent key={id} value={id} className="text-base">
             {panels[id]}

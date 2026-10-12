@@ -51,7 +51,8 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    url: '/',
+    // No `url`: pages that set no openGraph of their own inherit this object,
+    // and a fixed '/' would advertise every one of them as the homepage.
     locale: 'en_US',
     // `images` is deliberately absent HERE and set by file convention instead:
     // app/opengraph-image.tsx is the site-wide card, and
