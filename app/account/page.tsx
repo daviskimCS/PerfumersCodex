@@ -187,9 +187,10 @@ export default async function AccountPage() {
             Delete account
           </h2>
           {/* Plain and true: exactly what goes, and that it is final. The two
-              user-owned tables both cascade off the account row, so this list
-              is the whole of it — there is nothing left behind and nothing to
-              restore from. */}
+              user-owned tables both cascade off the account row, and so do
+              Supabase's sessions and identities (proved in
+              tests/integration/email-password.integration.test.ts). The one
+              thing left behind is Supabase's audit log, said below. */}
           <p className="mt-2 text-sm text-muted-foreground">
             This deletes your sign-in, your saved materials and your private
             notes, immediately and for good. There is no undo and no way for us
@@ -197,7 +198,15 @@ export default async function AccountPage() {
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             The codex itself is unaffected — it stays public and free to read
-            without an account.
+            without an account. Supabase’s sign-in event log keeps its past
+            entries until they age out; the{' '}
+            <Link
+              href="/privacy#retention"
+              className="text-foreground underline decoration-brand-muted underline-offset-4 hover:decoration-brand"
+            >
+              privacy notice
+            </Link>{' '}
+            says for how long.
           </p>
 
           <DeleteAccountForm />

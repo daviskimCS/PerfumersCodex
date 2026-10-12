@@ -18,6 +18,14 @@ import {
  *
  *   search log            db/schema.ts `searchQueries`, lib/db/search.ts
  *   accounts              app/(auth)/actions.ts
+ *   Google sign-in        app/(auth)/actions.ts `signInWithGoogle` (scopes:
+ *                         email, profile — tests/integration/google…)
+ *   sign-in records       Supabase Auth's own tables: auth.sessions (ip,
+ *                         user_agent), auth.audit_log_entries (email, ip).
+ *                         Verified against the auth server's migrations and
+ *                         a local stack on 2026-10-12 (docs/legal/account-data.md)
+ *   export                app/account/export/route.ts, lib/account/export.ts
+ *   password reset        app/(auth)/actions.ts `requestPasswordReset`
  *   bookmarks / notes     db/schema.ts `userSavedMaterials`, `userNotes`
  *   deletion              app/account/actions.ts `deleteAccount`
  *   analytics             app/layout.tsx (<Analytics />)
@@ -89,10 +97,28 @@ export default function PrivacyPage() {
             mail goes to.
           </li>
           <li>
+            <strong className="font-medium">If you sign in with Google:</strong>{' '}
+            your name, email address, profile picture address and Google
+            account id, which Google passes to Supabase when you choose
+            “Continue with Google”. The site asks Google for nothing else — no
+            contacts, no calendar, no Drive, no access to your Google account
+            after you have signed in.
+          </li>
+          <li>
             <strong className="font-medium">Your password.</strong> It is
             passed straight through to Supabase Auth, which stores it. This
             project’s own database has no password column — sign-in is not
             something I built, and it is not something I want to hold.
+          </li>
+          <li>
+            <strong className="font-medium">Sign-in records.</strong> Supabase
+            Auth, the sign-in service, keeps a record of each signed-in session
+            (the IP address and browser it came from, and when) and a log of
+            sign-in events such as signing in, changing a password or deleting
+            the account (your email address, the IP address and the time). This
+            is the one place your IP address is stored, and only if you have an
+            account. It exists to keep accounts secure: to spot someone else
+            signing in as you, and to investigate abuse.
           </li>
           <li>
             <strong className="font-medium">Saved materials.</strong> Your
@@ -135,9 +161,10 @@ export default function PrivacyPage() {
             business model that would want it.
           </li>
           <li>
-            The application never records your IP address — not in the search
-            log, not anywhere else. (Your address still reaches the host that
-            serves the page; see below.)
+            Reading the site records no IP address — not in the search log, not
+            anywhere else. The only stored IP addresses are the sign-in records
+            above, and only for people with an account. (Every visitor’s
+            address still reaches the host that serves the page; see below.)
           </li>
           <li>
             No profile, no behavioural scoring, no cross-site tracking, no
@@ -146,7 +173,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             No third-party fonts, images or embeds. The typeface is served
-            from this site, and structure diagrams are drawn in your browser
+            from this site, and structure diagrams are drawn by this site
             from the molecule’s SMILES string rather than fetched from
             somewhere else, so reading a material page does not quietly
             announce you to another company.
@@ -156,10 +183,10 @@ export default function PrivacyPage() {
 
       <LegalSection id="cookies" heading="Cookies">
         <p>
-          Two, both strictly necessary, both named here because a policy that
+          Three, all strictly necessary, all named here because a policy that
           says “we use cookies” without saying which ones is telling you
           nothing. There is no consent banner because there is nothing to
-          consent to — neither cookie tracks you.
+          consent to — none of them tracks you.
         </p>
         <LegalList>
           <li>
@@ -176,6 +203,13 @@ export default function PrivacyPage() {
             </strong>{' '}
             — set when you sign in, so that you stay signed in. It carries your
             session token. Signing out removes it.
+          </li>
+          <li>
+            <strong className="font-medium">The Google sign-in verifier</strong>{' '}
+            — set for the few seconds between pressing “Continue with Google”
+            and coming back, so the sign-in can only be finished in the browser
+            that started it. It holds a random one-time value and is replaced by
+            the authentication cookie when you return.
           </li>
         </LegalList>
       </LegalSection>
@@ -207,8 +241,9 @@ export default function PrivacyPage() {
 
       <LegalSection id="processors" heading="Who else handles any of this">
         <p>
-          Two companies, each with its own privacy policy, and one that is not
-          involved yet.
+          Two companies always, and Google only if you choose it. Each has its
+          own privacy policy, and Supabase and Vercel process this data on my
+          behalf under their data processing terms.
         </p>
         <LegalList>
           <li>
@@ -223,20 +258,83 @@ export default function PrivacyPage() {
             came from, so Vercel sees network-level details of your visit that
             this application never records or stores.
           </li>
-          {/* Deliberately worded in the present tense and checked against
-              app/(auth)/actions.ts: `signInWithGoogle` probes
-              /auth/v1/settings and returns GOOGLE_UNAVAILABLE when the
-              provider is off, which it currently is (docs/maker-todo.md item
-              4). Nothing is sent to Google. Rewrite this bullet in the same
-              commit that enables the provider. */}
+          {/* Written for Google sign-in switched ON, because Google's OAuth
+              verification reads this page before it lets the provider go
+              live, and the page must already describe what Google sends.
+              While the provider is off (docs/maker-todo.md item 4) the
+              button returns "isn't available" and nothing reaches Google,
+              so every sentence below stays true either way. */}
           <li>
-            <strong className="font-medium">Google</strong> — not yet. There is
-            a “Continue with Google” button on the sign-in and sign-up pages,
-            but the provider is not switched on: pressing it returns a notice
-            saying Google sign-in isn’t available, and no data about you
-            reaches Google. This page will be updated before that changes.
+            <strong className="font-medium">Google</strong> — only if you
+            choose “Continue with Google”. Google then knows you used your
+            Google account to sign in here, and sends Supabase the four things
+            listed above. The site uses them only to create and sign in to your
+            account, never for advertising, and never passes them to anyone
+            else. Its use of information received from Google APIs adheres to
+            the{' '}
+            <a
+              href="https://developers.google.com/terms/api-services-user-data-policy"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              Google API Services User Data Policy
+            </a>
+            , including its Limited Use requirements. You can cut the link from
+            your Google account’s third-party connections page at any time;
+            deleting your account here removes what Google sent.
           </li>
         </LegalList>
+      </LegalSection>
+
+      {/* GDPR Art. 13(1)(c) and (f): the purpose and legal basis of each
+          kind of processing, and where the data goes. See
+          docs/legal/account-data.md for the reasoning; a lawyer should
+          confirm it before launch. */}
+      <LegalSection id="basis" heading="Why, and on what basis">
+        <LegalList>
+          <li>
+            <strong className="font-medium">
+              Your account, saved materials and notes
+            </strong>{' '}
+            exist because you asked for them: holding them is how the site
+            provides the account you signed up for under the{' '}
+            <Link href="/terms" className={LEGAL_LINK_CLASSNAME}>
+              terms
+            </Link>
+            . Giving an email address is required only for an account; reading
+            the codex needs nothing.
+          </li>
+          <li>
+            <strong className="font-medium">Sign-in records</strong> are kept
+            because keeping accounts secure is a legitimate interest of yours
+            and mine, and the records hold no more than that needs.
+          </li>
+          <li>
+            <strong className="font-medium">
+              The search log and analytics
+            </strong>{' '}
+            hold nothing that identifies you, so there is no personal data to
+            have a basis for.
+          </li>
+          <li>
+            Nothing here makes automated decisions about you, and nothing is
+            used for advertising or sold.
+          </li>
+        </LegalList>
+      </LegalSection>
+
+      <LegalSection id="where" heading="Where it is stored">
+        <p>
+          Supabase stores the database and the sign-in service in{' '}
+          <LegalPlaceholder>
+            maker: the Supabase project&apos;s region (Project Settings →
+            General), e.g. &quot;the United States (AWS us-east-1)&quot;
+          </LegalPlaceholder>
+          . Vercel serves pages from its network worldwide. If you are in the UK
+          or the European Economic Area, using an account therefore means your
+          data is handled outside it; both companies cover that transfer in
+          their data processing terms with the European Commission’s standard
+          contractual clauses (and the UK addendum).
+        </p>
       </LegalSection>
 
       <LegalSection id="retention" heading="How long any of it is kept">
@@ -261,6 +359,25 @@ export default function PrivacyPage() {
               Your account, saved materials and notes
             </strong>{' '}
             are kept for as long as your account exists, and go when it goes.
+          </li>
+          {/* Checked 2026-10-12 against a local Supabase auth server: deleting
+              a user removes auth.sessions, auth.identities and
+              auth.refresh_tokens rows (tests/integration/email-password…),
+              but auth.audit_log_entries is not keyed to the user and keeps
+              the email address, including in the deletion event itself. The
+              fix is a dashboard setting plus a one-off purge
+              (docs/maker-todo.md item 12). Update this item when it is done. */}
+          <li>
+            <strong className="font-medium">Sign-in records.</strong> Session
+            records go when you sign out, when the session expires, or when you
+            delete the account. The sign-in event log is kept for{' '}
+            <LegalPlaceholder>
+              maker: the retention period once item 12 in docs/maker-todo.md is
+              done
+            </LegalPlaceholder>
+            . It is not tied to your account row, so deleting your account does
+            not remove its past entries straight away; they are removed when
+            that period runs out.
           </li>
           <li>
             <strong className="font-medium">Analytics</strong> are counts held
@@ -292,34 +409,66 @@ export default function PrivacyPage() {
             has a delete button. It removes your sign-in, your saved materials
             and your private notes immediately. It is a real deletion, not a
             flag on a row that stays behind: the application keeps no copy,
-            offers no undo, and cannot restore any of it afterwards. The codex
+            offers no undo, and cannot restore any of it afterwards. The one
+            exception is the sign-in event log described under{' '}
+            <a href="#retention" className={LEGAL_LINK_CLASSNAME}>
+              how long any of it is kept
+            </a>
+            , whose past entries age out rather than going at once. The codex
             itself is unaffected — it stays public and free to read without an
             account.
           </li>
           <li>
-            {/* No self-serve export exists (no route, no action). Stated as a
-                commitment rather than a feature, so the page does not describe
-                a button that is not there. MAKER: this is a promise you are
-                making — say so or strike it. */}
-            <strong className="font-medium">Ask for a copy.</strong> There is
-            no export button yet. Email me and I will send you what your rows
-            contain — that is your account’s email address, your saved
-            materials and your notes, which is all of it.
+            <strong className="font-medium">Take a copy with you.</strong> The{' '}
+            <Link href="/account" className={LEGAL_LINK_CLASSNAME}>
+              account page
+            </Link>{' '}
+            has a “Download your data” button: one file with your account
+            details, how you sign in (including what Google sent, if you use
+            it), your saved materials and your notes, in a format any program
+            can read. For a copy of your sign-in records, email me.
           </li>
           <li>
             <strong className="font-medium">
               Anything else the law where you live gives you
             </strong>{' '}
-            — access, correction, portability, objection, complaint to a
-            regulator. Write to me and I will deal with it rather than make you
-            argue about it.
+            — access, correction, portability, restriction, objection. Write to
+            me and I will answer within a month, without making you argue about
+            it. If you are in the UK or the EEA you can also complain to your
+            data protection regulator (in the UK, the Information
+            Commissioner’s Office), though I would like the chance to put it
+            right first.
           </li>
         </LegalList>
       </LegalSection>
 
+      <LegalSection id="security" heading="If something goes wrong">
+        <p>
+          Passwords are stored only as one-way hashes by Supabase. Every
+          person’s notes and saved materials are walled off from everyone else’s
+          by the database itself, and that wall is tested automatically, with
+          real test accounts, on every proposed change to the code.
+        </p>
+        <p>
+          If a breach ever exposes account data, I will email the people
+          affected without undue delay, say what was exposed and what to do, and
+          notify the regulators the law requires me to tell.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="children" heading="Children">
+        <p>
+          Accounts are for people aged 16 and over. The codex is a working
+          reference for perfumers and is not aimed at children; if you believe a
+          child has made an account, tell me and I will delete it.
+        </p>
+      </LegalSection>
+
       <LegalSection id="contact" heading="Contact">
         <p>
-          One person maintains this site, and email reaches him directly:{' '}
+          The site is run by Davis Kim, who decides what happens to the data
+          described here (in data protection terms, the controller). One person
+          maintains it, and email reaches him directly:{' '}
           {/* MAKER: hello@perfumerscodex.com is planned but NOT set up — it is
               a Week 20 item in docs/maker-todo.md, alongside Resend. Put the
               address you actually read here, and replace this placeholder. */}
@@ -335,6 +484,14 @@ export default function PrivacyPage() {
           The date at the top of this page changes with it, and anything that
           alters what is collected or who sees it will be described here rather
           than folded in quietly.
+        </p>
+        <p>
+          <strong className="font-medium">12 October 2026:</strong> added the
+          sign-in records Supabase keeps (the earlier version wrongly said no IP
+          address was stored anywhere), what Google sends if you sign in with
+          it, the reasons and legal basis for each kind of data, where it is
+          stored, the new “Download your data” button and password reset, and
+          the sections on breaches and children.
         </p>
         <p>
           This page is a file in the project’s source repository. Once that
