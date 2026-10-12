@@ -212,11 +212,14 @@ export function SignupForm() {
               >
                 {pending ? 'Creating account…' : 'Create account'}
               </Button>
+
+              {/* Directly under the button that creates the account, and
+                  above the Google button, so the notice is in view at the
+                  moment of either click (the placement courts look at). */}
+              <AccountTermsNotice />
             </form>
 
             <GoogleAuth />
-
-            <AccountTermsNotice />
 
             <p className="mt-6 text-sm text-muted-foreground">
               Already have an account?{' '}

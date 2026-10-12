@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { cn } from '@/lib/utils'
+
 const LINK_CLASSNAME =
   'text-foreground underline decoration-brand-muted underline-offset-4 hover:decoration-brand'
 
@@ -15,9 +17,9 @@ const LINK_CLASSNAME =
  * hand over an email address, what governs the account and where the privacy
  * information is (GDPR Art. 13; Google's OAuth policy for the Google path).
  */
-export function AccountTermsNotice() {
+export function AccountTermsNotice({ className }: { className?: string }) {
   return (
-    <p className="mt-6 text-sm text-muted-foreground">
+    <p className={cn('text-sm text-muted-foreground', className)}>
       Creating an account, with email or with Google, means you accept the{' '}
       <Link href="/terms" className={LINK_CLASSNAME}>
         Terms
