@@ -4,16 +4,17 @@ A curated, citation-driven aromachemical reference for working perfumers.
 
 Checking one material means switching between IFRA Standards, supplier pages, safety data sheets and scent databases. Perfumers Codex aims to put that in one searchable reference. Identity, IFRA usage limits, GHS hazards and landmark uses each cite a source. Olfactive descriptions and usage guidance, as they are written, come from bench experience.
 
-**Status:** in development, behind a pre-launch password gate. Public launch planned for Spring 2027. No material has been reviewed and published yet. As of 2026-09-05 the database held three drafts researched by AI agents from primary sources, with placeholder olfactive families, plus four synthetic test fixtures. All of them stay hidden from readers until the maker reviews them (see the review gate below). No real olfactive descriptions have been written yet.
+**Status:** deployed at [perfumerscodex.com](https://perfumerscodex.com) behind a pre-launch password gate. Public launch planned for Spring 2027. The database holds drafts researched by AI agents from primary sources, plus four synthetic test fixtures. Every one stays hidden from readers until the maker reviews it (see the review gate below), and the first real materials are going through that review now. No olfactive descriptions have been written yet.
 
 ## What exists today
 
 - **Search:** a Cmd/Ctrl-K palette and a `/search` page. Exact CAS numbers short-circuit to their material. Names, synonyms and trade names match with trigram similarity, which tolerates typos and catches most prefixes. Short prefixes of long names can miss.
-- **Material pages:** citations as numbered superscripts that link to their sources, a lazy-loaded 2D structure, structurally similar materials, and computed properties. A clearly labeled experimental odor-prediction module is in place, but no model exists yet.
-- **Browsing:** by olfactive family and by structural class (for example macrocyclic ketone or lactone). `/structure` accepts an arbitrary SMARTS pattern.
-- **Accounts:** email/password sign-in, bookmarks, private per-material notes, changing email or password, and account deletion. A "Continue with Google" button is built but dormant: until the provider is configured, it shows an "unavailable" notice.
+- **Material pages:** citations as numbered superscripts that link to their sources, a 2D structure drawn once at seed time and inlined as SVG (no WebAssembly on the page), structurally similar materials scored by Tanimoto similarity (matches below 0.3 are hidden, and the page says so), and computed properties. Long synonym lists fold away, and the IFRA table stays readable on a phone. A clearly labeled experimental odor-prediction module is in place, but no model exists yet.
+- **Browsing:** by olfactive family and by structural class (for example macrocyclic ketone or lactone). `/structure` accepts an arbitrary SMARTS pattern and loads RDKit's WebAssembly build only there.
+- **Accounts:** email/password sign-in, password reset, bookmarks, private per-material notes, changing email or password, a self-serve export of everything the account holds (`/account/export`), and account deletion that removes every row the account owns. A "Continue with Google" button is built but dormant: until the provider is configured, it shows an "unavailable" notice.
 - **Draft privacy policy and terms**, pending review.
-- **CI:** typecheck, lint and unit tests on every pull request and every push to `main`.
+- **Production basics:** security headers on every response, `robots.txt`, and a sitemap that lists published materials only.
+- **CI:** typecheck, lint and unit tests on every pull request and every push to `main`, plus an integration job that runs the real account actions against a local Supabase stack.
 
 ## Design principles
 
@@ -30,11 +31,10 @@ Checking one material means switching between IFRA Standards, supplier pages, sa
 
 What is not built or not yet verified:
 
-- **Migrations `0007` and `0008` are written but not yet applied** to the live database. Until 0007 is, the search view (material names and CAS numbers) is likely readable through the public Data API. Until 0008 is applied and this code deployed, the review gate is not in force.
-- **Performance is unmeasured.** The search budget is 150 ms p95, but nothing has been measured, and pages render per request with no caching layer.
-- **Signed-in flows are unverified end to end.** Bookmarks, notes, and the cleanup of user data on account deletion have not been run with real accounts. Row-level security was probed for anonymous access and forged inserts. Isolation between two real accounts, and the notes UPDATE policy, are not yet verified.
-- **No rate limiting anywhere:** sign-up, login, search, note saves, account changes, and the gate's unlock form are all unthrottled.
-- **No password reset, no admin dashboard or correction form, and no error monitoring** yet.
+- **Performance is not measured in production.** The search budget is 150 ms p95. Signed-in page views make fewer Supabase Auth round trips than they did, but pages still render per request with no data cache: a cache could serve a page after the review gate has hidden it, because reviews run outside the Next.js runtime and cannot invalidate it.
+- **The browser half of signed-in flows is unverified.** The integration suite proves the server side with real accounts (sign-up through deletion, and two-account isolation for bookmarks and notes), but it runs no browser, so the bookmark button, `/saved` and real Google sign-in are checked by hand only.
+- **Rate limiting is not in place yet.**
+- **No admin dashboard, correction form or error monitoring** yet.
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
 - **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (an odour phrase) depends on descriptions that do not exist yet, so it cannot pass against the live corpus.
 - **The structure–odor experiment is not built.**
@@ -60,17 +60,18 @@ cp .env.example .env.local   # fill in Supabase project values
 npm run dev
 ```
 
-| Script                     | Purpose                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------- |
-| `npm run dev`              | Dev server (Turbopack)                                                                         |
-| `npm run typecheck`        | TypeScript, no emit                                                                            |
-| `npm run lint`             | ESLint                                                                                         |
-| `npm run test`             | Vitest unit tests                                                                              |
-| `npm run db:generate`      | Generate Drizzle migration from schema                                                         |
-| `npm run db:migrate`       | Apply migrations (uses `DIRECT_URL`)                                                           |
-| `npm run db:seed -- <dir>` | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input     |
-| `npm run db:review <verb>` | Review gate: `list`, `show <slug>`, `publish <slug> <fingerprint>`, `revoke <slug>`, `refresh` |
-| `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                            |
+| Script                     | Purpose                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`              | Dev server (Turbopack)                                                                                          |
+| `npm run typecheck`        | TypeScript, no emit                                                                                             |
+| `npm run lint`             | ESLint                                                                                                          |
+| `npm run test`             | Vitest unit tests (no database)                                                                                 |
+| `npm run test:integration` | Account and RLS tests against a local Supabase stack; see [`tests/integration/`](./tests/integration/README.md) |
+| `npm run db:generate`      | Generate Drizzle migration from schema                                                                          |
+| `npm run db:migrate`       | Apply migrations (uses `DIRECT_URL`)                                                                            |
+| `npm run db:seed -- <dir>` | Validate and seed a data directory; `--prune` soft-deletes materials absent from the input                      |
+| `npm run db:review <verb>` | Review gate: `list`, `show <slug>`, `publish <slug> <fingerprint>`, `revoke <slug>`, `refresh`                  |
+| `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                                             |
 
 Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`. `SITE_GATE_PASSWORD` turns on the pre-launch password gate; leave it unset locally — unset means off.
 
@@ -80,6 +81,8 @@ Seeding replaces each material's fact rows with what its data file says, so keep
 
 - **Code:** [MIT](./LICENSE)
 - **Material data published by this project:** [CC BY-SA 4.0](./LICENSE-DATA) — attribute and share-alike. The source dataset lives in a separate `perfumers-codex-data` repository.
+
+Security reports: see [`SECURITY.md`](./SECURITY.md).
 
 ## Author
 
