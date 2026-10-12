@@ -55,8 +55,10 @@ export const RECOVERY_WINDOW_SECONDS = 30 * 60
  * current-password check `changePassword` enforces and take the account.
  *
  * The reset link lands on `/auth/confirm`, whose `verifyOtp` signs the reader
- * in with an `otp` entry in the token's `amr` claim. A signup confirmation
- * does the same, so `otp` alone is not enough: the account must also have a
+ * in with an `otp` entry in the token's `amr` claim (or `recovery`, when a
+ * default Supabase template sends the reader through its own verify step and
+ * back with a code). A signup confirmation also yields `otp`, so the method
+ * alone is not enough: the account must also have a
  * reset requested (`recovery_sent_at`) no later than that sign-in, and the
  * sign-in must be recent. An attacker with a password session has no `otp`
  * entry; requesting a reset from that session mails the link to the owner,
@@ -75,7 +77,7 @@ export function isRecentRecoverySession(
   return amr.some(
     (entry) =>
       typeof entry !== 'string' &&
-      entry.method === 'otp' &&
+      (entry.method === 'otp' || entry.method === 'recovery') &&
       entry.timestamp >= requestedAtSeconds &&
       entry.timestamp <= nowSeconds &&
       nowSeconds - entry.timestamp <= RECOVERY_WINDOW_SECONDS

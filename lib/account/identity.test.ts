@@ -51,6 +51,16 @@ describe('isRecentRecoverySession', () => {
     ).toBe(true)
   })
 
+  it('accepts a recovery sign-in (a default-template link exchanged for a code)', () => {
+    expect(
+      isRecentRecoverySession(
+        [{ method: 'recovery', timestamp: requestedS + 60 }],
+        requested,
+        now
+      )
+    ).toBe(true)
+  })
+
   it.each([
     [
       'a password session',
@@ -79,6 +89,18 @@ describe('isRecentRecoverySession', () => {
     [
       'a timestamp in the future',
       [{ method: 'otp', timestamp: now + 60 }],
+      requested,
+      now,
+    ],
+    [
+      'a recovery sign-in older than the window',
+      [{ method: 'recovery', timestamp: requestedS + 1 }],
+      requested,
+      requestedS + 2 + RECOVERY_WINDOW_SECONDS,
+    ],
+    [
+      'an email-confirmation code sign-in',
+      [{ method: 'email/signup', timestamp: now - 10 }],
       requested,
       now,
     ],

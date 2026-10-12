@@ -23,9 +23,11 @@ import {
   createConfirmedUser,
   emailLinkTokenHash,
   env,
+  followDefaultTemplateLink,
   form,
   hasSessionCookie,
   redirectOf,
+  sentTokenHash,
   signedInClient,
   sql,
   testMaterialId,
@@ -82,13 +84,50 @@ describe('sign-up and email confirmation', () => {
     await signUp({}, form({ email, password: PASSWORD }))
 
     const browser = activate(new Browser()) // the link may open anywhere
-    const tokenHash = await emailLinkTokenHash('signup', email)
+    // Exactly the link the documented "Confirm signup" template renders.
+    const tokenHash = await sentTokenHash(email, 'confirmation_token')
     const target = await redirectOf(
-      confirmRoute(confirmUrl(tokenHash, 'signup'))
+      confirmRoute(confirmUrl(tokenHash, 'email'))
     )
 
     expect(target).toBe('/account')
     expect(hasSessionCookie(browser.names())).toBe(true)
+  })
+
+  it('handles a link from the DEFAULT template opened in the same browser', async () => {
+    const email = uniqueEmail('defaultsame')
+    const browser = activate(new Browser())
+    await signUp({}, form({ email, password: PASSWORD }))
+
+    const landing = await followDefaultTemplateLink(
+      await sentTokenHash(email, 'confirmation_token'),
+      'signup',
+      new URL('/auth/confirm', env.siteUrl).toString()
+    )
+    expect(landing.searchParams.get('code')).toBeTruthy()
+
+    const target = await redirectOf(confirmRoute(new NextRequest(landing)))
+    expect(target).toBe('/account')
+    expect(hasSessionCookie(browser.names())).toBe(true)
+  })
+
+  it('says "confirmed, sign in" for a DEFAULT-template link opened in another browser', async () => {
+    const email = uniqueEmail('defaultother')
+    activate(new Browser())
+    await signUp({}, form({ email, password: PASSWORD }))
+
+    const landing = await followDefaultTemplateLink(
+      await sentTokenHash(email, 'confirmation_token'),
+      'signup',
+      new URL('/auth/confirm', env.siteUrl).toString()
+    )
+    const browser = activate(new Browser()) // no PKCE verifier here
+    const target = await redirectOf(confirmRoute(new NextRequest(landing)))
+
+    // Not "invalid or expired": Supabase did confirm the address.
+    expect(target).toBe('/login?notice=confirmed')
+    expect(hasSessionCookie(browser.names())).toBe(false)
+    await expect(signedInClient(email)).resolves.toBeDefined()
   })
 
   it('sends a used or forged confirmation link to /login with a notice', async () => {
@@ -188,6 +227,31 @@ describe('changing the email address', () => {
     expect(data.user?.email).toBe(email)
     expect(data.user?.new_email).toBe(next)
   })
+
+  it('changes the address once the links to BOTH addresses are opened', async () => {
+    const email = uniqueEmail('bothlinks')
+    const user = await createConfirmedUser(email)
+    await signedInBrowser(email)
+    const next = uniqueEmail('arrived')
+    await changeEmail({}, form({ email: next }))
+
+    // "Secure email change" mails both addresses; the documented "Change
+    // email address" template renders each with its own token hash.
+    const toCurrent = await sentTokenHash(email, 'email_change_token_current')
+    const toNew = await sentTokenHash(email, 'email_change_token_new')
+
+    expect(
+      await redirectOf(confirmRoute(confirmUrl(toCurrent, 'email_change')))
+    ).toBe('/account')
+    const halfway = await admin.auth.admin.getUserById(user.id)
+    expect(halfway.data.user?.email, 'one link is not enough').toBe(email)
+
+    expect(
+      await redirectOf(confirmRoute(confirmUrl(toNew, 'email_change')))
+    ).toBe('/account')
+    const done = await admin.auth.admin.getUserById(user.id)
+    expect(done.data.user?.email).toBe(next)
+  })
 })
 
 describe('password reset', () => {
@@ -227,6 +291,33 @@ describe('password reset', () => {
       signedInClient(email, 'reset to this one')
     ).resolves.toBeDefined()
     await expect(signedInClient(email, PASSWORD)).rejects.toThrow()
+  })
+
+  it('accepts a reset link from the DEFAULT template, opened in the same browser', async () => {
+    const email = uniqueEmail('resetdefault')
+    await createConfirmedUser(email)
+    activate(new Browser())
+    await requestPasswordReset({}, form({ email }))
+
+    const redirectTo = new URL('/auth/confirm', env.siteUrl)
+    redirectTo.searchParams.set('next', '/reset-password')
+    const landing = await followDefaultTemplateLink(
+      await sentTokenHash(email, 'recovery_token'),
+      'recovery',
+      redirectTo.toString()
+    )
+    expect(await redirectOf(confirmRoute(new NextRequest(landing)))).toBe(
+      '/reset-password'
+    )
+
+    const state = await resetPassword(
+      {},
+      form({
+        newPassword: 'default template reset',
+        confirmPassword: 'default template reset',
+      })
+    )
+    expect(state).toEqual({ changed: true })
   })
 
   it('refuses an ordinary signed-in session, so it cannot bypass the current-password check', async () => {

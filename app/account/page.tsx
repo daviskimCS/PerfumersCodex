@@ -100,9 +100,10 @@ export default async function AccountPage() {
               <strong className="font-medium text-foreground break-words">
                 {pendingEmail}
               </strong>{' '}
-              is waiting for confirmation. It takes effect only once the emailed
-              link is opened — until then you sign in with the address above.
-              Requesting a different address below replaces this one.
+              is waiting for confirmation. It takes effect only once the links
+              emailed to both addresses are opened — until then you sign in with
+              the address above. Requesting a different address below replaces
+              this one.
             </FormNotice>
           ) : null}
 

@@ -376,9 +376,12 @@ short, before launch:
 2. Fill `/privacy` and `/terms` placeholders (contact email, Supabase region,
    governing law), read both, remove the draft notice.
 3. Accept Supabase's and Vercel's DPAs.
-4. Point the **Reset password** email template at
-   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.
-   Until then password reset does not work.
+4. Point **all three** email templates (Confirm signup, Change email address,
+   Reset password) at `/auth/confirm`, with the exact values in that file,
+   section 3 step 3. Each spells out its own `type=`; there is no
+   `{{ .Type }}` variable. Then, and only then, the auth settings in step 4
+   there (Confirm email, Secure email change, 8-character minimum, redirect
+   URLs limited to the two site domains).
 5. One lawyer review of the items marked ⚖️ in that file.
 
 ---

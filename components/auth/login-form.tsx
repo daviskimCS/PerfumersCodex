@@ -6,6 +6,7 @@ import { Suspense, useActionState, useState } from 'react'
 import { z } from 'zod'
 
 import { signIn } from '@/app/(auth)/actions'
+import { FormNotice } from '@/components/account/form-parts'
 import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
 import { Button } from '@/components/ui/button'
@@ -45,14 +46,27 @@ function clientErrorsFor(
 }
 
 /**
- * Notice for a failed email-confirmation link (`/auth/confirm` redirects here
- * with `?error=confirm`). Separate component so the `useSearchParams` read
+ * Notice for an email link that came back through `/auth/confirm`: a failed
+ * one (`?error=confirm`, `?error=reset`) or a confirmed one that could not
+ * sign this browser in (`?notice=confirmed`). Separate component so the `useSearchParams` read
  * sits under its own Suspense boundary and the rest of the page stays
  * prerenderable.
  */
 function ConfirmLinkNotice() {
   const searchParams = useSearchParams()
   const code = searchParams.get('error')
+
+  // `/auth/confirm` sends `?notice=confirmed` when Supabase accepted the
+  // link but it was opened in a different browser from the one that signed
+  // up, so there is no session to hand over: the address is confirmed and
+  // signing in is all that is left.
+  if (!code && searchParams.get('notice') === 'confirmed') {
+    return (
+      <FormNotice tone="info">
+        Your email address is confirmed. Sign in to continue.
+      </FormNotice>
+    )
+  }
   if (code !== 'confirm' && code !== 'reset') return null
 
   return (

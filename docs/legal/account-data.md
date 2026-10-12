@@ -102,19 +102,47 @@ Not held anywhere: payment data, phone numbers, addresses, Google tokens
    `smtp.resend.com`, port 465, user `resend`, password a Resend API key,
    sender `no-reply@auth.perfumerscodex.com`. Supabase then caps sending at
    30 per hour; raise it under Authentication → Rate Limits if needed.
-3. **Fill the placeholders on `/privacy` and `/terms`:** contact email (a
+3. **Point all three email templates at `/auth/confirm`** (after step 2, so
+   the emails can actually leave). Supabase → Authentication → Emails →
+   Templates. In each, replace `{{ .ConfirmationURL }}` in the link with the
+   value below. These are the only values to use, for every email:
+
+   | Template             | Link                                                                                         |
+   | -------------------- | -------------------------------------------------------------------------------------------- |
+   | Confirm signup       | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`                         |
+   | Change email address | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change`                  |
+   | Reset password       | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password` |
+
+   Type the `type=` value out as shown. Supabase templates have **no**
+   `{{ .Type }}` variable: it renders as nothing, the link arrives as
+   `type=`, and every confirmation lands on "invalid or expired" (checked
+   against the auth server's template code and by rendering it). With "Secure
+   email change" on, the Change email address template goes to both the old
+   and the new address, each with its own token, so the one link value covers
+   both. If a template is left at its default the app still copes (it
+   confirms the address and asks the reader to sign in when the link is opened
+   in another browser), but the values above sign the reader straight in.
+
+4. **Auth settings, once steps 2 and 3 are done** (turning on Confirm email
+   before real email works locks out everyone outside the team):
+   - Sign In / Providers → Email: **Confirm email** on, **Secure email
+     change** on, **minimum password length 8** (the app's own forms and
+     validation already require 8).
+   - URL Configuration: Site URL `https://perfumerscodex.com`; Redirect URLs
+     only `https://perfumerscodex.com/**` and `https://www.perfumerscodex.com/**`
+     (no `*.vercel.app` wildcard). The app's email links and the Google
+     callback all live under these.
+   - The local `supabase/config.toml` mirrors these and is what the tests run
+     against; it is never pushed to production.
+
+5. **Fill the placeholders on `/privacy` and `/terms`:** contact email (a
    real inbox you read), the Supabase project region (Project Settings →
    General), governing law. Then read both end to end and remove the draft
    notice (`components/legal/legal-page.tsx`).
-4. **Accept the processor terms:** Supabase's DPA (offered from the
+6. **Accept the processor terms:** Supabase's DPA (offered from the
    dashboard's organization settings and at supabase.com/legal/dpa) and
    Vercel's DPA (part of its terms; keep a copy for your records).
-5. **Password reset email template:** Supabase → Authentication → Email
-   Templates → Reset password: link to
-   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.
-   Without this, reset links use the default PKCE link and the reset page
-   will refuse them.
-6. **Google consent screen** (with maker-todo item 4): app name "Perfumers
+7. **Google consent screen** (with maker-todo item 4): app name "Perfumers
    Codex", support email, home page `https://perfumerscodex.com`, privacy
    `https://perfumerscodex.com/privacy`, terms
    `https://perfumerscodex.com/terms`, authorised domain
@@ -123,7 +151,7 @@ Not held anywhere: payment data, phone numbers, addresses, Google tokens
    picture). These scopes are non-sensitive, so verification is brand verification only (no
    security assessment). The gate must be down, or Google's reviewers cannot
    open the privacy page.
-7. **Keep a breach plan** (below) somewhere you will find it.
+8. **Keep a breach plan** (below) somewhere you will find it.
 
 ### ⚖️ For a lawyer (one short review covers all of it)
 

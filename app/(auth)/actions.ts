@@ -134,8 +134,9 @@ export async function signIn(
  *
  *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password
  *
- * (docs/maker-todo.md). `redirectTo` is still passed so the default template
- * lands somewhere on this site rather than on the Supabase project URL.
+ * (docs/legal/account-data.md, section 3). `redirectTo` is still passed so
+ * the default template also works: Supabase verifies the link itself and
+ * sends the reader to `/auth/confirm?code=…&next=/reset-password`.
  *
  * Success is reported for every well-formed address. Supabase itself answers
  * "sent" for an address with no account, so that nobody can use this form to

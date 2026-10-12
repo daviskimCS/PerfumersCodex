@@ -95,3 +95,53 @@ export async function testMaterialId(): Promise<string> {
 export function hasSessionCookie(names: string[]): boolean {
   return names.some((name) => /^sb-.+-auth-token(\.\d+)?$/.test(name))
 }
+
+/** The `auth.users` columns that hold what an email's `{{ .TokenHash }}` renders. */
+type SentTokenColumn =
+  | 'confirmation_token'
+  | 'recovery_token'
+  | 'email_change_token_new'
+  | 'email_change_token_current'
+
+/**
+ * The token hash in the email Supabase just sent to `email`'s account: the
+ * exact value its template puts in `{{ .TokenHash }}` (the auth server stores
+ * the hash in these columns and renders the template from them). Unlike
+ * `emailLinkTokenHash` it mints nothing, so it tests the email the action
+ * really triggered.
+ */
+export async function sentTokenHash(
+  email: string,
+  column: SentTokenColumn
+): Promise<string> {
+  const rows = await sql<{ token: string | null }[]>`
+    select ${sql(column)} as token from auth.users where email = ${email}
+  `
+  const token = rows[0]?.token
+  if (!token) throw new Error(`No ${column} on file for ${email}`)
+  return token
+}
+
+/**
+ * Follow a link as Supabase's DEFAULT email template writes it
+ * (`{{ .ConfirmationURL }}`: the auth server's own `/verify`), and return the
+ * request it sends the reader on to, i.e. what `/auth/confirm` receives.
+ */
+export async function followDefaultTemplateLink(
+  tokenHash: string,
+  type: 'signup' | 'recovery' | 'email_change',
+  redirectTo: string
+): Promise<URL> {
+  const url = new URL(`${env.supabaseUrl}/auth/v1/verify`)
+  url.searchParams.set('token', tokenHash)
+  url.searchParams.set('type', type)
+  url.searchParams.set('redirect_to', redirectTo)
+  const response = await fetch(url, { redirect: 'manual' })
+  const location = response.headers.get('location')
+  expect(
+    response.status,
+    'the auth server redirects onward'
+  ).toBeGreaterThanOrEqual(300)
+  expect(location, 'with a Location header').toBeTruthy()
+  return new URL(location!)
+}

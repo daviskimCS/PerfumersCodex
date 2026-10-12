@@ -3,7 +3,11 @@
 # is configured in the Supabase dashboard (docs/maker-todo.md). Where a value
 # here differs from the CLI default, it is set to mirror production so the
 # tests exercise the same behaviour (email confirmation on, 8-character
-# passwords), and the reason is on the line above it.
+# passwords, secure email change), and the reason is on the line above it.
+#
+# NEVER `supabase link` + `supabase config push` this file to production: it
+# carries localhost URLs and a fake Google secret, and would overwrite the
+# dashboard's auth settings (security review 2026-10-12, item 9).
 #
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
@@ -231,6 +235,8 @@ web3 = 30
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
+# On, as in production ("Secure email change"): a hijacked session cannot
+# quietly move the account to another address.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 # On, as in production: sign-up must not create a usable session by itself.
