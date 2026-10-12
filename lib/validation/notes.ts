@@ -26,10 +26,11 @@ import { z } from 'zod'
 /**
  * Longest note the editor will save.
  *
- * There is no length constraint on `user_notes.body` in the database — it is a
- * plain `text` column — so this cap exists to keep a runaway paste from
- * becoming an unbounded write, and to give the reader a number before the
- * request rather than an error after it. Counted against the *raw* text, so the
+ * The database holds the same ceiling (`user_notes_body_length_check`,
+ * migration 0010), because a signed-in reader can write `user_notes` through
+ * the Data API without going through this schema. Change both together. This
+ * cap is still what gives the reader a number before the request rather than
+ * an error after it. Counted against the *raw* text, so the
  * character counter in the textarea and the refusal from the server are the
  * same arithmetic.
  */

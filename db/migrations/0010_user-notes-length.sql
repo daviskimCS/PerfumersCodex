@@ -1,0 +1,11 @@
+-- Cap a private note's length in the database, not only in the form.
+--
+-- lib/validation/notes.ts caps a note at NOTE_MAX_LENGTH (4000) characters,
+-- but that schema only binds the server action. user_notes is reachable
+-- through the Data API by any signed-in reader holding their own token
+-- (RLS lets them write their own rows), so without this a single account
+-- could store notes of any size and fill the free-tier database.
+--
+-- Fails loudly if a longer note already exists; none should, since every
+-- note so far came through the form.
+ALTER TABLE "user_notes" ADD CONSTRAINT "user_notes_body_length_check" CHECK (char_length("user_notes"."body") <= 4000);
