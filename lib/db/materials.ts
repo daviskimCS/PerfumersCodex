@@ -379,6 +379,29 @@ export async function countMaterials(): Promise<number> {
 }
 
 /**
+ * The slug of one published material with a stored structure drawing, picked
+ * at random, for the homepage's structure plate; null when none exists.
+ *
+ * Only the slug: the page loads the drawing through `getMaterialBySlug`, so
+ * what the plate shows is the reviewed, fingerprint-checked drawing and
+ * nothing a bare join could let through.
+ */
+export async function getRandomDrawnMaterialSlug(): Promise<string | null> {
+  const rows = await db
+    .select({ slug: materials.slug })
+    .from(materials)
+    .innerJoin(
+      materialStructureDrawings,
+      eq(materialStructureDrawings.materialId, materials.id)
+    )
+    .where(and(materialIsPublished(), isNotNull(materials.smiles)))
+    .orderBy(sql`random()`)
+    .limit(1)
+
+  return rows[0]?.slug ?? null
+}
+
+/**
  * One material exactly as its page would render it, IGNORING the review gate
  * (soft-deleted rows are still excluded). `similar` lists every live
  * neighbor; `unpublishedNeighbors` names the ones readers cannot see.

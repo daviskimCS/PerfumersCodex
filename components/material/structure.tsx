@@ -1,4 +1,6 @@
-import { isSafeStructureSvg } from '@/lib/structure/svg'
+import type { CSSProperties } from 'react'
+
+import { isSafeStructureSvg, withDrawOrder } from '@/lib/structure/svg'
 import type { StructureDrawing } from '@/lib/types'
 
 import { StructurePlate } from './structure-plate'
@@ -44,15 +46,22 @@ export function MaterialStructure({
     )
   }
 
+  // The bonds draw themselves in once, in SMILES order (`structure-draw` in
+  // globals.css): pure CSS, so it needs no client JavaScript, and it stops
+  // for readers who ask for reduced motion.
+  const { svg, bonds } = withDrawOrder(structure.svg)
+
   return (
     <StructurePlate>
       <div
         role="img"
         aria-label={`Two-dimensional structure diagram of ${name}`}
-        className="size-full text-foreground [&>svg]:size-full"
+        className="structure-draw size-full text-foreground [&>svg]:size-full"
+        style={{ '--n': Math.max(bonds, 1) } as CSSProperties}
         // RDKit's own output, drawn by the seed from a SMILES string this app
-        // stored, narrowed by lib/structure/svg.ts and re-checked above.
-        dangerouslySetInnerHTML={{ __html: structure.svg }}
+        // stored, narrowed by lib/structure/svg.ts and re-checked above; the
+        // draw order adds only `pathLength` and a number to each bond.
+        dangerouslySetInnerHTML={{ __html: svg }}
       />
     </StructurePlate>
   )

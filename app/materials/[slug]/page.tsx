@@ -13,8 +13,7 @@ import { SafetyPanel } from '@/components/material/safety-panel'
 import { SimilarMaterialsModule } from '@/components/material/similar-materials'
 import { SourcesPanel } from '@/components/material/sources-panel'
 import { MaterialStructure } from '@/components/material/structure'
-import { MaterialTabs } from '@/components/material/tabs'
-import { parseMaterialTab } from '@/components/material/tabs-config'
+import { MaterialSections } from '@/components/material/sections'
 import { UsagePanel } from '@/components/material/usage-panel'
 import {
   NoteEditor,
@@ -40,7 +39,6 @@ const getMaterial = cache(getMaterialBySlug)
 
 interface MaterialRouteProps {
   params: Promise<{ slug: string }>
-  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 /**
@@ -93,19 +91,11 @@ export async function generateMetadata({
   }
 }
 
-export default async function MaterialPage({
-  params,
-  searchParams,
-}: MaterialRouteProps) {
-  const [{ slug }, query] = await Promise.all([params, searchParams])
+export default async function MaterialPage({ params }: MaterialRouteProps) {
+  const { slug } = await params
   const material = await getMaterial(slug)
   // A wrong slug is a 404, not an error state (docs/architecture.md D4).
   if (!material) notFound()
-
-  // Read on the server so a deep link (?tab=sources#source-2) arrives with the
-  // right panel already in the HTML — the tab component only takes it from
-  // here and keeps the URL in step afterwards.
-  const initialTab = parseMaterialTab(query.tab)
 
   return (
     <article className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -177,20 +167,19 @@ export default async function MaterialPage({
       <MaterialIdentity material={material} />
 
       <div className="mt-14">
-        <MaterialTabs
-          initialTab={initialTab}
-          panels={{
+        <MaterialSections
+          sections={{
+            olfactive: (
+              <OlfactivePanel
+                olfactive={material.olfactive}
+                sources={material.sources}
+              />
+            ),
             safety: (
               <SafetyPanel
                 usageLimits={material.usageLimits}
                 ifraAbsences={material.ifraAbsences}
                 hazards={material.hazards}
-                sources={material.sources}
-              />
-            ),
-            olfactive: (
-              <OlfactivePanel
-                olfactive={material.olfactive}
                 sources={material.sources}
               />
             ),
@@ -206,8 +195,8 @@ export default async function MaterialPage({
         />
       </div>
 
-      {/* Structure-derived context. Below the tabs, not inside them: none of
-          it is a cited fact, and none of it is editorial. */}
+      {/* Structure-derived context. After the sections, not among them: none
+          of it is a cited fact, and none of it is editorial. */}
       <ComputedPropertiesModule
         computed={material.computed}
         smiles={material.smiles}
@@ -221,8 +210,8 @@ export default async function MaterialPage({
           with the human-written description (AGENTS.md). */}
       <OdorPredictionsModule predictions={material.odorPredictions} />
 
-      {/* W6-A mounts here: the reader's own private note, below the tabs and
-          outside every panel, so nothing about the layout can put a personal
+      {/* W6-A mounts here: the reader's own private note, below the sections
+          and outside every panel, so nothing about the layout can put a personal
           scribble next to a cited fact (AGENTS.md). Its own Suspense boundary
           keeps the session and note round trips off the critical path — the
           material renders as soon as the database answers. Mounted *last* on

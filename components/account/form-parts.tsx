@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
@@ -26,21 +27,38 @@ export interface FieldProps extends Omit<
   hint?: ReactNode
 }
 
-export function Field({ id, label, error, hint, ...inputProps }: FieldProps) {
+export function Field({
+  id,
+  label,
+  error,
+  hint,
+  type,
+  ...inputProps
+}: FieldProps) {
   const errorId = `${id}-error`
   const hintId = `${id}-hint`
 
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        // Exactly one of the two is rendered at a time, so exactly one is
-        // described — a stale reference would read as an empty description.
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
-        {...inputProps}
-      />
+      {/* Exactly one of error and hint is rendered at a time, so exactly one
+          is described — a stale reference would read as an empty one. */}
+      {type === 'password' ? (
+        <PasswordInput
+          id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
+          {...inputProps}
+        />
+      ) : (
+        <Input
+          id={id}
+          type={type}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
+          {...inputProps}
+        />
+      )}
       {/* `role="alert"` because the message is *inserted* on blur, when focus
           has already moved to the next control — an `aria-describedby` link
           alone is only read when the field it describes takes focus, so the

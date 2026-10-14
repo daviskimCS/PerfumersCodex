@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { adaptStructureSvg, isSafeStructureSvg } from './svg'
+import { adaptStructureSvg, isSafeStructureSvg, withDrawOrder } from './svg'
 
 /** A trimmed copy of what RDKit 2025.03 emits for one bond and one label. */
 const RAW = `<?xml version='1.0' encoding='iso-8859-1'?>
@@ -101,5 +101,37 @@ describe('isSafeStructureSvg', () => {
     ['an empty string', ''],
   ])('rejects %s', (_label, svg) => {
     expect(isSafeStructureSvg(svg)).toBe(false)
+  })
+})
+
+describe('withDrawOrder', () => {
+  const adapted = adaptStructureSvg(RAW)!
+  const twoBonds = adapted.replace(
+    '</svg>',
+    "<path class='bond-1 atom-1 atom-2' d='M 1,2 L 3,4' style='fill:none' /></svg>"
+  )
+
+  it('numbers bonds in document order and counts them', () => {
+    const { svg, bonds } = withDrawOrder(twoBonds)
+    expect(bonds).toBe(2)
+    expect(svg).toContain(
+      "<path pathLength='1' class='bond-0 atom-0 atom-1' d='M 143.9,350.5 L 235.2,293.7' style='--i:0;fill:none"
+    )
+    expect(svg).toContain(
+      "class='bond-1 atom-1 atom-2' d='M 1,2 L 3,4' style='--i:1;fill:none'"
+    )
+  })
+
+  it('leaves atom labels and everything else untouched', () => {
+    const { svg } = withDrawOrder(adapted)
+    expect(svg).toContain(
+      "<path class='atom-2' d='M 300,100 L 310,110' fill='#FF0000' />"
+    )
+    expect(svg.replace(/ pathLength='1'|--i:\d+;/g, '')).toBe(adapted)
+  })
+
+  it('counts nothing in a drawing with no bonds', () => {
+    const single = adapted.replace(/<path class='bond-[^>]*>/, '')
+    expect(withDrawOrder(single)).toEqual({ svg: single, bonds: 0 })
   })
 })

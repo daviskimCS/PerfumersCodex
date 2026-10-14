@@ -11,6 +11,7 @@ import { GoogleAuth } from '@/components/auth/google-button'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import {
   initialAuthFormState,
@@ -190,10 +191,9 @@ export function SignupForm() {
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input
+                <PasswordInput
                   id="signup-password"
                   name="password"
-                  type="password"
                   autoComplete="new-password"
                   value={values.password}
                   onChange={(event) =>

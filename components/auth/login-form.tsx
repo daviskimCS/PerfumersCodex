@@ -11,6 +11,7 @@ import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import {
   initialAuthFormState,
@@ -224,10 +225,9 @@ export function LoginForm() {
                 Forgot your password?
               </Link>
             </div>
-            <Input
+            <PasswordInput
               id="login-password"
               name="password"
-              type="password"
               autoComplete="current-password"
               value={values.password}
               onChange={(event) => handleChange('password')(event.target.value)}

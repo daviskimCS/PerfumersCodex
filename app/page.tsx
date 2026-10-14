@@ -1,17 +1,23 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 import { HomeSearchButton } from '@/components/home-search'
+import {
+  HomeStructure,
+  HomeStructureFallback,
+} from '@/components/home-structure'
 import { Button } from '@/components/ui/button'
 import { listFamilies } from '@/lib/db/families'
-import { countMaterials } from '@/lib/db/materials'
+import { countMaterials, getRandomDrawnMaterialSlug } from '@/lib/db/materials'
 
 /**
  * The homepage (W5-A / P2-H) — the real one, replacing the scaffold's
  * "under construction" placeholder.
  *
  * Four things and no more: what this is, a way into search, a way into the
- * taxonomy, and an honest count. The copy is `docs/overview.md`'s own
+ * taxonomy, and an honest count. Beside them, one published structure drawing
+ * itself in (`components/home-structure.tsx`), the site's one image. The copy is `docs/overview.md`'s own
  * description with the self-praise trimmed; nothing here claims a capability
  * the corpus does not currently have, which is why the count line reads
  * differently while the reference is still empty.
@@ -52,46 +58,58 @@ const PRINCIPLES = [
 ]
 
 export default async function HomePage() {
-  const [materialCount, families] = await Promise.all([
+  const [materialCount, families, structureSlug] = await Promise.all([
     countMaterials(),
     listFamilies(),
+    getRandomDrawnMaterialSlug(),
   ])
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
-      <section className="max-w-measure">
-        <h1 className="font-display text-4xl md:text-5xl">Perfumers Codex</h1>
+      <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between md:gap-12">
+        <section className="max-w-measure">
+          <h1 className="font-display text-4xl md:text-5xl">Perfumers Codex</h1>
 
-        <p className="mt-6 text-lg text-muted-foreground">
-          A curated, citation-driven aromachemical reference for working
-          perfumers: one well-cited source of truth for the identity, safety
-          data, olfactive character and usage of the aromachemicals and naturals
-          used in modern perfumery.
-        </p>
+          <p className="mt-6 text-lg text-muted-foreground">
+            A curated, citation-driven aromachemical reference for working
+            perfumers: one well-cited source of truth for the identity, safety
+            data, olfactive character and usage of the aromachemicals and
+            naturals used in modern perfumery.
+          </p>
 
-        {/* The honest number. An empty corpus says so rather than boasting
+          {/* The honest number. An empty corpus says so rather than boasting
             about the citation discipline of nothing. */}
-        <p className="mt-6 font-mono text-sm">
-          {materialCount === 0 ? (
-            <span className="text-muted-foreground">
-              No materials published yet — every entry is researched, written,
-              and cited by hand.
-            </span>
-          ) : (
-            <>
-              {materialCount} {materialCount === 1 ? 'material' : 'materials'},{' '}
-              <span className="text-muted-foreground">every fact cited.</span>
-            </>
-          )}
-        </p>
+          <p className="mt-6 font-mono text-sm">
+            {materialCount === 0 ? (
+              <span className="text-muted-foreground">
+                No materials published yet — every entry is researched, written,
+                and cited by hand.
+              </span>
+            ) : (
+              <>
+                {materialCount} {materialCount === 1 ? 'material' : 'materials'}
+                ,{' '}
+                <span className="text-muted-foreground">every fact cited.</span>
+              </>
+            )}
+          </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-2">
-          <HomeSearchButton />
-          <Button asChild variant="outline" size="lg">
-            <Link href="/materials">Browse the reference</Link>
-          </Button>
-        </div>
-      </section>
+          <div className="mt-8 flex flex-wrap items-center gap-2">
+            <HomeSearchButton />
+            <Button asChild variant="outline" size="lg">
+              <Link href="/materials">Browse the reference</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* A random published structure drawing itself in. Hidden until
+            something with a structure is published. */}
+        {structureSlug === null ? null : (
+          <Suspense fallback={<HomeStructureFallback />}>
+            <HomeStructure slug={structureSlug} />
+          </Suspense>
+        )}
+      </div>
 
       <section
         aria-labelledby="principles-heading"

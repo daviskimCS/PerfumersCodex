@@ -32,6 +32,7 @@ export function OlfactivePanel({
     return (
       <PanelSection title="Olfactive description" icon={SprayCan}>
         <EmptyState
+          compact
           icon={SprayCan}
           headingLevel={3}
           title="No olfactive description yet"
