@@ -1,8 +1,3 @@
-'use client'
-
-import type { MouseEvent } from 'react'
-
-import { useMaterialTabs } from './tabs'
 import { sourceAnchorId } from './citations'
 
 /**
@@ -13,39 +8,17 @@ import { sourceAnchorId } from './citations'
  * contract in `lib/db/materials.ts`). `components/material/citations.tsx`
  * resolves a `sourceId` to that number; this component only renders it.
  *
- * The target lives in the Sources *tab*, which Radix has not mounted while a
- * reader is on Safety — so a bare `#source-3` anchor would point at nothing.
- * With JS, the click switches tabs and then scrolls. Without it, the `href`
- * is a real URL (`?tab=sources#source-3`) that the server renders directly,
- * so the superscript works either way.
+ * The Sources list is on the same page (`sections.tsx`), so this is a plain
+ * in-page link, like a footnote. Its entry is focusable and highlights as the
+ * `:target`, so a keyboard reader who follows "[3]" lands at source 3. Older
+ * links of the form `?tab=sources#source-3` still land, because the query is
+ * ignored and the fragment does the work.
  */
 export function CitationLink({ number }: { number: number }) {
-  const tabs = useMaterialTabs()
-  const anchor = sourceAnchorId(number)
-
-  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    // Leave modified clicks alone — opening a citation in a new tab should
-    // still hit the server URL.
-    if (
-      tabs === null ||
-      event.defaultPrevented ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      event.button !== 0
-    ) {
-      return
-    }
-    event.preventDefault()
-    tabs.show('sources', anchor)
-  }
-
   return (
     <sup className="ms-0.5 text-2xs">
       <a
-        href={`?tab=sources#${anchor}`}
-        onClick={handleClick}
+        href={`#${sourceAnchorId(number)}`}
         aria-label={`Source ${number}`}
         className="rounded-sm px-px text-brand underline-offset-2 hover:underline"
       >

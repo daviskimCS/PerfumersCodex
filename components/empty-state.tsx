@@ -59,6 +59,12 @@ export interface EmptyStateProps {
    * the page, as on the 404.
    */
   headingLevel?: 1 | 2 | 3
+  /**
+   * A one-line statement inside a section that has others around it, such as
+   * an empty part of a material page: left-aligned, no icon, small type. The
+   * default block is for an empty state that is the main content of its area.
+   */
+  compact?: boolean
   /** Escape hatch for placement only (width, spacing). Not for restyling. */
   className?: string
 }
@@ -69,9 +75,20 @@ export function EmptyState({
   action,
   icon: Icon,
   headingLevel = 2,
+  compact = false,
   className,
 }: EmptyStateProps) {
   const Heading = HEADING_TAGS[headingLevel]
+
+  if (compact) {
+    return (
+      <div className={cn('max-w-measure', className)}>
+        <Heading className="text-base">{title}</Heading>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        {action ? <div className="mt-3">{action}</div> : null}
+      </div>
+    )
+  }
 
   return (
     <div

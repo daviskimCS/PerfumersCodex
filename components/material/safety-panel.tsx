@@ -176,6 +176,7 @@ export function SafetyPanel({
         {usageLimits.length === 0 && ifraAbsences.length === 0 ? (
           // Neither a limit nor a verified absence: nobody has looked yet.
           <EmptyState
+            compact
             icon={ShieldAlert}
             headingLevel={3}
             title="No IFRA limits recorded yet"
@@ -279,6 +280,7 @@ export function SafetyPanel({
       <PanelSection title="GHS hazards" icon={TriangleAlert}>
         {hazards.length === 0 ? (
           <EmptyState
+            compact
             icon={TriangleAlert}
             headingLevel={3}
             title="No GHS hazard codes recorded"

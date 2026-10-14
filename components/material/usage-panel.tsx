@@ -83,6 +83,7 @@ export function UsagePanel({
       <PanelSection title="Usage guidance" icon={Pipette}>
         {usageGuidance === null ? (
           <EmptyState
+            compact
             icon={Droplet}
             headingLevel={3}
             title="No usage guidance recorded yet"
@@ -96,6 +97,7 @@ export function UsagePanel({
       <PanelSection title="Landmark uses" icon={Library}>
         {landmarkUses.length === 0 ? (
           <EmptyState
+            compact
             icon={Library}
             headingLevel={3}
             title="No landmark uses recorded yet"
