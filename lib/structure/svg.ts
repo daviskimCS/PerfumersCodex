@@ -45,9 +45,7 @@ export function adaptStructureSvg(raw: string): string | null {
   const start = raw.indexOf('<svg')
   if (start === -1) return null
 
-  const body = raw
-    .slice(start)
-    .replaceAll(/<!--[\s\S]*?-->/g, '')
+  const body = stripComments(raw.slice(start))
     .replace(/<rect\b[^>]*>\s*<\/rect>|<rect\b[^>]*\/>/, '')
     .replaceAll(/#000000(?![0-9a-f])/gi, 'currentColor')
 
@@ -60,6 +58,22 @@ export function adaptStructureSvg(raw: string): string | null {
 
   // Line breaks between elements are RDKit's formatting, not content.
   return (openTag + body.slice(tagEnd)).replaceAll(/>\s+</g, '><').trim()
+}
+
+/**
+ * Removes comments until none is left. One pass is not enough: removing
+ * `<!---->` from `<!<!---->-- x -->` joins the pieces around it into a new
+ * comment opener. RDKit never nests them, so on its output this stops after
+ * the first pass and returns what one pass did. `isSafeStructureSvg` refuses
+ * any leftover `<!` as well; this keeps the adapter honest on its own.
+ */
+function stripComments(svg: string): string {
+  let current = svg
+  for (;;) {
+    const next = current.replaceAll(/<!--[\s\S]*?-->/g, '')
+    if (next === current) return current
+    current = next
+  }
 }
 
 /** The only elements RDKit's drawer emits for a structure (2025.03). */
