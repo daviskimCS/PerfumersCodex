@@ -1,12 +1,16 @@
 'use client'
 
 import { Suspense, useActionState } from 'react'
+import { Roboto } from 'next/font/google'
 import { useSearchParams } from 'next/navigation'
 
 import { signInWithGoogle } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { initialAuthFormState } from '@/lib/validation/auth'
+
+// Downloaded at build time and served from this site like every other font,
+// so no reader's browser asks Google for it. Only the auth pages load it.
+const roboto = Roboto({ weight: '500', subsets: ['latin'], display: 'swap' })
 
 /**
  * "Continue with Google" — the third-party half of both auth pages (W7-A).
@@ -26,10 +30,14 @@ import { initialAuthFormState } from '@/lib/validation/auth'
  * template pointed at it. Nothing here changes when the provider is turned
  * on.
  *
- * No brand glyph. AGENTS.md limits imagery to structure diagrams, and a
- * four-colour Google "G" is exactly the kind of mark that reads wrong on one
- * of the two grounds this site has to look right on. The word "Google" is the
- * affordance.
+ * **Google's own button, not ours.** Readers recognise the standard "Continue
+ * with Google" button and trust it; a restyled one reads like a phishing
+ * page. So this one follows Google's branding guidelines rather than the
+ * site's tokens: the unaltered four-colour "G", Roboto Medium 14/20, the
+ * white (light) or #131314 (dark) fill with Google's grey outline, 40px tall,
+ * 12px padding. Those exact values are Google's, which is why they are
+ * literals here and nowhere else. It is the one brand mark on the site,
+ * allowed beside the structure diagrams because Google requires it.
  */
 
 /**
@@ -136,22 +144,52 @@ function GoogleForm({
         </div>
       )}
 
-      <Button
+      <button
         type="submit"
-        variant="outline"
-        size="lg"
         // Disabled only while the request is in flight: a second submit would
         // start a second PKCE flow and abandon the first one's verifier.
         disabled={pending}
-        className="w-full"
+        className={`${roboto.className} flex h-10 w-full items-center justify-center gap-3 rounded-[4px] border border-[#747775] bg-white px-3 text-sm leading-5 tracking-[0.25px] text-[#1F1F1F] transition-colors outline-none hover:bg-[#EEEEEE] focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-60 dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#262627]`}
       >
-        {pending ? 'Taking you to Google…' : 'Continue with Google'}
-      </Button>
+        <GoogleG />
+        <span>
+          {pending ? 'Taking you to Google…' : 'Continue with Google'}
+        </span>
+      </button>
 
       <p className="text-sm text-muted-foreground">
         The same button either way — if you haven’t used Google here before, it
         creates your account.
       </p>
     </form>
+  )
+}
+
+/** Google's "G", exactly as its brand kit draws it: never recoloured. */
+function GoogleG() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 48 48"
+      className="size-5 shrink-0"
+    >
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
   )
 }

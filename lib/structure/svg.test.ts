@@ -43,6 +43,16 @@ describe('adaptStructureSvg', () => {
     expect(root).toContain("viewBox='0 0 640 480'")
   })
 
+  it('leaves no comment behind when removing one would assemble another', () => {
+    const nested = RAW.replace(
+      '<!-- END OF HEADER -->',
+      '<!<!---->-- smuggled --><!-<!---->- also -->'
+    )
+    const out = adaptStructureSvg(nested)
+    expect(out).not.toContain('<!')
+    expect(out).toBe(adapted)
+  })
+
   it('returns null for input that is not an SVG', () => {
     expect(adaptStructureSvg('RDKit error')).toBeNull()
   })
