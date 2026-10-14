@@ -36,7 +36,7 @@ export function MaterialSections({
     <div className="md:grid md:grid-cols-[9rem_minmax(0,1fr)] md:gap-12">
       <nav
         aria-label="On this page"
-        className="sticky top-14 z-10 -mx-gutter mb-10 border-b border-border bg-background/95 px-gutter backdrop-blur md:static md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none"
+        className="sticky top-14 z-10 -mx-gutter mb-10 border-b border-border bg-background px-gutter md:static md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:px-0"
       >
         <div className="md:sticky md:top-24">
           <p className="hidden font-mono text-xs tracking-widest text-muted-foreground uppercase md:block">

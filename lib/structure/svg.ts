@@ -164,3 +164,28 @@ export function isSafeStructureSvg(svg: string): boolean {
   }
   return roots === 1
 }
+
+/**
+ * Numbers the bonds of a stored drawing so the page can draw them one after
+ * another, in the order RDKit emitted them, which is the order the SMILES
+ * string walks the molecule. Each bond path gets `pathLength='1'` (so one CSS
+ * dash covers any bond, however long RDKit drew it) and a `--i` custom
+ * property ahead of its own inline style. Returns the markup and the bond
+ * count, which the wrapper passes on as `--n` so every molecule takes the
+ * same time to draw whatever its size.
+ *
+ * Display only. The stored drawing, and so the review fingerprint, never
+ * changes: this runs on the way out to the page, after `isSafeStructureSvg`
+ * has accepted the stored markup, and adds nothing but a fixed attribute and
+ * a number. A path without the `style` RDKit always gives a bond is left
+ * alone and simply appears with the rest.
+ */
+export function withDrawOrder(svg: string): { svg: string; bonds: number } {
+  let bonds = 0
+  const numbered = svg.replaceAll(
+    /<path class='bond-([^']*)' d='([^']*)' style='/g,
+    (_match, bondClass: string, d: string) =>
+      `<path pathLength='1' class='bond-${bondClass}' d='${d}' style='--i:${bonds++};`
+  )
+  return { svg: numbered, bonds }
+}

@@ -480,7 +480,8 @@
   ); /* #7c7873 — SC 1.4.11: 3.40:1 over the
      texture, which LIGHTENS the dark page rather than darkening it, so the
      worst case is the brightest crest. This is the tightest pair in the
-     design — re-measure before touching the dark grain. */
+     design — re-measure before touching the dark grain. Since the turbulence
+     moves on its own layer the browser sweep finds 3.26:1 (BACKGROUND). */
 
   /* Dark mode's rails are already dark, so the chrome set forwards the page
      tokens rather than inverting. These read the inherited computed values,
@@ -624,10 +625,25 @@
      whole number of periods per tile, which is why the numbers are not
      exactly the ratio written above.
 
-     Motion is a slow horizontal drift, because that is how ripple fields
-     move. 120s and sub-pixel, so the page is alive without catching the eye
-     mid-sentence; prefers-reduced-motion holds it still and keeps the
-     texture.
+     THE TEXTURE MOVES ON ITS OWN LAYER. The two turbulence tiles live on a
+     fixed `body::before` that drifts with a transform, while the root keeps
+     the colour and the two gradients. Until 2026-10-14 the whole stack sat
+     here and drifted by animating `background-position`, 120s and sub-pixel.
+     Nobody could see that motion, yet it repainted the entire window on every
+     frame for as long as the page was open: about 90% of the main thread on
+     an idle page in headless Chromium, against roughly 0.1% for a transform,
+     which the compositor moves without repainting anything. So the drift is
+     now both visible (about 240px over 24s, the way wind moves a ripple
+     field) and nearly free.
+
+     The cost of the split: the rubber-band overscroll strip and anything the
+     compositor exposes mid-scroll show the colour and gradients without the
+     turbulence, because a fixed layer does not reach the canvas. The layer
+     overhangs the viewport by more than its travel, so its edges never show
+     while it moves. The order of the stack is unchanged (turbulence over
+     gradients over colour), so the composite is the same set of pixels at a
+     different alignment. prefers-reduced-motion holds the layer still and
+     keeps the texture.
 
      CONTRAST: every token that sits on this layer is verified against the
      COMPOSITED worst case, not the flat background — a texture silently
@@ -637,6 +653,14 @@
      wash periods, so every phase relationship between the two gradients
      occurs — read every pixel, and take the darkest in light mode, the
      LIGHTEST in dark. Figures are recorded in the palette blocks above.
+     Since the turbulence moved to its own layer (2026-10-14) the check is
+     taken from the browser instead: the page with its content hidden,
+     screenshotted at scroll offsets across 2,700px and at five points of the
+     drift, every pixel read. Before the split it agreed with the canvas
+     figures to within 0.06. After it, light mode is unchanged (5.13:1 for
+     --muted-foreground, 3.57:1 for --border-strong) and dark --border-strong
+     fell from 3.34:1 to 3.26:1, because the moving tiles now cross the bands
+     at alignments the fixed stack never produced. Still above 3:1.
      Re-run it after any change to a --grain-* token; edits that look purely
      cosmetic do move these numbers.
      ========================================================================== */
@@ -644,7 +668,6 @@
   html {
     background-color: var(--background);
     background-image:
-      var(--grain-chop), var(--grain-swell),
       linear-gradient(
         to bottom,
         transparent 0%,
@@ -663,33 +686,81 @@
       );
     background-repeat: repeat;
     background-size:
-      auto,
-      auto,
       100% 590px,
       100% 1370px;
-    animation: grain-drift 120s ease-in-out infinite alternate;
+  }
+
+  /* The moving turbulence (see THE TEXTURE MOVES above). z-index -1 puts it
+     above the root's canvas and below everything in the body, which has no
+     stacking context of its own. The overhang (160px) exceeds the furthest
+     the transform travels (120px), so no edge ever enters the viewport. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -160px;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--grain-chop), var(--grain-swell);
+    background-repeat: repeat;
+    animation: grain-drift 24s ease-in-out infinite alternate;
   }
 
   @keyframes grain-drift {
     from {
-      background-position:
-        0 0,
-        0 0,
-        0 0,
-        0 0;
+      transform: translate3d(-120px, -40px, 0);
     }
     to {
-      background-position:
-        70px -10px,
-        -90px 14px,
-        0 -22px,
-        0 16px;
+      transform: translate3d(120px, 60px, 0);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    html {
+    body::before {
       animation: none;
+    }
+  }
+
+  /* ==========================================================================
+     STRUCTURE DRAW — a material's 2D structure draws itself in
+
+     `withDrawOrder` (lib/structure/svg.ts) gives each bond `pathLength='1'`
+     and its place in RDKit's output as `--i`; the wrapper carries the bond
+     count as `--n`. Each bond's stroke is one dash slid into place, the
+     delays spread across a fixed 1.4s whatever the molecule's size, and the
+     atom labels and stereo notes fade in once the skeleton is there. Filled
+     wedge bonds have no stroke to slide, so they fade like the labels.
+
+     `both` fill and nothing set outside the keyframes: with no animation
+     (reduced motion, print) every path is simply drawn. Display only; the
+     stored markup and its review fingerprint are untouched.
+     ========================================================================== */
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    .structure-draw path[class^='bond-'] {
+      stroke-dasharray: 1;
+      animation: structure-bond 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+      animation-delay: calc(var(--i, 0) / var(--n, 1) * 1.4s + 0.15s);
+    }
+
+    .structure-draw path[class^='bond-'][style*='fill:currentColor'],
+    .structure-draw path:not([class^='bond-']) {
+      animation: structure-label 0.5s ease-out both;
+      animation-delay: 1.4s;
+    }
+  }
+
+  @keyframes structure-bond {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes structure-label {
+    from {
+      opacity: 0;
     }
   }
 
