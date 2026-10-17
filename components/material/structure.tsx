@@ -39,8 +39,8 @@ export function MaterialStructure({
     return (
       <StructurePlate>
         <p className="px-4 text-center text-xs text-muted-foreground">
-          Structure diagram unavailable. The SMILES string is on the Identity
-          list below.
+          Structure diagram unavailable. The SMILES string is under Names and
+          identifiers below.
         </p>
       </StructurePlate>
     )

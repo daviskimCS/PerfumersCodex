@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
  * Shaped block by block against `page.tsx` so the swap does not jump: the
  * breadcrumb, the hero's two columns (type label, title, CAS, family pills,
  * and the structure plate at the same `aspect-4/3` and the same widths at
- * every breakpoint), the Identity list, the "On this page" list and the first
+ * every breakpoint), the folded names-and-identifiers row, the "On this page" list and the first
  * section's rows.
  *
  * Every height here is a line-height off the type scale in globals.css —
@@ -30,6 +30,8 @@ export default function MaterialLoading() {
           <Skeleton className="mt-3 h-9 w-80 max-w-full md:h-10" />
           {/* CAS number (text-sm) */}
           <Skeleton className="mt-4 h-5 w-40 max-w-full" />
+          {/* Formula and weight (text-sm) */}
+          <Skeleton className="mt-1 h-5 w-48 max-w-full" />
           {/* Family badges (Badge is h-5, rounded-4xl) */}
           <div className="mt-6 flex flex-wrap gap-2">
             <Skeleton className="h-5 w-24 rounded-4xl" />
@@ -47,23 +49,10 @@ export default function MaterialLoading() {
         <Skeleton className="aspect-4/3 w-full rounded-xl sm:w-80 md:w-72 lg:w-80" />
       </div>
 
-      {/* Identity block */}
-      <div className="mt-12">
-        <div className="border-b border-border pb-2">
-          {/* Section heading (text-xl) */}
-          <Skeleton className="h-7 w-32" />
-        </div>
-        <div className="mt-5 space-y-4">
-          {Array.from({ length: 4 }, (_, row) => (
-            <div
-              key={row}
-              className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[13rem_minmax(0,1fr)]"
-            >
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-5 w-full max-w-md" />
-            </div>
-          ))}
-        </div>
+      {/* Names and identifiers: one folded summary row between rules */}
+      <div className="mt-12 flex items-center gap-2 border-y border-border py-3">
+        <Skeleton className="size-5 rounded-md" />
+        <Skeleton className="h-5 w-full max-w-xl" />
       </div>
 
       {/* Sections — the "On this page" list (a row on a phone, a column

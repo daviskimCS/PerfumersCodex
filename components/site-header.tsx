@@ -101,7 +101,13 @@ export function SiteHeader() {
             </Suspense>
           </nav>
 
-          <ThemeToggle />
+          {/* From `sm` up only. At phone width the rail held the wordmark,
+              search, two account glyphs and this three-button switch, and
+              the wordmark ran up against the search icon; below `sm` the
+              switch lives in the footer (components/site-footer.tsx). */}
+          <div className="max-sm:hidden">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>

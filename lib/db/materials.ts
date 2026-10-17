@@ -326,6 +326,42 @@ export async function listMaterialsByIds(
 }
 
 /**
+ * The stored structure drawings for a page of list cards, keyed by material
+ * id. Materials with no drawing (naturals, or not drawn yet) are simply
+ * absent from the map.
+ *
+ * Gated like every list read: a drawing comes back only for a published
+ * material, so the stored `content_hash` (which covers the drawing, through
+ * the fingerprint) vouches for it the same way it vouches for the card's
+ * name. One query per page of cards, whatever the page size.
+ */
+export async function listStructureThumbnails(
+  ids: string[]
+): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids)]
+  if (wanted.length === 0) return new Map()
+
+  const rows = await db
+    .select({
+      materialId: materialStructureDrawings.materialId,
+      svg: materialStructureDrawings.svg,
+    })
+    .from(materialStructureDrawings)
+    .innerJoin(
+      materials,
+      eq(materials.id, materialStructureDrawings.materialId)
+    )
+    .where(
+      and(
+        inArray(materialStructureDrawings.materialId, wanted),
+        materialIsPublished()
+      )
+    )
+
+  return new Map(rows.map((row) => [row.materialId, row.svg]))
+}
+
+/**
  * Every material a structure query can possibly match, with its SMILES.
  *
  * The substructure page (`/structure`) runs arbitrary SMARTS through RDKit.js

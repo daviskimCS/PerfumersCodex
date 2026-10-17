@@ -5,6 +5,7 @@ import { Search, SearchX } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { listMaterials } from '@/lib/db/materials'
 import { searchMaterials } from '@/lib/search'
 import type { SearchResult } from '@/lib/types'
 
@@ -57,7 +58,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   // An empty or whitespace-only query never reaches the database. (The
   // pipeline guards this too — belt and braces at the page boundary.)
-  const results = query === '' ? [] : await searchMaterials(query)
+  const [results, examples] = await Promise.all([
+    query === '' ? [] : searchMaterials(query),
+    query === '' ? exampleQueries() : [],
+  ])
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -104,9 +108,28 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           title="Search the reference"
           description="Look a material up by canonical name, trade name, IUPAC name, supplier name, or CAS number."
           action={
-            <Button asChild variant="outline" size="lg">
-              <Link href="/materials">Browse all materials</Link>
-            </Button>
+            <div className="flex flex-col items-center gap-6">
+              {examples.length === 0 ? null : (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-muted-foreground">Try one:</p>
+                  <ul className="flex flex-wrap justify-center gap-2">
+                    {examples.map((example) => (
+                      <li key={example}>
+                        <Link
+                          href={`/search?q=${encodeURIComponent(example)}`}
+                          className="inline-flex h-7 items-center rounded-full border border-border bg-surface px-3 text-sm transition-colors hover:border-border-strong hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                        >
+                          {example}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <Button asChild variant="outline" size="lg">
+                <Link href="/materials">Browse all materials</Link>
+              </Button>
+            </div>
           }
         />
       ) : results.length === 0 ? (
@@ -201,4 +224,23 @@ function ResultMeta({ result }: { result: SearchResult }) {
   }
 
   return null
+}
+
+/**
+ * Something to click on an empty search page, taken from what is published
+ * right now (so no example ever leads to "no results"): the three most
+ * recently updated names and the first one's CAS number, which shows that a
+ * CAS search works. Empty until something is published.
+ */
+async function exampleQueries(): Promise<string[]> {
+  const { items } = await listMaterials({
+    sort: 'recently-updated',
+    page: 1,
+    pageSize: 3,
+  })
+  const cas = items.find((material) => material.casNumber !== null)?.casNumber
+  return [
+    ...items.map((material) => material.canonicalName),
+    ...(cas ? [cas] : []),
+  ]
 }

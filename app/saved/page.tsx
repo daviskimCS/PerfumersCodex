@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/empty-state'
 import { MaterialCard, MaterialCardGrid } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
 import { getCurrentUserId, getSavedMaterials } from '@/lib/db/bookmarks'
+import { listStructureThumbnails } from '@/lib/db/materials'
 
 /**
  * The reader's own shelf (W5-B / P3-A).
@@ -43,6 +44,9 @@ export default async function SavedPage() {
   if (userId === null) redirect('/login')
 
   const materials = await getSavedMaterials()
+  const thumbnails = await listStructureThumbnails(
+    materials.map((material) => material.id)
+  )
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -81,7 +85,10 @@ export default async function SavedPage() {
           <MaterialCardGrid className="mt-4">
             {materials.map((material) => (
               <li key={material.id}>
-                <MaterialCard material={material} />
+                <MaterialCard
+                  material={material}
+                  structureSvg={thumbnails.get(material.id) ?? null}
+                />
               </li>
             ))}
           </MaterialCardGrid>

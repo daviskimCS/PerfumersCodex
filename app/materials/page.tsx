@@ -13,7 +13,11 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { listChemicalClasses } from '@/lib/db/chemical-classes'
 import { listFamilies } from '@/lib/db/families'
-import { DEFAULT_PAGE_SIZE, listMaterials } from '@/lib/db/materials'
+import {
+  listStructureThumbnails,
+  DEFAULT_PAGE_SIZE,
+  listMaterials,
+} from '@/lib/db/materials'
 import type { MaterialSort } from '@/lib/db/materials'
 
 /**
@@ -183,6 +187,12 @@ async function Browse({
     listChemicalClasses(),
   ])
 
+  // One more query, after the page of ids is known: the drawings for the
+  // cards' thumbnails.
+  const thumbnails = await listStructureThumbnails(
+    items.map((material) => material.id)
+  )
+
   const pageCount = Math.max(Math.ceil(total / DEFAULT_PAGE_SIZE), 1)
   const activeFamily = allFamilies.find(
     (family) => family.slug === query.family
@@ -218,7 +228,10 @@ async function Browse({
           <MaterialCardGrid className="mt-4">
             {items.map((material) => (
               <li key={material.id}>
-                <MaterialCard material={material} />
+                <MaterialCard
+                  material={material}
+                  structureSvg={thumbnails.get(material.id) ?? null}
+                />
               </li>
             ))}
           </MaterialCardGrid>

@@ -8,7 +8,11 @@ import { EmptyState } from '@/components/empty-state'
 import { MaterialCard, MaterialCardGrid } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
 import { getFamilyBySlug, listFamilies } from '@/lib/db/families'
-import { DEFAULT_PAGE_SIZE, listMaterials } from '@/lib/db/materials'
+import {
+  DEFAULT_PAGE_SIZE,
+  listMaterials,
+  listStructureThumbnails,
+} from '@/lib/db/materials'
 
 /**
  * One olfactive family (W5-A / P2-H).
@@ -79,6 +83,9 @@ export default async function FamilyPage({ params }: FamilyRouteProps) {
     }),
     listFamilies(),
   ])
+  const thumbnails = await listStructureThumbnails(
+    items.map((material) => material.id)
+  )
 
   const parent =
     family.parentSlug === null
@@ -168,7 +175,10 @@ export default async function FamilyPage({ params }: FamilyRouteProps) {
             <MaterialCardGrid className="mt-4">
               {items.map((material) => (
                 <li key={material.id}>
-                  <MaterialCard material={material} />
+                  <MaterialCard
+                    material={material}
+                    structureSvg={thumbnails.get(material.id) ?? null}
+                  />
                 </li>
               ))}
             </MaterialCardGrid>

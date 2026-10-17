@@ -13,6 +13,7 @@
 | [quality-checklist.md](./quality-checklist.md) | The "boring quality" bar the app is held to                                                                     |
 | [CHECKLIST.md](./CHECKLIST.md)                 | The agent work queue: Phases 1–3 (done) and Phase 4, what remains of v1                                         |
 | [maker-todo.md](./maker-todo.md)               | What only the maker can do — accounts, verification, editorial decisions — and the cited drafts awaiting review |
+| [ui-backlog.md](./ui-backlog.md)               | UI findings from the October 2026 audit left for later, ranked by impact                                        |
 | [waves/](./waves/)                             | The dispatch record: one file per wave, entry criteria, prompts, what was found                                 |
 
 These docs are canonical: they describe what the project is and how it's
