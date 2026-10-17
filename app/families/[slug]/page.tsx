@@ -8,11 +8,7 @@ import { EmptyState } from '@/components/empty-state'
 import { MaterialCard, MaterialCardGrid } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
 import { getFamilyBySlug, listFamilies } from '@/lib/db/families'
-import {
-  DEFAULT_PAGE_SIZE,
-  listMaterials,
-  listStructureThumbnails,
-} from '@/lib/db/materials'
+import { DEFAULT_PAGE_SIZE, listMaterials } from '@/lib/db/materials'
 
 /**
  * One olfactive family (W5-A / P2-H).
@@ -74,18 +70,16 @@ export default async function FamilyPage({ params }: FamilyRouteProps) {
   // A wrong slug is a 404, not an error state (docs/architecture.md D4).
   if (!family) notFound()
 
-  const [{ items, total }, allFamilies] = await Promise.all([
+  const [{ items, total, thumbnails }, allFamilies] = await Promise.all([
     listMaterials({
       familySlug: family.slug,
       sort: 'name',
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
+      withThumbnails: true,
     }),
     listFamilies(),
   ])
-  const thumbnails = await listStructureThumbnails(
-    items.map((material) => material.id)
-  )
 
   const parent =
     family.parentSlug === null

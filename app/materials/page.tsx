@@ -13,11 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { listChemicalClasses } from '@/lib/db/chemical-classes'
 import { listFamilies } from '@/lib/db/families'
-import {
-  listStructureThumbnails,
-  DEFAULT_PAGE_SIZE,
-  listMaterials,
-} from '@/lib/db/materials'
+import { DEFAULT_PAGE_SIZE, listMaterials } from '@/lib/db/materials'
 import type { MaterialSort } from '@/lib/db/materials'
 
 /**
@@ -175,23 +171,19 @@ async function Browse({
 }) {
   const query = readQuery(await searchParams)
 
-  const [{ items, total }, allFamilies, allClasses] = await Promise.all([
-    listMaterials({
-      sort: query.sort,
-      familySlug: query.family,
-      classSlug: query.class,
-      page: query.page,
-      pageSize: DEFAULT_PAGE_SIZE,
-    }),
-    listFamilies(),
-    listChemicalClasses(),
-  ])
-
-  // One more query, after the page of ids is known: the drawings for the
-  // cards' thumbnails.
-  const thumbnails = await listStructureThumbnails(
-    items.map((material) => material.id)
-  )
+  const [{ items, total, thumbnails }, allFamilies, allClasses] =
+    await Promise.all([
+      listMaterials({
+        sort: query.sort,
+        familySlug: query.family,
+        classSlug: query.class,
+        page: query.page,
+        pageSize: DEFAULT_PAGE_SIZE,
+        withThumbnails: true,
+      }),
+      listFamilies(),
+      listChemicalClasses(),
+    ])
 
   const pageCount = Math.max(Math.ceil(total / DEFAULT_PAGE_SIZE), 1)
   const activeFamily = allFamilies.find(

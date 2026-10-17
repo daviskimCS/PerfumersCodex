@@ -6,8 +6,8 @@ import { Bookmark } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { MaterialCard, MaterialCardGrid } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
-import { getCurrentUserId, getSavedMaterials } from '@/lib/db/bookmarks'
-import { listStructureThumbnails } from '@/lib/db/materials'
+import { getCurrentUserId, getSavedMaterialIds } from '@/lib/db/bookmarks'
+import { listMaterialsByIds, listStructureThumbnails } from '@/lib/db/materials'
 
 /**
  * The reader's own shelf (W5-B / P3-A).
@@ -43,10 +43,13 @@ export default async function SavedPage() {
   const userId = await getCurrentUserId()
   if (userId === null) redirect('/login')
 
-  const materials = await getSavedMaterials()
-  const thumbnails = await listStructureThumbnails(
-    materials.map((material) => material.id)
-  )
+  // The shelf's ids, then the cards and their thumbnails side by side, so
+  // the drawings add no round trip of their own.
+  const ids = await getSavedMaterialIds()
+  const [materials, thumbnails] = await Promise.all([
+    listMaterialsByIds(ids),
+    listStructureThumbnails(ids),
+  ])
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">

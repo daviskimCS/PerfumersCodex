@@ -102,12 +102,25 @@ export interface ListMaterialsOptions {
   page?: number
   /** Defaults to `DEFAULT_PAGE_SIZE`; clamped to `MAX_PAGE_SIZE`. */
   pageSize?: number
+  /**
+   * Also fetch each card's stored structure drawing, into `thumbnails`. It
+   * runs in the same parallel batch as the family and class lookups, so it
+   * adds no round trip.
+   */
+  withThumbnails?: boolean
 }
 
 export interface MaterialList {
   items: MaterialSummary[]
   /** Rows matching the filter across ALL pages — what "Page 2 of 7" needs. */
   total: number
+  /**
+   * Stored drawings by material id, for list-card thumbnails. Empty unless
+   * `withThumbnails` was asked for; materials with no drawing (naturals, or
+   * not drawn yet) are absent. Kept beside `items` rather than on
+   * `MaterialSummary`, which is contract-locked in `lib/types.ts`.
+   */
+  thumbnails: Map<string, string>
 }
 
 /** One screenful of cards at three columns; also the family page's cap. */
@@ -164,12 +177,15 @@ function bucketByMaterial<Row extends { materialId: string }, Ref>(
  * paired with a second helper: a summary is only ever complete with both, and
  * two helpers would let a caller build one with half its axes filled.)
  */
-async function withRefs(rows: SummaryRow[]): Promise<MaterialSummary[]> {
-  if (rows.length === 0) return []
+async function withRefs(
+  rows: SummaryRow[],
+  { thumbnails = false }: { thumbnails?: boolean } = {}
+): Promise<{ summaries: MaterialSummary[]; thumbnails: Map<string, string> }> {
+  if (rows.length === 0) return { summaries: [], thumbnails: new Map() }
 
   const ids = rows.map((row) => row.id)
 
-  const [familyRows, classRows] = await Promise.all([
+  const [familyRows, classRows, drawingRows] = await Promise.all([
     db
       .select({
         materialId: materialFamilies.materialId,
@@ -195,6 +211,19 @@ async function withRefs(rows: SummaryRow[]): Promise<MaterialSummary[]> {
       )
       .where(inArray(materialChemicalClasses.materialId, ids))
       .orderBy(asc(chemicalClasses.sortOrder), asc(chemicalClasses.slug)),
+    // The cards' structure thumbnails, in the same batch so they cost no
+    // extra round trip. `rows` already passed the review gate, and the
+    // stored `content_hash` covers the drawing (through the fingerprint), so
+    // it vouches for the thumbnail the way it vouches for the card's name.
+    thumbnails
+      ? db
+          .select({
+            materialId: materialStructureDrawings.materialId,
+            svg: materialStructureDrawings.svg,
+          })
+          .from(materialStructureDrawings)
+          .where(inArray(materialStructureDrawings.materialId, ids))
+      : Promise.resolve([]),
   ])
 
   const familiesByMaterial = bucketByMaterial(familyRows, (row): FamilyRef => ({
@@ -206,7 +235,7 @@ async function withRefs(rows: SummaryRow[]): Promise<MaterialSummary[]> {
     (row): ChemicalClassRef => ({ slug: row.slug, name: row.name })
   )
 
-  return rows.map((row) => ({
+  const summaries = rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     canonicalName: row.canonicalName,
@@ -217,6 +246,11 @@ async function withRefs(rows: SummaryRow[]): Promise<MaterialSummary[]> {
     // single structure, so the seed derives no membership rows for it.
     chemicalClasses: classesByMaterial.get(row.id) ?? [],
   }))
+
+  return {
+    summaries,
+    thumbnails: new Map(drawingRows.map((row) => [row.materialId, row.svg])),
+  }
 }
 
 /**
@@ -239,6 +273,7 @@ export async function listMaterials({
   classSlug = null,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
+  withThumbnails = false,
 }: ListMaterialsOptions = {}): Promise<MaterialList> {
   const size = Math.min(Math.max(Math.trunc(pageSize), 1), MAX_PAGE_SIZE)
   const offset = (Math.max(Math.trunc(page), 1) - 1) * size
@@ -291,9 +326,13 @@ export async function listMaterials({
     db.select({ value: count() }).from(materials).where(where),
   ])
 
+  const { summaries, thumbnails } = await withRefs(rows, {
+    thumbnails: withThumbnails,
+  })
   return {
-    items: await withRefs(rows),
+    items: summaries,
     total: totalRows[0]?.value ?? 0,
+    thumbnails,
   }
 }
 
@@ -317,7 +356,7 @@ export async function listMaterialsByIds(
     .from(materials)
     .where(and(inArray(materials.id, wanted), materialIsPublished()))
 
-  const summaries = await withRefs(rows)
+  const { summaries } = await withRefs(rows)
   const byId = new Map(summaries.map((summary) => [summary.id, summary]))
 
   return wanted
@@ -326,14 +365,17 @@ export async function listMaterialsByIds(
 }
 
 /**
- * The stored structure drawings for a page of list cards, keyed by material
- * id. Materials with no drawing (naturals, or not drawn yet) are simply
- * absent from the map.
+ * The stored structure drawings for a known set of ids, keyed by material
+ * id, for list-card thumbnails where the ids come from elsewhere (`/saved`,
+ * whose ids are the reader's bookmarks). Run it beside `listMaterialsByIds`,
+ * not after it, and it adds no round trip. `listMaterials` has its own
+ * `withThumbnails` instead. Materials with no drawing (naturals, or not
+ * drawn yet) are absent from the map.
  *
  * Gated like every list read: a drawing comes back only for a published
  * material, so the stored `content_hash` (which covers the drawing, through
  * the fingerprint) vouches for it the same way it vouches for the card's
- * name. One query per page of cards, whatever the page size.
+ * name.
  */
 export async function listStructureThumbnails(
   ids: string[]
@@ -392,7 +434,7 @@ export async function listStructureCandidates(): Promise<
     .orderBy(asc(materials.canonicalName), asc(materials.slug))
 
   const smilesById = new Map(rows.map((row) => [row.id, row.smiles] as const))
-  const summaries = await withRefs(rows)
+  const { summaries } = await withRefs(rows)
 
   return summaries.flatMap((summary) => {
     const smiles = smilesById.get(summary.id)

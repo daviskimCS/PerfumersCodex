@@ -14,7 +14,6 @@ import {
   countMaterials,
   getRandomDrawnMaterialSlug,
   listMaterials,
-  listStructureThumbnails,
 } from '@/lib/db/materials'
 
 /**
@@ -68,11 +67,13 @@ export default async function HomePage() {
     countMaterials(),
     listFamilies(),
     getRandomDrawnMaterialSlug(),
-    listMaterials({ sort: 'recently-updated', page: 1, pageSize: 3 }),
+    listMaterials({
+      sort: 'recently-updated',
+      page: 1,
+      pageSize: 3,
+      withThumbnails: true,
+    }),
   ])
-  const thumbnails = await listStructureThumbnails(
-    latest.items.map((material) => material.id)
-  )
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -143,7 +144,7 @@ export default async function HomePage() {
               <li key={material.id}>
                 <MaterialCard
                   material={material}
-                  structureSvg={thumbnails.get(material.id) ?? null}
+                  structureSvg={latest.thumbnails.get(material.id) ?? null}
                 />
               </li>
             ))}
