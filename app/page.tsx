@@ -113,7 +113,7 @@ export default async function HomePage() {
 
       <section
         aria-labelledby="principles-heading"
-        className="mt-section border-t border-border pt-8"
+        className="reveal mt-section border-t border-border pt-8"
       >
         <h2
           id="principles-heading"
@@ -136,7 +136,7 @@ export default async function HomePage() {
       {families.length === 0 ? null : (
         <section
           aria-labelledby="families-heading"
-          className="mt-section border-t border-border pt-8"
+          className="reveal mt-section border-t border-border pt-8"
         >
           <h2
             id="families-heading"

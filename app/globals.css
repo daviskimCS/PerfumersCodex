@@ -765,6 +765,56 @@
   }
 
   /* ==========================================================================
+     REVEAL — a section rises into place as it scrolls into view
+
+     Driven by the section's own position in the viewport (a view() scroll
+     timeline), not by a timer or script. That is what makes it safe on a
+     page people jump around in. A section is fully in place once 60% of its
+     entry is done (for a section taller than the screen, once its top has
+     risen 60% of the screen's height), so whatever an "On this page" link, a
+     citation or a deep link lands on is already fully visible, and anything
+     wholly on screen always is. The cost of being position-driven:
+     scrolling back up, a section leaving through the bottom edge fades out
+     the same way it came in.
+
+     NEVER PUT IT ON A LINK TARGET OR ITS ANCESTOR WITH A RISE. A browser
+     aims an in-page link at where the target is drawn, transform included,
+     and the target is still un-risen when the jump is computed, so it lands
+     up to the rise distance too high, under the sticky header. Move a
+     wrapper inside the target instead, and where the targets are inside
+     the moving part (the Sources list), set `--reveal-rise: 0` so it only
+     fades.
+
+     Progressive enhancement only. Where scroll timelines are unsupported
+     (Firefox today), with reduced motion, and in print, the rule never
+     applies and the section simply sits there. No JavaScript, so nothing
+     can be left hidden waiting for one. Only opacity and transform move,
+     and the end state is `transform: none`, so a settled section creates no
+     containing block or stacking context for what is inside it.
+     ========================================================================== */
+
+  @supports (animation-timeline: view()) {
+    @media screen and (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 60%;
+      }
+    }
+  }
+
+  @keyframes reveal-rise {
+    from {
+      opacity: 0;
+      transform: translateY(var(--reveal-rise, 1.5rem));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* ==========================================================================
      SITE CHROME — the header and footer rails
 
      A class, not utilities, because what it does cannot be expressed as
