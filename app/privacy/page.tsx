@@ -29,7 +29,7 @@ import {
  *   bookmarks / notes     db/schema.ts `userSavedMaterials`, `userNotes`
  *   deletion              app/account/actions.ts `deleteAccount`
  *   analytics             app/layout.tsx (<Analytics />)
- *   cookies               lib/gate.ts, lib/supabase/server.ts
+ *   cookies               lib/supabase/server.ts, app/auth/callback
  *   browser storage       components/theme-toggle.tsx, lib/search/recent.ts
  *
  * If any of those change, this page changes in the same commit. A privacy
@@ -38,7 +38,7 @@ import {
  *
  * No `loading.tsx` / `error.tsx`: static text, nothing fetched, no failure
  * mode (docs/architecture.md D4; the reasoning is written out in
- * app/coming-soon/page.tsx).
+ * components/legal/legal-page.tsx).
  */
 
 export const metadata: Metadata = {
@@ -46,9 +46,7 @@ export const metadata: Metadata = {
   description:
     'What Perfumers Codex collects, what it deliberately does not, and how to delete everything it holds about you.',
   // `robots` is left at the site default on purpose: both legal documents
-  // should be indexable once the pre-launch gate comes down. (While the gate
-  // is up, proxy.ts rewrites this route to the construction page anyway, and
-  // that page carries its own noindex.)
+  // should be indexable.
 }
 
 export default function PrivacyPage() {
@@ -183,20 +181,12 @@ export default function PrivacyPage() {
 
       <LegalSection id="cookies" heading="Cookies">
         <p>
-          Three, all strictly necessary, all named here because a policy that
+          Two, both strictly necessary, both named here because a policy that
           says “we use cookies” without saying which ones is telling you
           nothing. There is no consent banner because there is nothing to
           consent to — none of them tracks you.
         </p>
         <LegalList>
-          <li>
-            <code className="font-mono text-sm">pc_gate</code> — set only while
-            the pre-launch gate is up, and only after someone enters the shared
-            construction password. It holds a signed token saying the password
-            was entered; it does not say who entered it. HTTP-only, and it
-            expires after 30 days. It disappears entirely when the site opens
-            to the public.
-          </li>
           <li>
             <strong className="font-medium">
               The Supabase authentication cookie
@@ -484,6 +474,11 @@ export default function PrivacyPage() {
           The date at the top of this page changes with it, and anything that
           alters what is collected or who sees it will be described here rather
           than folded in quietly.
+        </p>
+        <p>
+          <strong className="font-medium">17 October 2026:</strong> removed the{' '}
+          <code className="font-mono text-sm">pc_gate</code> cookie, which
+          existed only while the site was behind a construction password.
         </p>
         <p>
           <strong className="font-medium">12 October 2026:</strong> added the

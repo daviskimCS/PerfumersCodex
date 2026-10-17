@@ -46,9 +46,9 @@ lib/
   types.ts            App-facing domain contracts (see D3)
   env.ts              Validated env access (see D6)
 proxy.ts              Repo root — Supabase token-refresh proxy (Next 16's name
-                      for middleware) plus the pre-launch password gate
-                      (lib/gate.ts). The one location Next.js fixes; the only
-                      file outside the layout above with a job.
+                      for middleware). The pre-launch password gate it also
+                      ran was removed on 2026-10-17. The one location Next.js
+                      fixes; the only file outside the layout above with a job.
 ```
 
 **Rules (promote to AGENTS.md on approval):**

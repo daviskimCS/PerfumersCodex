@@ -30,8 +30,7 @@ export const metadata: Metadata = {
   title: 'Terms',
   description:
     'What Perfumers Codex is, what it is not, how its data and code are licensed, and the terms of using it.',
-  // `robots` left at the site default: indexable once the pre-launch gate
-  // lifts. See the matching note in app/privacy/page.tsx.
+  // `robots` left at the site default: indexable, like app/privacy/page.tsx.
 }
 
 export default function TermsPage() {

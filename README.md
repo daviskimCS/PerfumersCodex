@@ -4,7 +4,7 @@ A curated, citation-driven aromachemical reference for working perfumers.
 
 Checking one material means switching between IFRA Standards, supplier pages, safety data sheets and scent databases. Perfumers Codex aims to put that in one searchable reference. Identity, IFRA usage limits, GHS hazards and landmark uses each cite a source. Olfactive descriptions and usage guidance, as they are written, come from bench experience.
 
-**Status:** deployed at [perfumerscodex.com](https://perfumerscodex.com) behind a pre-launch password gate. Public launch planned for Spring 2027. The database holds drafts researched by AI agents from primary sources, plus four synthetic test fixtures. Every one stays hidden from readers until the maker reviews it (see the review gate below), and the first real materials are going through that review now. No olfactive descriptions have been written yet.
+**Status:** live at [perfumerscodex.com](https://perfumerscodex.com), open to the public since October 2026. The database holds drafts researched by AI agents from primary sources, plus four synthetic test fixtures. Every one stays hidden from readers until the maker reviews it (see the review gate below), and the first real materials are going through that review now.
 
 ## What exists today
 
