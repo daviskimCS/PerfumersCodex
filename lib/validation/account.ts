@@ -3,7 +3,7 @@ import { z } from 'zod'
 /**
  * Account-management schemas (W6-B / P3-C, docs/architecture.md D6).
  *
- * Three forms, three schemas, each imported by BOTH the client form (inline
+ * Three forms, four schemas (deletion has one per kind of account), each imported by BOTH the client form (inline
  * errors on blur) and the server action (`safeParse` before any effect), so
  * "server matches client" holds by construction rather than by vigilance.
  *
@@ -134,20 +134,44 @@ export const initialChangePasswordState: ChangePasswordState = {}
  */
 export const DELETE_CONFIRMATION = 'DELETE'
 
+const confirmationSchema = z
+  .string({ error: `Type ${DELETE_CONFIRMATION} to confirm.` })
+  // Trims surrounding whitespace only — a stray space from a paste should
+  // not read as a refusal. The word itself must be exact.
+  .trim()
+  .refine((value) => value === DELETE_CONFIRMATION, {
+    error: `Type ${DELETE_CONFIRMATION} in capitals to confirm.`,
+  })
+
+/**
+ * Deleting an account that has a password: the word, and the password itself.
+ * Changing a password already asks for the current one, and deleting the
+ * account is the more destructive of the two, so it asks for no less. A
+ * borrowed signed-in browser is not enough to delete someone's account.
+ */
 export const deleteAccountSchema = z.object({
-  confirmation: z
-    .string({ error: `Type ${DELETE_CONFIRMATION} to confirm.` })
-    // Trims surrounding whitespace only — a stray space from a paste should
-    // not read as a refusal. The word itself must be exact.
-    .trim()
-    .refine((value) => value === DELETE_CONFIRMATION, {
-      error: `Type ${DELETE_CONFIRMATION} in capitals to confirm.`,
-    }),
+  confirmation: confirmationSchema,
+  /** Presence only, as in `changePasswordSchema`; Supabase judges it. */
+  currentPassword: z
+    .string({ error: 'Enter your password.' })
+    .min(1, { error: 'Enter your password.' }),
+})
+
+/**
+ * Deleting a Google-only account: the word only. There is no password to ask
+ * for, so the server asks for a recent Google sign-in instead
+ * (`isRecentSignIn` in lib/account/identity.ts).
+ */
+export const deleteGoogleAccountSchema = z.object({
+  confirmation: confirmationSchema,
 })
 
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>
 
-export type DeleteAccountFieldErrors = { confirmation?: string[] }
+export type DeleteAccountFieldErrors = {
+  confirmation?: string[]
+  currentPassword?: string[]
+}
 
 /**
  * What the delete action returns *when it fails*. Success never reaches this
@@ -157,6 +181,11 @@ export type DeleteAccountFieldErrors = { confirmation?: string[] }
 export type DeleteAccountState = {
   fieldErrors?: DeleteAccountFieldErrors
   formError?: string
+  /**
+   * A Google-only account whose sign-in is too old to delete with: the form
+   * swaps the confirmation field for the "confirm with Google" button.
+   */
+  reauthRequired?: boolean
 }
 
 export const initialDeleteAccountState: DeleteAccountState = {}

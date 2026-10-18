@@ -9,7 +9,12 @@ import {
 } from '@supabase/supabase-js'
 import { z } from 'zod'
 
-import { hasPasswordSignIn, isRecoverySessionNow } from '@/lib/account/identity'
+import {
+  hasPasswordSignIn,
+  isRecentSignInNow,
+  isRecoverySessionNow,
+  REAUTH_WINDOW_SECONDS,
+} from '@/lib/account/identity'
 import { env } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createAuthClient } from '@/lib/supabase/auth-server'
@@ -19,6 +24,7 @@ import {
   changeEmailSchema,
   changePasswordSchema,
   deleteAccountSchema,
+  deleteGoogleAccountSchema,
   type ChangeEmailState,
   type ChangePasswordState,
   type DeleteAccountState,
@@ -59,6 +65,9 @@ import {
 /** Shown to an account that signs in with Google only. */
 const NO_PASSWORD_MESSAGE =
   'This account signs in with Google, so it has no password to change.'
+
+/** Shown to a Google-only account whose sign-in is too old to delete with. */
+const GOOGLE_REAUTH_MESSAGE = `For your security, confirm it’s you with Google first. You’ll come back here with ${REAUTH_WINDOW_SECONDS / 60} minutes to delete the account.`
 
 /** Shown when the session is gone by the time an action runs. */
 const SIGNED_OUT_MESSAGE =
@@ -152,6 +161,59 @@ async function verifiedCaller(
     return { ok: false, message: SIGNED_OUT_MESSAGE }
   }
   return { ok: true, user: data.user }
+}
+
+/**
+ * Prove the caller knows the account's password, before an action that
+ * changes the password or deletes the account.
+ *
+ * The check is a password guess like any sign-in, so it gets the same
+ * protection: the bot check, and Supabase's per-reader rate limit
+ * (createAuthClient sends the reader's IP). Without them a stolen session
+ * could try passwords here as fast as it liked.
+ *
+ * On success it returns the client holding the session the check just
+ * created, so a following write lands on the session the cookies now hold.
+ * A wrong password is a field to correct, not a form-level failure, so it is
+ * reported where the reader can act on it.
+ */
+type PasswordCheck =
+  | { ok: true; authClient: Awaited<ReturnType<typeof createAuthClient>> }
+  | {
+      ok: false
+      /** Returned as-is: it fits both actions' states. */
+      state: { fieldErrors?: { currentPassword: string[] }; formError?: string }
+    }
+
+async function proveCurrentPassword(
+  formData: FormData,
+  email: string,
+  password: string
+): Promise<PasswordCheck> {
+  if (!(await passesTurnstile(formData))) {
+    return { ok: false, state: { formError: TURNSTILE_FAILED_MESSAGE } }
+  }
+  const authClient = await createAuthClient()
+
+  const { error } = await authClient.auth.signInWithPassword({
+    email,
+    password,
+  })
+  if (error) {
+    console.error('[account] current-password check failed:', error)
+    if (isAuthError(error) && error.code === 'invalid_credentials') {
+      return {
+        ok: false,
+        state: {
+          fieldErrors: {
+            currentPassword: ['That isn’t your current password.'],
+          },
+        },
+      }
+    }
+    return { ok: false, state: { formError: formErrorFor(error) } }
+  }
+  return { ok: true, authClient }
 }
 
 // ---------------------------------------------------------------------------
@@ -260,33 +322,13 @@ export async function changePassword(
     return { formError: NO_PASSWORD_MESSAGE }
   }
 
-  // The current-password check is a password guess like any sign-in, so it
-  // gets the same protection: the bot check, and Supabase's per-reader rate
-  // limit (createAuthClient sends the reader's IP). Without them a stolen
-  // session could try passwords here as fast as it liked.
-  if (!(await passesTurnstile(formData))) {
-    return { formError: TURNSTILE_FAILED_MESSAGE }
-  }
-  const authClient = await createAuthClient()
-
-  const { error: reauthError } = await authClient.auth.signInWithPassword({
+  const check = await proveCurrentPassword(
+    formData,
     email,
-    password: parsed.data.currentPassword,
-  })
-  if (reauthError) {
-    console.error('[account] current-password check failed:', reauthError)
-    // A wrong current password is a field to correct, not a form-level
-    // failure, so it is reported where the reader can act on it.
-    if (
-      isAuthError(reauthError) &&
-      reauthError.code === 'invalid_credentials'
-    ) {
-      return {
-        fieldErrors: { currentPassword: ['That isn’t your current password.'] },
-      }
-    }
-    return { formError: formErrorFor(reauthError) }
-  }
+    parsed.data.currentPassword
+  )
+  if (!check.ok) return check.state
+  const { authClient } = check
 
   // Through the session the check just created, so the new password is set
   // on the same session the cookies now hold.
@@ -368,7 +410,7 @@ export async function resetPassword(
  * Delete the caller's own account, permanently.
  *
  * ── The most destructive action in the codebase ───────────────────────────
- * Three properties make it safe, and all three are load-bearing:
+ * Four properties make it safe, and all four are load-bearing:
  *
  * 1. **The id is never taken from the request.** There is no user id in the
  *    form, in the arguments, or in the URL. The only id this function can ever
@@ -379,7 +421,13 @@ export async function resetPassword(
  *    cookie claims without validating it against the auth server. Here that
  *    difference is not a style preference — it is the difference between
  *    "deletes the caller" and "deletes whoever the cookie names".
- * 3. **The admin client stays on the server.** `lib/supabase/admin.ts` is
+ * 3. **The owner proves it is them, now.** A signed-in browser is not enough:
+ *    an account with a password re-enters it (the check `changePassword`
+ *    makes, with the same bot check and per-reader rate limit), and a
+ *    Google-only account must have signed in within the last
+ *    `REAUTH_WINDOW_SECONDS`. Deleting is more destructive than changing the
+ *    password, so it never asks for less.
+ * 4. **The admin client stays on the server.** `lib/supabase/admin.ts` is
  *    imported by this `'use server'` module only. The secret key never enters a
  *    client component and never enters the browser bundle.
  *
@@ -398,17 +446,44 @@ export async function deleteAccount(
   _prevState: DeleteAccountState,
   formData: FormData
 ): Promise<DeleteAccountState> {
-  const parsed = deleteAccountSchema.safeParse({
-    confirmation: formData.get('confirmation'),
-  })
-  if (!parsed.success) {
-    return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
-  }
-
   const supabase = await createClient()
   const caller = await verifiedCaller(supabase)
   if (!caller.ok) {
     return { formError: caller.message }
+  }
+
+  // Which form the reader was shown depends on the account, so the schema
+  // does too. Asked of the verified user, never of a field in the request.
+  const fields = {
+    confirmation: formData.get('confirmation'),
+    currentPassword: formData.get('currentPassword'),
+  }
+
+  // Then the owner proves it is them, not just someone at a signed-in browser.
+  if (hasPasswordSignIn(caller.user)) {
+    const parsed = deleteAccountSchema.safeParse(fields)
+    if (!parsed.success) {
+      return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
+    }
+    const email = caller.user.email
+    if (!email) {
+      return { formError: SIGNED_OUT_MESSAGE }
+    }
+    const check = await proveCurrentPassword(
+      formData,
+      email,
+      parsed.data.currentPassword
+    )
+    if (!check.ok) return check.state
+  } else {
+    const parsed = deleteGoogleAccountSchema.safeParse(fields)
+    if (!parsed.success) {
+      return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
+    }
+    const { data: claimsData } = await supabase.auth.getClaims()
+    if (!isRecentSignInNow(claimsData?.claims.amr)) {
+      return { formError: GOOGLE_REAUTH_MESSAGE, reauthRequired: true }
+    }
   }
 
   // The one and only id this action will delete: the caller's own, as the auth

@@ -95,3 +95,39 @@ export function isRecoverySessionNow(
     Math.floor(Date.now() / 1000)
   )
 }
+
+/**
+ * How recent a sign-in must be for a Google-only account to delete itself.
+ * Such an account has no password to re-enter, so the proof is a fresh trip
+ * through Google: long enough to read the warning and type DELETE, short
+ * enough that a browser left signed in last week cannot be used for it.
+ */
+export const REAUTH_WINDOW_SECONDS = 10 * 60
+
+/**
+ * Did this session sign in within the last `REAUTH_WINDOW_SECONDS`?
+ *
+ * Reads the timestamps in the token's `amr` claim, which record when each
+ * sign-in happened and do not move when the token is refreshed, so an old
+ * session stays old however recently it was used. A bare string entry has no
+ * timestamp and cannot prove anything.
+ */
+export function isRecentSignIn(
+  amr: readonly AmrEntry[] | undefined,
+  nowSeconds: number
+): boolean {
+  if (!amr) return false
+  return amr.some(
+    (entry) =>
+      typeof entry !== 'string' &&
+      entry.timestamp <= nowSeconds &&
+      nowSeconds - entry.timestamp <= REAUTH_WINDOW_SECONDS
+  )
+}
+
+/** `isRecentSignIn` against the clock, for callers outside tests. */
+export function isRecentSignInNow(
+  amr: readonly AmrEntry[] | undefined
+): boolean {
+  return isRecentSignIn(amr, Math.floor(Date.now() / 1000))
+}

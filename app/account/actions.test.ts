@@ -64,18 +64,23 @@ beforeEach(() => {
 })
 
 describe('deleteAccount', () => {
+  const nowS = () => Math.floor(Date.now() / 1000)
+  const withPassword = { confirmation: 'DELETE', currentPassword: 'mine' }
+
+  function signedInAs(user: object) {
+    auth.getUser.mockResolvedValue({ data: { user }, error: null })
+  }
+
   it('deletes the id the auth server returned, never one from the form', async () => {
-    auth.getUser.mockResolvedValue({
-      data: { user: passwordUser },
-      error: null,
-    })
+    signedInAs(passwordUser)
+    auth.signInWithPassword.mockResolvedValue({ error: null })
     deleteUser.mockResolvedValue({ error: null })
 
     await expect(
       deleteAccount(
         {},
         form({
-          confirmation: 'DELETE',
+          ...withPassword,
           userId: 'victim',
           user_id: 'victim',
           id: 'victim',
@@ -88,12 +93,83 @@ describe('deleteAccount', () => {
     expect(auth.signOut).toHaveBeenCalled()
   })
 
+  it('asks a password account for its password before anything else', async () => {
+    signedInAs(passwordUser)
+    const state = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    expect(state.fieldErrors?.currentPassword).toEqual(['Enter your password.'])
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('deletes nothing when the password is wrong', async () => {
+    signedInAs(passwordUser)
+    auth.signInWithPassword.mockResolvedValue({
+      error: new AuthError('bad', 400, 'invalid_credentials'),
+    })
+    const state = await deleteAccount({}, form(withPassword))
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'reader@example.com',
+      password: 'mine',
+    })
+    expect(state.fieldErrors?.currentPassword).toEqual([
+      'That isn’t your current password.',
+    ])
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('deletes nothing when the password check is rate-limited', async () => {
+    signedInAs(passwordUser)
+    auth.signInWithPassword.mockResolvedValue({
+      error: new AuthError('slow down', 429, 'over_request_rate_limit'),
+    })
+    const state = await deleteAccount({}, form(withPassword))
+    expect(state.formError).toMatch(/Too many attempts/)
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('sends a Google-only account with an old sign-in back to Google', async () => {
+    signedInAs(googleUser)
+    auth.getClaims.mockResolvedValue({
+      data: {
+        claims: { amr: [{ method: 'oauth', timestamp: nowS() - 86_400 }] },
+      },
+      error: null,
+    })
+    // A password in the form is no way round it: the account has none.
+    const state = await deleteAccount({}, form(withPassword))
+    expect(state.reauthRequired).toBe(true)
+    expect(state.formError).toMatch(/confirm it’s you with Google/)
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('refuses a Google-only account whose token carries no sign-in time', async () => {
+    signedInAs(googleUser)
+    auth.getClaims.mockResolvedValue({ data: null, error: new Error('x') })
+    const state = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    expect(state.reauthRequired).toBe(true)
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('deletes a Google-only account that just signed in with Google', async () => {
+    signedInAs(googleUser)
+    auth.getClaims.mockResolvedValue({
+      data: { claims: { amr: [{ method: 'oauth', timestamp: nowS() - 60 }] } },
+      error: null,
+    })
+    deleteUser.mockResolvedValue({ error: null })
+    await expect(
+      deleteAccount({}, form({ confirmation: 'DELETE' }))
+    ).rejects.toMatchObject({ url: '/' })
+    expect(deleteUser).toHaveBeenCalledWith('google-id')
+  })
+
   it('deletes nothing when the session cannot be verified', async () => {
     auth.getUser.mockResolvedValue({
       data: { user: null },
       error: new AuthError('expired', 401, 'session_expired'),
     })
-    const state = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    const state = await deleteAccount({}, form(withPassword))
     expect(state.formError).toMatch(/not signed in/)
     expect(deleteUser).not.toHaveBeenCalled()
   })
@@ -103,18 +179,16 @@ describe('deleteAccount', () => {
       data: { user: null },
       error: new AuthRetryableFetchError('fetch failed', 0),
     })
-    const state = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    const state = await deleteAccount({}, form(withPassword))
     expect(state.formError).toMatch(/couldn’t reach the sign-in service/)
     expect(deleteUser).not.toHaveBeenCalled()
   })
 
   it('does not claim nothing happened when the delete response is lost', async () => {
-    auth.getUser.mockResolvedValue({
-      data: { user: passwordUser },
-      error: null,
-    })
+    signedInAs(passwordUser)
+    auth.signInWithPassword.mockResolvedValue({ error: null })
     deleteUser.mockResolvedValue({ error: new Error('timeout') })
-    const state = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    const state = await deleteAccount({}, form(withPassword))
     expect(state.formError).toMatch(/couldn’t confirm/)
   })
 })

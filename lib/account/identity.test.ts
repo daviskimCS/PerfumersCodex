@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  REAUTH_WINDOW_SECONDS,
   RECOVERY_WINDOW_SECONDS,
   hasPasswordSignIn,
   isRecentRecoverySession,
+  isRecentSignIn,
 } from '@/lib/account/identity'
 
 const identity = (provider: string) =>
@@ -114,5 +116,53 @@ describe('isRecentRecoverySession', () => {
     ],
   ] as const)('refuses %s', (_label, amr, sentAt, at) => {
     expect(isRecentRecoverySession(amr, sentAt, at)).toBe(false)
+  })
+})
+
+describe('isRecentSignIn', () => {
+  const now = 1_800_000_000
+
+  it.each([
+    [
+      'a Google sign-in a minute ago',
+      [{ method: 'oauth', timestamp: now - 60 }],
+      true,
+    ],
+    [
+      'exactly at the window edge',
+      [{ method: 'oauth', timestamp: now - REAUTH_WINDOW_SECONDS }],
+      true,
+    ],
+    [
+      'one second past the window',
+      [{ method: 'oauth', timestamp: now - REAUTH_WINDOW_SECONDS - 1 }],
+      false,
+    ],
+    [
+      'an old sign-in, however recently the token was refreshed',
+      [{ method: 'oauth', timestamp: now - 86_400 }],
+      false,
+    ],
+    [
+      'any recent entry among old ones',
+      [
+        { method: 'oauth', timestamp: now - 86_400 },
+        { method: 'otp', timestamp: now - 30 },
+      ],
+      true,
+    ],
+    [
+      'a timestamp in the future',
+      [{ method: 'oauth', timestamp: now + 60 }],
+      false,
+    ],
+    ['bare string entries (no timestamp)', ['oauth'], false],
+    ['no entries', [], false],
+  ] as const)('%s → %s', (_label, amr, expected) => {
+    expect(isRecentSignIn(amr, now)).toBe(expected)
+  })
+
+  it('refuses a token with no amr claim', () => {
+    expect(isRecentSignIn(undefined, now)).toBe(false)
   })
 })
