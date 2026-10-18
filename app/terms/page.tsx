@@ -149,6 +149,59 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
+      {/* Only what this site serves to a browser, each with its licence text
+          under public/licenses/ (both licences ask that the notice travel with
+          the copy). The .txt files are copies of
+          node_modules/@rdkit/rdkit/LICENSE, assets/fonts/jetbrains-mono/OFL.txt
+          and Google Fonts' ofl/roboto/OFL.txt: refresh them when a version
+          bump changes the upstream file. Structure drawings are not here:
+          RDKit's output is this project's own work, not a copy of RDKit. */}
+      <LegalSection id="credits" heading="Credits and licences">
+        <LegalList>
+          <li>
+            The structure search on{' '}
+            <Link href="/structure" className={LEGAL_LINK_CLASSNAME}>
+              /structure
+            </Link>{' '}
+            runs RDKit.js in your browser, © Valence Discovery Inc., Greg
+            Landrum, Paolo Tosco and other RDKit contributors, under the{' '}
+            <a
+              href="/licenses/rdkit-js.txt"
+              rel="license"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              BSD 3-Clause License
+            </a>
+            .
+          </li>
+          <li>
+            The typeface is JetBrains Mono, © The JetBrains Mono Project
+            Authors, under the{' '}
+            <a
+              href="/licenses/jetbrains-mono.txt"
+              rel="license"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              SIL Open Font License 1.1
+            </a>
+            .
+          </li>
+          <li>
+            The “Continue with Google” button is set in Roboto, © The Roboto
+            Project Authors, under the{' '}
+            <a
+              href="/licenses/roboto.txt"
+              rel="license"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              SIL Open Font License 1.1
+            </a>
+            . The Google “G” is Google’s mark, used as its sign-in branding
+            guidelines require.
+          </li>
+        </LegalList>
+      </LegalSection>
+
       <LegalSection id="accounts" heading="Accounts">
         <LegalList>
           <li>You need to be 16 or over to make an account.</li>
@@ -286,7 +339,7 @@ export default function TermsPage() {
           Questions about these terms, licensing, or bulk data go to the same
           address as everything else:{' '}
           {/* MAKER: same placeholder as /privacy — hello@perfumerscodex.com is
-              a Week 20 item in docs/maker-todo.md and is not set up yet.
+              part of item 12 in docs/maker-todo.md and is not set up yet.
               Update both pages together. */}
           <LegalPlaceholder>
             maker: contact email — hello@perfumerscodex.com is planned but not
