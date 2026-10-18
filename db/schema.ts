@@ -214,6 +214,15 @@ export const materials = pgTable(
     // Search rule 0 short-circuits on an exact CAS match, so this lookup sits
     // in front of every query that starts with a CAS-shaped string.
     index('materials_cas_number_idx').on(t.casNumber),
+    // One live material per CAS number (DATA-DECISIONS D6: a grade with the
+    // same CAS and molecule is a synonym, not a second material). Naturals
+    // are exempt: an absolute and a CO2 extract of one plant share a CAS
+    // and are different materials.
+    uniqueIndex('materials_cas_number_live_uniq')
+      .on(t.casNumber)
+      .where(
+        sql`${t.casNumber} IS NOT NULL AND ${t.deletedAt} IS NULL AND ${t.materialType} <> 'natural'`
+      ),
     // A review is a hash AND a moment; one without the other is a bug.
     check(
       'materials_review_stamp_check',
@@ -570,20 +579,28 @@ export const materialUsageGuidance = pgTable(
 ).enableRLS()
 
 /** "Material X in Perfume Y" cited references. */
-export const landmarkUses = pgTable('landmark_uses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  materialId: uuid('material_id')
-    .notNull()
-    .references(() => materials.id),
-  perfumeName: text('perfume_name').notNull(),
-  house: text('house'),
-  year: smallint('year'),
-  notes: text('notes'),
-  /** A claim about a real perfume — citation-mandatory. */
-  sourceId: uuid('source_id')
-    .notNull()
-    .references(() => sources.id),
-}).enableRLS()
+export const landmarkUses = pgTable(
+  'landmark_uses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    materialId: uuid('material_id')
+      .notNull()
+      .references(() => materials.id),
+    perfumeName: text('perfume_name').notNull(),
+    house: text('house'),
+    year: smallint('year'),
+    notes: text('notes'),
+    /** A claim about a real perfume — citation-mandatory. */
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id),
+  },
+  (t) => [
+    // Read by material on every page load and every fingerprint, like the
+    // other child tables.
+    index('landmark_uses_material_id_idx').on(t.materialId),
+  ]
+).enableRLS()
 
 /* -------------------------------------------------------------------------
  * Cheminformatics tables (added August 2026)

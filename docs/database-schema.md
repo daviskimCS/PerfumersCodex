@@ -16,24 +16,24 @@
 
 The central table — one row per aromachemical or natural material.
 
-| Column             | Type                               | Notes                                                                                                                                                  |
-| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| id                 | uuid PK                            |                                                                                                                                                        |
-| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                    |
-| canonical_name     | text NOT NULL                      | The display name                                                                                                                                       |
-| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                          |
-| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                                                     |
-| iupac_name         | text NULLABLE                      |                                                                                                                                                        |
-| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                              |
-| molecular_formula  | text NULLABLE                      |                                                                                                                                                        |
-| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once. |
-| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                        |
-| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
-| updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
-| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                            |
-| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material         |
-| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders            |
-| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                     |
+| Column             | Type                               | Notes                                                                                                                                                           |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                 | uuid PK                            |                                                                                                                                                                 |
+| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                             |
+| canonical_name     | text NOT NULL                      | The display name                                                                                                                                                |
+| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                                   |
+| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null. Unique among live non-natural materials (`0011`; DATA-DECISIONS D6)                                                         |
+| iupac_name         | text NULLABLE                      |                                                                                                                                                                 |
+| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                                       |
+| molecular_formula  | text NULLABLE                      |                                                                                                                                                                 |
+| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once.          |
+| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                                 |
+| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                 |
+| updated_at         | timestamptz NOT NULL DEFAULT now() | Bumped when the material's own columns change and when its fingerprint changes (an IFRA row, a hazard), so "recently updated" means what the page shows changed |
+| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                                     |
+| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material                  |
+| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders                     |
+| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                              |
 
 ### `material_synonyms`
 
@@ -230,6 +230,8 @@ Practical usage guidance — backs the Usage section beyond IFRA limits. A recom
 | year         | smallint NULLABLE            |       |
 | notes        | text NULLABLE                |       |
 | source_id    | uuid FK → sources NOT NULL   |       |
+
+Indexes: `(material_id)` (migration `0011`).
 
 ## Cheminformatics tables
 
