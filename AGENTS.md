@@ -123,11 +123,12 @@ Skip tests for:
 - **Built (2026-10-18):** every v1 route except the admin dashboard, correction form, blog and the structure–odor experiment; rate limiting and error monitoring are not built. Status by area: `docs/overview.md`.
 - **Maker's open items live in `docs/maker-todo.md`** — human-only work (dashboards, editorial). Check it before assuming something is unfinished for a code reason.
 - **Pre-launch password gate REMOVED (2026-10-17):** the app-level fence (`proxy.ts` rewrite, `lib/gate.ts`, `/coming-soon`, `/unlock`, the `pc_gate` cookie, `SITE_GATE_*` env vars) is deleted; git history has it (`f67399b` added it). The site is public, and the review gate (`lib/db/published.ts`) is what keeps unreviewed material off it. Old branches still contain the gate code, so keep `SITE_GATE_PASSWORD` set on **Preview** in Vercel: their previews read the live database. With D4 (perfumerscodex.com in the environment's Allowed domains) agents can probe production directly.
-- **Live database:** 18 materials (14 researched drafts, 4 synthetic fixtures), all fingerprinted and `awaiting review`, 0 published, so readers see none until the maker publishes. Migrations 0000–0009 are applied live; 0010 (note length cap) is the maker's to apply. Last re-seed 2026-10-11 from PerfumersCodexData `c2dd854`. Only Iso E Super and Javanol carry the maker's olfactive descriptions. 15 `PROPOSED — maker to replace` families are still live, and `publish` refuses a material whose family is PROPOSED.
+- **Live database:** 18 materials (14 researched drafts, 4 synthetic fixtures), all fingerprinted and `awaiting review`, 0 published, so readers see none until the maker publishes. Migrations 0000–0009 are applied live; 0010 (note length cap) and 0011 (live CAS unique, `landmark_uses` index) are the maker's to apply. Last re-seed 2026-10-11 from PerfumersCodexData `c2dd854`. Only Iso E Super and Javanol carry the maker's olfactive descriptions. 15 `PROPOSED — maker to replace` families are still live, and `publish` refuses a material whose family is PROPOSED.
 - **Never run `npm run db:seed -- scripts/fixtures` against the live database:** `usage_categories` upserts by id, and the fixture file would rename all eleven real IFRA categories "Test Category N". Prune the four fixtures with `--prune` when the maker says so (maker-todo item 8).
 - **Renaming a source key** in the data repo collides on `sources_url_uniq` until the live row is renamed to match: the seed adopts a same-URL row only when its key is NULL.
 - **Seed input rules:** every material needs `identity_source_key` and a `source_key` per synonym; validation refuses a Standard and a verified absence for the same amendment, and one URL under two keys. Class membership is derived by the seed, never authored.
 - **No data cache over editorial reads:** the review gate hides a changed page at once, and `npm run db:review` runs outside the Next runtime, where it could not invalidate a cache.
+- **Engineering backlog:** `docs/engineering-backlog.md` holds the open findings of the October 2026 code review, ranked; check it before re-auditing.
 - **Tests:** `npm test` is database-free; `npm run test:integration` runs the real auth and account actions against a local Supabase stack (CI job `integration`; `tests/integration/README.md`).
 - **Unverified:** the browser half of bookmarks and notes (button, `/saved`), and real Google sign-in (manual check in `tests/integration/README.md`). Account deletion leaves Supabase's auth audit log rows behind (maker-todo item 12).
 - **Blockers:** none
@@ -135,7 +136,6 @@ Skip tests for:
 ## Known issues / debt
 
 - **Canonical-domain mismatch:** `NEXT_PUBLIC_SITE_URL` and og:url advertise the apex (`perfumerscodex.com`), but Vercel has `www` as the primary domain and 308-redirects apex → www. Fix in the Vercel dashboard (make the apex primary so www redirects to it) — no code change. Until then the site advertises a URL that redirects.
-- **Repo is still private** — the public-from-day-one constraint is unmet. Flip visibility when ready; LICENSE/LICENSE-DATA are already in place.
 - No custom SMTP sender yet: Supabase's built-in sender reaches only the project team, so sign-up and reset emails cannot reach the public until it exists (maker-todo item 12).
 
 ## V2 backlog (do not implement now)

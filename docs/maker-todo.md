@@ -17,6 +17,11 @@ checklist; this file holds what the code depends on.
   the first three waits on this.
 - **Write the remaining olfactive descriptions** (Civetone and the eleven
   later drafts have none).
+- **Choose how IFRA subcategories are stored** (5A–5D, 7A/7B, 10A/10B,
+  11A/11B and Category 12). Today each split category stores its strictest
+  subcategory, which understates what some product types may carry. Options
+  and costs: `docs/engineering-backlog.md` item 1. Every option means
+  re-reviewing each material with IFRA limits once, so it is cheapest now.
 - **Choose a licence file for the data repository.** The site publishes the
   data under CC BY-SA 4.0 (`LICENSE-DATA` here), but `PerfumersCodexData` has
   no licence file.
@@ -93,8 +98,6 @@ Details and exact values: `docs/legal/account-data.md` section 3.
 
 ## Later
 
-- **9. Make the code repository public**, then turn on private vulnerability
-  reporting, which `SECURITY.md` relies on.
 - **IFRA 52nd Amendment** (expected late November 2026): re-check every
   limit and every verified absence; add rows stamped "52nd", never overwrite.
 - **Structure–odor training data:** review the licences before any use.
