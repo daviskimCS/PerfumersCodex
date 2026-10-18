@@ -2,22 +2,22 @@
 
 ## The stack
 
-| Layer | Choice |
-| --- | --- |
-| Framework | Next.js 16 (App Router, Turbopack), React 19 |
-| Language | TypeScript, strict |
-| Styling | Tailwind CSS v4 (tokens in `@theme` in `app/globals.css`) + shadcn/ui (copied into `components/ui/`, owned) |
-| Typography | JetBrains Mono, self-hosted (`assets/fonts/`, OFL) through `next/font/local`; the same file feeds the Open Graph cards |
-| Database | Postgres on Supabase |
-| ORM | Drizzle |
-| Auth | Supabase Auth via `@supabase/ssr` (email/password; Google built, dormant) |
-| Search | Postgres full-text search + synonym table + `pg_trgm` |
+| Layer           | Choice                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Framework       | Next.js 16 (App Router, Turbopack), React 19                                                                                  |
+| Language        | TypeScript, strict                                                                                                            |
+| Styling         | Tailwind CSS v4 (tokens in `@theme` in `app/globals.css`) + shadcn/ui (copied into `components/ui/`, owned)                   |
+| Typography      | JetBrains Mono, self-hosted (`assets/fonts/`, OFL) through `next/font/local`; the same file feeds the Open Graph cards        |
+| Database        | Postgres on Supabase                                                                                                          |
+| ORM             | Drizzle                                                                                                                       |
+| Auth            | Supabase Auth via `@supabase/ssr` (email/password; Google built, dormant)                                                     |
+| Search          | Postgres full-text search + synonym table + `pg_trgm`                                                                         |
 | Cheminformatics | RDKit.js (WebAssembly): in Node at seed time for structure drawings and class membership; in the browser only on `/structure` |
-| Hosting | Vercel (functions in the Supabase region), daily keep-alive cron (`vercel.json`) |
-| Analytics | Vercel Web Analytics (cookieless, no IPs) |
-| Testing | Vitest: unit tests with no database; integration tests against a local Supabase stack |
-| CI | GitHub Actions: typecheck, lint, unit tests, integration tests |
-| Data | A separate repository of cited JSON files, validated and written by `npm run db:seed` |
+| Hosting         | Vercel (functions in the Supabase region), daily keep-alive cron (`vercel.json`)                                              |
+| Analytics       | Vercel Web Analytics (cookieless, no IPs)                                                                                     |
+| Testing         | Vitest: unit tests with no database; integration tests against a local Supabase stack                                         |
+| CI              | GitHub Actions: typecheck, lint, unit tests, integration tests                                                                |
+| Data            | A separate repository of cited JSON files, validated and written by `npm run db:seed`                                         |
 
 Not in place yet: rate limiting, error monitoring, transactional email through
 a custom SMTP sender (needed before strangers can sign up: Supabase's built-in
@@ -64,15 +64,15 @@ validation and auth-adjacent logic. No component-render or browser tests.
 
 ## Deliberately not used
 
-| Tool | Reason |
-| --- | --- |
-| Playwright / browser E2E | Solo project; the integration suite covers the server side |
-| Meilisearch, Typesense, Elasticsearch | Postgres FTS is enough at this size |
-| A data cache (Redis, `cacheLife`) | The review gate hides a changed page at once, and `db:review` runs outside Next, where it could not invalidate a cache |
-| GraphQL | Server components and server actions are enough |
-| Supabase Realtime, Storage | Nothing real-time; structures are drawn, not stored as images |
-| Docker, microservices | Vercel and a monolith are right for this |
-| NextAuth / Auth.js | Supabase Auth is bundled |
-| Storybook | No design-system consumers |
-| PWA, native app, i18n | Out of v1 scope |
-| pgvector / embeddings, MCP server, UMAP odor map | Deferred; ask before starting ([cheminformatics.md](./cheminformatics.md)) |
+| Tool                                             | Reason                                                                                                                 |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Playwright / browser E2E                         | Solo project; the integration suite covers the server side                                                             |
+| Meilisearch, Typesense, Elasticsearch            | Postgres FTS is enough at this size                                                                                    |
+| A data cache (Redis, `cacheLife`)                | The review gate hides a changed page at once, and `db:review` runs outside Next, where it could not invalidate a cache |
+| GraphQL                                          | Server components and server actions are enough                                                                        |
+| Supabase Realtime, Storage                       | Nothing real-time; structures are drawn, not stored as images                                                          |
+| Docker, microservices                            | Vercel and a monolith are right for this                                                                               |
+| NextAuth / Auth.js                               | Supabase Auth is bundled                                                                                               |
+| Storybook                                        | No design-system consumers                                                                                             |
+| PWA, native app, i18n                            | Out of v1 scope                                                                                                        |
+| pgvector / embeddings, MCP server, UMAP odor map | Deferred; ask before starting ([cheminformatics.md](./cheminformatics.md))                                             |

@@ -1,5 +1,5 @@
 /**
- * Seed pipeline — CHECKLIST P1-G, wave-4 W4-A.
+ * Seed pipeline.
  *
  * Reads the `perfumers-codex-data` JSON export from a directory named on the
  * command line, validates the ENTIRE set before opening a connection, writes

@@ -71,9 +71,9 @@ production queries feed it.
 
 ## Deferred
 
-| Item | When |
-| --- | --- |
-| Interactive odor map (UMAP over fingerprints or descriptors) | Stretch goal; ask first |
-| MCP server exposing the reference to LLM clients | v1.1 |
-| IFRA amendment diffing | v1.1, with the 52nd Amendment re-verification |
-| Embeddings / pgvector retrieval | When the corpus outgrows FTS + trigram + synonyms |
+| Item                                                         | When                                              |
+| ------------------------------------------------------------ | ------------------------------------------------- |
+| Interactive odor map (UMAP over fingerprints or descriptors) | Stretch goal; ask first                           |
+| MCP server exposing the reference to LLM clients             | v1.1                                              |
+| IFRA amendment diffing                                       | v1.1, with the 52nd Amendment re-verification     |
+| Embeddings / pgvector retrieval                              | When the corpus outgrows FTS + trigram + synonyms |

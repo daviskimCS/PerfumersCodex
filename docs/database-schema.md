@@ -16,36 +16,36 @@
 
 The central table — one row per aromachemical or natural material.
 
-| Column             | Type                               | Notes                                                                                                                                                                                                                       |
-| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id                 | uuid PK                            |                                                                                                                                                                                                                             |
-| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                                                                                         |
-| canonical_name     | text NOT NULL                      | The display name                                                                                                                                                                                                            |
-| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                                                                                               |
-| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                                                                                                                          |
-| iupac_name         | text NULLABLE                      |                                                                                                                                                                                                                             |
-| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                                                                                                   |
-| molecular_formula  | text NULLABLE                      |                                                                                                                                                                                                                             |
-| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once.                                                                     |
-| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                                                                                             |
-| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
-| updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
-| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                                                                                                 |
-| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material                                                                              |
-| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders                                                                                 |
-| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                                                                                          |
+| Column             | Type                               | Notes                                                                                                                                                  |
+| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id                 | uuid PK                            |                                                                                                                                                        |
+| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                    |
+| canonical_name     | text NOT NULL                      | The display name                                                                                                                                       |
+| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                          |
+| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                                                     |
+| iupac_name         | text NULLABLE                      |                                                                                                                                                        |
+| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                              |
+| molecular_formula  | text NULLABLE                      |                                                                                                                                                        |
+| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once. |
+| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                        |
+| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
+| updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
+| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                            |
+| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material         |
+| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders            |
+| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                     |
 
 ### `material_synonyms`
 
 Many synonyms per material — drives search.
 
-| Column       | Type                         | Notes                                                                                                                                  |
-| ------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| id           | uuid PK                      |                                                                                                                                        |
-| material_id  | uuid FK → materials NOT NULL |                                                                                                                                        |
-| name         | text NOT NULL                |                                                                                                                                        |
-| synonym_type | enum NOT NULL                | trade_name / iupac / common_name / abbreviation / supplier_name                                                                        |
-| source_id    | uuid FK → sources NOT NULL   | Per row — synonyms come from different documents (PubChem list, TGSC, the IFRA Standard's commercial names).                            |
+| Column       | Type                         | Notes                                                                                                        |
+| ------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| id           | uuid PK                      |                                                                                                              |
+| material_id  | uuid FK → materials NOT NULL |                                                                                                              |
+| name         | text NOT NULL                |                                                                                                              |
+| synonym_type | enum NOT NULL                | trade_name / iupac / common_name / abbreviation / supplier_name                                              |
+| source_id    | uuid FK → sources NOT NULL   | Per row — synonyms come from different documents (PubChem list, TGSC, the IFRA Standard's commercial names). |
 
 Indexes: `(material_id)`; a trigram GIN index on `name` (migration `0001`). Synonyms reach full-text search only through `material_search_view`.
 
@@ -64,21 +64,21 @@ Olfactive families and sub-families.
 
 Many-to-many join.
 
-| Column                               | Type                | Notes |
-| ------------------------------------ | ------------------- | ----- |
+| Column                               | Type                         | Notes |
+| ------------------------------------ | ---------------------------- | ----- |
 | material_id                          | uuid FK → materials NOT NULL |       |
 | family_id                            | uuid FK → families NOT NULL  |       |
-| PRIMARY KEY (material_id, family_id) |                     |       |
+| PRIMARY KEY (material_id, family_id) |                              |       |
 
 ### `usage_categories`
 
 IFRA's 11 categories. Static reference data, seeded once.
 
-| Column      | Type          | Notes                           |
-| ----------- | ------------- | ------------------------------- |
+| Column      | Type          | Notes                                                                                                             |
+| ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
 | id          | smallint PK   | 1–11 to match IFRA numbering; CHECK id BETWEEN 1 AND 11 (Category 12 and subcategories: see Deferred schema work) |
-| name        | text NOT NULL | The product-type description, without IFRA's "Category N" prefix |
-| description | text          |                                 |
+| name        | text NOT NULL | The product-type description, without IFRA's "Category N" prefix                                                  |
+| description | text          |                                                                                                                   |
 
 ### `material_usage_limits`
 
@@ -158,28 +158,28 @@ GHS reference data, static, seeded once.
 
 Join table.
 
-| Column                                 | Type                       | Notes |
-| -------------------------------------- | -------------------------- | ----- |
-| material_id                            | uuid FK → materials NOT NULL |       |
+| Column                                 | Type                            | Notes |
+| -------------------------------------- | ------------------------------- | ----- |
+| material_id                            | uuid FK → materials NOT NULL    |       |
 | hazard_code                            | text FK → hazard_codes NOT NULL |       |
-| source_id                              | uuid FK → sources NOT NULL |       |
-| PRIMARY KEY (material_id, hazard_code) |                            |       |
+| source_id                              | uuid FK → sources NOT NULL      |       |
+| PRIMARY KEY (material_id, hazard_code) |                                 |       |
 
 ### `sources`
 
 Citations.
 
-| Column       | Type                                       | Notes                                                                                                                                                                                                                         |
-| ------------ | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id           | uuid PK                                    |                                                                                                                                                                                                                               |
+| Column       | Type                                       | Notes                                                                                                                                                                           |
+| ------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id           | uuid PK                                    |                                                                                                                                                                                 |
 | key          | text NULLABLE, UNIQUE (`sources_key_uniq`) | Global identity from the seed input, so one document cited by many materials is one row (migration `0003`). Every live row is keyed; the column is nullable for legacy reasons. |
-| type         | enum NOT NULL                              | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other                                                                                                                                                         |
-| url          | text NULLABLE                              |                                                                                                                                                                                                                               |
-| title        | text NOT NULL                              |                                                                                                                                                                                                                               |
-| author       | text NULLABLE                              |                                                                                                                                                                                                                               |
-| published_at | date NULLABLE                              |                                                                                                                                                                                                                               |
-| accessed_at  | timestamptz NOT NULL                       |                                                                                                                                                                                                                               |
-| notes        | text NULLABLE                              |                                                                                                                                                                                                                               |
+| type         | enum NOT NULL                              | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other                                                                                                           |
+| url          | text NULLABLE                              |                                                                                                                                                                                 |
+| title        | text NOT NULL                              |                                                                                                                                                                                 |
+| author       | text NULLABLE                              |                                                                                                                                                                                 |
+| published_at | date NULLABLE                              |                                                                                                                                                                                 |
+| accessed_at  | timestamptz NOT NULL                       |                                                                                                                                                                                 |
+| notes        | text NULLABLE                              |                                                                                                                                                                                 |
 
 Sources resolve by `key` first. The partial unique index `UNIQUE (url) WHERE url IS NOT NULL` remains as the secondary guard — without it the seed pipeline accumulated duplicate rows every run.
 

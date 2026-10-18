@@ -11,8 +11,7 @@ import { env } from '@/lib/env'
 // JetBrains Mono, self-hosted from assets/fonts/jetbrains-mono (OFL-1.1; the
 // licence sits beside the files). Chosen over Geist Mono because it carries
 // Greek natively — α-ionone, β-caryophyllene, γ-undecalactone are everyday
-// names here, and Geist Mono has none of those letters (docs/maker-todo.md,
-// item 5). Self-hosted so the share cards (app/opengraph-image.tsx) can set
+// names here, and Geist Mono has none of those letters. Self-hosted so the share cards (app/opengraph-image.tsx) can set
 // the same family from the same release, with no request-time font fetch.
 //
 // One variable file covers 100–800, so the 400 / 500 / 600 the UI uses are

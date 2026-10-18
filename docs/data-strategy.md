@@ -32,14 +32,14 @@ the data repo's `DATA-DECISIONS.md`.
 
 ## Data layers
 
-| Layer | Source | Treatment |
-| --- | --- | --- |
-| Identity (CAS, IUPAC, formula, weight, SMILES) | PubChem, registries, manufacturers | Cited, one identity source per material |
-| Computed (drawings, classes, similarity, properties) | RDKit | Recomputed, stamped with `rdkit_version`, no citation |
-| Regulatory (IFRA, GHS) | IFRA Standards, ECHA, SDSs | Facts entered and linked, never republished verbatim |
-| Olfactive (description, families, facets) | The maker | Original writing |
-| Landmark uses | Interviews, books, perfumer disclosures | Hand-curated, cited |
-| Personal (bookmarks, notes) | Readers | Private to each account, RLS-enforced |
+| Layer                                                | Source                                  | Treatment                                             |
+| ---------------------------------------------------- | --------------------------------------- | ----------------------------------------------------- |
+| Identity (CAS, IUPAC, formula, weight, SMILES)       | PubChem, registries, manufacturers      | Cited, one identity source per material               |
+| Computed (drawings, classes, similarity, properties) | RDKit                                   | Recomputed, stamped with `rdkit_version`, no citation |
+| Regulatory (IFRA, GHS)                               | IFRA Standards, ECHA, SDSs              | Facts entered and linked, never republished verbatim  |
+| Olfactive (description, families, facets)            | The maker                               | Original writing                                      |
+| Landmark uses                                        | Interviews, books, perfumer disclosures | Hand-curated, cited                                   |
+| Personal (bookmarks, notes)                          | Readers                                 | Private to each account, RLS-enforced                 |
 
 ## Source-by-source
 

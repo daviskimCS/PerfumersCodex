@@ -23,7 +23,7 @@ import { join } from 'node:path'
  * tofu as its failure mode, and Satori falls back per WORD, so the whole
  * Greek-prefixed name would set in a different face. JetBrains Mono carries
  * Greek natively, so with it supplied there is no glyph left for that path to
- * fetch (docs/maker-todo.md, item 5).
+ * fetch.
  *
  * `process.cwd()` plus a literal path is the loading pattern Next documents
  * for this, and output file tracing follows it: the font is listed in each
