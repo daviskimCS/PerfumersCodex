@@ -12,14 +12,18 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-page px-gutter py-5 md:px-gutter-lg md:py-6">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
           {/*
-            The copyright and the two legal documents share one line rather
-            than taking a row of their own: the footer's height and rhythm
-            were deliberately tightened, and a third block would undo that.
-            `flex-wrap` lets the pair drop under the copyright on a narrow
-            screen instead of forcing the rail taller on every screen.
+            The copyright, the about page and the two legal documents share
+            one line rather than taking a row of their own: the footer's
+            height and rhythm were deliberately tightened, and a third block
+            would undo that. `flex-wrap` lets the links drop under the
+            copyright on a narrow screen instead of forcing the rail taller
+            on every screen.
           */}
           <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span>&copy; 2026 Davis Kim</span>
+            <Link href="/about" className={LICENCE_LINK_CLASSNAME}>
+              About
+            </Link>
             <Link href="/privacy" className={LICENCE_LINK_CLASSNAME}>
               Privacy
             </Link>
