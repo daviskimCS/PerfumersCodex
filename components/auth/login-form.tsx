@@ -9,6 +9,7 @@ import { signIn } from '@/app/(auth)/actions'
 import { FormNotice } from '@/components/account/form-parts'
 import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
+import { TurnstileField } from '@/components/auth/turnstile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -247,6 +248,8 @@ export function LoginForm() {
               </p>
             ) : null}
           </div>
+
+          <TurnstileField action="sign-in" resetKey={state} />
 
           <Button type="submit" size="lg" disabled={pending} className="w-full">
             {pending ? 'Signing in…' : 'Sign in'}

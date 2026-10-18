@@ -12,7 +12,9 @@ import { z } from 'zod'
 import { hasPasswordSignIn, isRecoverySessionNow } from '@/lib/account/identity'
 import { env } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createAuthClient } from '@/lib/supabase/auth-server'
 import { createClient } from '@/lib/supabase/server'
+import { passesTurnstile, TURNSTILE_FAILED_MESSAGE } from '@/lib/turnstile'
 import {
   changeEmailSchema,
   changePasswordSchema,
@@ -258,7 +260,16 @@ export async function changePassword(
     return { formError: NO_PASSWORD_MESSAGE }
   }
 
-  const { error: reauthError } = await supabase.auth.signInWithPassword({
+  // The current-password check is a password guess like any sign-in, so it
+  // gets the same protection: the bot check, and Supabase's per-reader rate
+  // limit (createAuthClient sends the reader's IP). Without them a stolen
+  // session could try passwords here as fast as it liked.
+  if (!(await passesTurnstile(formData))) {
+    return { formError: TURNSTILE_FAILED_MESSAGE }
+  }
+  const authClient = await createAuthClient()
+
+  const { error: reauthError } = await authClient.auth.signInWithPassword({
     email,
     password: parsed.data.currentPassword,
   })
@@ -277,7 +288,9 @@ export async function changePassword(
     return { formError: formErrorFor(reauthError) }
   }
 
-  const { error } = await supabase.auth.updateUser({
+  // Through the session the check just created, so the new password is set
+  // on the same session the cookies now hold.
+  const { error } = await authClient.auth.updateUser({
     password: parsed.data.newPassword,
   })
   if (error) {

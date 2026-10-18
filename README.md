@@ -8,7 +8,7 @@ Checking one material means switching between IFRA Standards, supplier pages, sa
 
 ## What exists today
 
-- **Search:** a Cmd/Ctrl-K palette and a `/search` page. Exact CAS numbers short-circuit to their material. Names, synonyms and trade names match with trigram similarity, which tolerates typos and catches most prefixes. Short prefixes of long names can miss.
+- **Search:** a Cmd/Ctrl-K palette and a `/search` page. Exact CAS numbers short-circuit to their material. Names, synonyms and trade names match from their first letter, and trigram similarity tolerates typos.
 - **Material pages:** citations as numbered superscripts that link to their sources, a 2D structure drawn once at seed time and inlined as SVG (no WebAssembly on the page), structurally similar materials scored by Tanimoto similarity (matches below 0.3 are hidden, and the page says so), and computed properties. Long synonym lists fold away, and the IFRA table stays readable on a phone. A clearly labeled experimental odor-prediction module is in place, but no model exists yet.
 - **Browsing:** by olfactive family and by structural class (for example macrocyclic ketone or lactone). `/structure` accepts an arbitrary SMARTS pattern and loads RDKit's WebAssembly build only there.
 - **Accounts:** email/password sign-in, password reset, bookmarks, private per-material notes, changing email or password, a self-serve export of everything the account holds (`/account/export`), and account deletion that removes every row the account owns. A "Continue with Google" button is built but dormant: until the provider is configured, it shows an "unavailable" notice.
@@ -33,10 +33,10 @@ What is not built or not yet verified:
 
 - **Performance is not measured in production.** The search budget is 150 ms p95. Signed-in page views make fewer Supabase Auth round trips than they did, but pages still render per request with no data cache: a cache could serve a page after the review gate has hidden it, because reviews run outside the Next.js runtime and cannot invalidate it.
 - **The browser half of signed-in flows is unverified.** The integration suite proves the server side with real accounts (sign-up through deletion, and two-account isolation for bookmarks and notes), but it runs no browser, so the bookmark button, `/saved` and real Google sign-in are checked by hand only.
-- **Rate limiting is not in place yet.**
+- **Rate limiting is partial.** The sign-in, sign-up and password-reset forms carry a Cloudflare Turnstile check and forward each reader's IP to Supabase so its per-IP limits apply per reader, but both stay off until the keys and the Supabase setting are in place. Search has no rate limit in code.
 - **No admin dashboard, correction form or error monitoring** yet.
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
-- **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (the odour phrase "amber wood") depends on description text the live corpus does not contain, so it would not pass against it.
+- **Search is tested against Postgres on synthetic rows, not the real corpus.** The ranking tests run on synthetic evidence and the integration job runs the search SQL on fixture materials. One gold-set case (the odour phrase "amber wood") depends on description text the live corpus does not contain, so it would not pass against it.
 - **The structure–odor experiment is not built.**
 - **Similarity scores and computed properties are not reproducible from the repositories yet.** They arrive precomputed in the data files (three materials so far), produced by a research script that is not committed, and the RDKit version stamp does not record the fingerprint parameters.
 - **The review gate has edges.** It lives in app code, so an older deployment pointed at the live database would show unreviewed material. List entries rely on a stored fingerprint that the seed refreshes, so a writer that skips that refresh can leave a list entry stale until the next refresh; detail pages re-check on every request. Structural-class names and descriptions are shown on the class filter and `/structure` without review. The open engineering findings are ranked in [`docs/engineering-backlog.md`](./docs/engineering-backlog.md).

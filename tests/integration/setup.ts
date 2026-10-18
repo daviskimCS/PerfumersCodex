@@ -24,6 +24,9 @@ integrationEnv() // fail fast, before any test, if the stack is not local
 
 vi.mock('next/headers', () => ({
   cookies: async () => currentCookieStore(),
+  // The reader's address as Vercel would report it (a documentation-range
+  // IP). lib/supabase/auth-server.ts forwards it to Supabase on sign-in.
+  headers: async () => new Headers({ 'x-real-ip': '203.0.113.7' }),
 }))
 
 vi.mock('next/navigation', () => ({

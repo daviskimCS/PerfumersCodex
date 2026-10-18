@@ -363,7 +363,7 @@ Retention: rows are kept indefinitely. A ~90-day purge job was intended but does
 
 ### Extension: `pg_trgm`
 
-`CREATE EXTENSION IF NOT EXISTS pg_trgm;` (one click on Supabase). Trigram GIN indexes on `materials.canonical_name` and `material_synonyms.name` serve ranking rule 3 (prefix) and give typo tolerance ("galoxolide" still finds galaxolide) — FTS alone cannot do either.
+`CREATE EXTENSION IF NOT EXISTS pg_trgm;` (one click on Supabase). Trigram GIN indexes on `materials.canonical_name` and `material_synonyms.name` serve ranking rule 3 (the `ILIKE 'q%'` prefix leg, from three characters up; shorter prefixes scan the published rows) and give typo tolerance ("galoxolide" still finds galaxolide) — FTS alone cannot do either.
 
 ### Materialized view: `material_search_view`
 
@@ -415,7 +415,7 @@ Refresh: editorial data only changes via the seed script in v1, so refresh is on
 0. Exact match on `cas_number` (normalized) → immediate top, short-circuit
 1. Exact match on `canonical_name` → top
 2. Exact match on a synonym → second
-3. Prefix match on `canonical_name`, or trigram similarity ≥ 0.3 on the name or a synonym → third (a prefix hit scores above a trigram-only hit)
+3. Prefix match on `canonical_name` or a synonym, or trigram similarity ≥ 0.3 on the name or a synonym → third (a canonical-name prefix scores above a synonym prefix, and both above a trigram-only hit)
 4. Full-text match weighted by `setweight` (A > B > C) → remainder
 5. Tie-break: most recently updated material first, then id. A candidate matching no rule is dropped.
 

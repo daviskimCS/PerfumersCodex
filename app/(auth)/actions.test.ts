@@ -20,6 +20,9 @@ const auth = {
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth }),
 }))
+vi.mock('@/lib/supabase/auth-server', () => ({
+  createAuthClient: async () => ({ auth }),
+}))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => {
