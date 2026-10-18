@@ -110,6 +110,15 @@ export function GoogleAuth({
   )
 }
 
+/**
+ * The same button on `/account`, for a Google-only account confirming it is
+ * the owner before deleting itself (`deleteAccount` asks for a recent
+ * sign-in). It is an ordinary Google sign-in that comes back to `next`.
+ */
+export function GoogleReauth({ next }: { next: string }) {
+  return <GoogleForm next={next} notice={null} />
+}
+
 function GoogleFormFromUrl() {
   const searchParams = useSearchParams()
   return (

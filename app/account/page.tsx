@@ -10,7 +10,7 @@ import { DeleteAccountForm } from '@/components/account/delete-account-form'
 import { FormNotice } from '@/components/account/form-parts'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { hasPasswordSignIn } from '@/lib/account/identity'
+import { hasPasswordSignIn, isRecentSignInNow } from '@/lib/account/identity'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -69,6 +69,14 @@ export default async function AccountPage() {
   const pendingEmail = data.user.new_email
   /** False for an account that signs in with Google only. */
   const hasPassword = hasPasswordSignIn(data.user)
+  /**
+   * Whether a Google-only account may delete itself without first confirming
+   * with Google again. Only decides which form is shown: `deleteAccount`
+   * checks it again when the form is sent.
+   */
+  const recentSignIn =
+    !hasPassword &&
+    isRecentSignInNow((await supabase.auth.getClaims()).data?.claims.amr)
 
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
@@ -181,6 +189,7 @@ export default async function AccountPage() {
         <Separator className="my-10" />
 
         <section
+          id="delete-account"
           aria-labelledby="account-delete-heading"
           className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 md:p-6"
         >
@@ -195,7 +204,10 @@ export default async function AccountPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             This deletes your sign-in, your saved materials and your private
             notes, immediately and for good. There is no undo and no way for us
-            to recover any of it afterwards.
+            to recover any of it afterwards.{' '}
+            {hasPassword
+              ? 'You’ll need your password to confirm.'
+              : 'You’ll confirm it’s you with Google first.'}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             The codex itself is unaffected — it stays public and free to read
@@ -210,7 +222,10 @@ export default async function AccountPage() {
             says for how long.
           </p>
 
-          <DeleteAccountForm />
+          <DeleteAccountForm
+            hasPassword={hasPassword}
+            recentSignIn={recentSignIn}
+          />
         </section>
       </div>
     </div>

@@ -354,10 +354,36 @@ describe('deleting the account', () => {
     const user = await createConfirmedUser(email)
     await signedInBrowser(email)
 
-    const state = await deleteAccount({}, form({ confirmation: 'delete' }))
+    const state = await deleteAccount(
+      {},
+      form({ confirmation: 'delete', currentPassword: PASSWORD })
+    )
     expect(state.fieldErrors?.confirmation).toBeDefined()
     const { data } = await admin.auth.admin.getUserById(user.id)
     expect(data.user?.id).toBe(user.id)
+  })
+
+  it('refuses a signed-in browser that does not know the password', async () => {
+    const email = uniqueEmail('borrowed')
+    const user = await createConfirmedUser(email)
+    const browser = await signedInBrowser(email)
+
+    const missing = await deleteAccount({}, form({ confirmation: 'DELETE' }))
+    expect(missing.fieldErrors?.currentPassword).toEqual([
+      'Enter your password.',
+    ])
+    const wrong = await deleteAccount(
+      {},
+      form({ confirmation: 'DELETE', currentPassword: 'not it' })
+    )
+    expect(wrong.fieldErrors?.currentPassword).toEqual([
+      'That isn’t your current password.',
+    ])
+
+    const { data } = await admin.auth.admin.getUserById(user.id)
+    expect(data.user?.id).toBe(user.id)
+    // A wrong guess does not sign the owner out of their own browser.
+    expect(hasSessionCookie(browser.names())).toBe(true)
   })
 
   it('deletes the account and every row it owns, and signs the browser out', async () => {
@@ -385,7 +411,14 @@ describe('deleting the account', () => {
     const browser = await signedInBrowser(email)
     // The id in the form is ignored: only the caller's own account can go.
     const target = await redirectOf(
-      deleteAccount({}, form({ confirmation: 'DELETE', user_id: SOMEONE_ELSE }))
+      deleteAccount(
+        {},
+        form({
+          confirmation: 'DELETE',
+          currentPassword: PASSWORD,
+          user_id: SOMEONE_ELSE,
+        })
+      )
     )
     expect(target).toBe('/')
     expect(hasSessionCookie(browser.names())).toBe(false)
