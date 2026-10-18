@@ -59,7 +59,7 @@ export default function MaterialLoading() {
           from md, as in MaterialSections) beside the first section: its
           label (text-xs) and a heading plus a few rows. */}
       <div className="mt-14 md:grid md:grid-cols-[9rem_minmax(0,1fr)] md:gap-12">
-        <div className="mb-10 flex gap-5 border-b border-border py-3 md:mb-0 md:flex-col md:gap-2 md:border-0 md:py-0">
+        <div className="mb-10 flex gap-5 border-b border-border py-3 md:mb-0 md:flex-col md:gap-2 md:border-b-0 md:border-l md:py-0 md:pl-3">
           {Array.from({ length: 4 }, (_, item) => (
             <Skeleton key={item} className="h-5 w-16" />
           ))}

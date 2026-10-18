@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { OnThisPageLinks } from './on-this-page'
+
 /**
  * The body of a material page: every section on one page, in reading order,
  * with an "On this page" list of links to them.
@@ -13,9 +15,11 @@ import type { ReactNode } from 'react'
  * write), then safety (what someone at the bench checks), then usage, and the
  * reference list last.
  *
- * Server component, no client JavaScript: the list is ordinary in-page links.
- * On a phone it is a row pinned under the site header; from `md` it is a
- * column beside the sections that stays in view while they scroll.
+ * Server component. The list is ordinary in-page links that scroll smoothly
+ * (globals.css); its one piece of client code marks the section being read
+ * (`on-this-page.tsx`). On a phone it is a row pinned under the site header;
+ * from `md` it is a column beside the sections that stays in view while they
+ * scroll.
  */
 
 export const MATERIAL_SECTIONS = [
@@ -42,18 +46,7 @@ export function MaterialSections({
           <p className="hidden font-mono text-xs tracking-widest text-muted-foreground uppercase md:block">
             On this page
           </p>
-          <ul className="flex gap-5 overflow-x-auto py-3 text-sm md:mt-3 md:flex-col md:gap-2 md:overflow-visible md:py-0">
-            {MATERIAL_SECTIONS.map(({ id, label }) => (
-              <li key={id} className="shrink-0">
-                <a
-                  href={`#${id}`}
-                  className="rounded-sm text-muted-foreground underline-offset-4 outline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ul>
+          <OnThisPageLinks sections={MATERIAL_SECTIONS} />
         </div>
       </nav>
 
