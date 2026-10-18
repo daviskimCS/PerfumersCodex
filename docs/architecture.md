@@ -131,5 +131,10 @@ Two properties of the contract matter beyond typing:
   client" holds by construction because there is one schema.
 - Server actions always re-parse with `safeParse`; a parse failure returns
   field-keyed errors, never a thrown 500.
-- `lib/env.ts` parses the environment once at module load. No raw
-  `process.env` elsewhere, so a missing variable fails loudly at boot.
+- `lib/env.ts` is the only server-side reader of `process.env`. Each
+  variable is parsed on first access and cached, so `next build` and CI need
+  no database URL, while the first code path that needs a missing variable
+  fails loudly with its name. Exceptions: the browser Supabase client keeps
+  literal `process.env.NEXT_PUBLIC_*` reads (Next inlines them at build
+  time), and build tooling (`drizzle.config.ts`, `scripts/`,
+  `tests/integration/`) reads its own variables.

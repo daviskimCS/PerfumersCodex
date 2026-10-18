@@ -1,112 +1,79 @@
-# Cheminformatics & ML
+# Cheminformatics and the structure–odor experiment
 
-Added to v1 scope August 2026. Two committed release features, the evaluation
-discipline behind them, and an explicitly-deferred tail. Priority order is by
-expected reward, and the first two are non-negotiable for the v1 release.
+Every discrete-molecule material carries a SMILES string from PubChem.
+Naturals are mixtures and carry none, and every feature below skips a
+NULL-SMILES material rather than erroring.
 
-## 1. Cheminformatics (RDKit) — committed for v1
+## What is built
 
-Every discrete-molecule material carries a SMILES string (from PubChem;
-naturals are mixtures and carry none). RDKit — free, mature, deterministic —
-turns that into a search axis no free perfumery reference has:
+- **2D structures.** The seed draws each structure with RDKit.js in Node
+  (`scripts/draw.ts`), stores the SVG in `material_structure_drawings` with
+  its `rdkit_version`, and the material page inlines it in the server render.
+  Readers never download the 6.6 MB WebAssembly to see a picture that only
+  changes when the seed runs.
+- **Structural classes.** "Ester", "macrocyclic ketone", "contains a lactone
+  ring". Each class is a SMARTS pattern in the data repo's
+  `chemical-classes.json`; the seed computes membership
+  (`scripts/classify.ts`) into `material_chemical_classes`, stamped with
+  `rdkit_version`. Browsing is a SQL filter on `/materials?class=…`: server
+  rendered, shareable, works without scripting, composes with `?family=`.
+  Membership is derived, never authored, so a data file cannot claim a class
+  its structure does not support. Two measured traps: an empty pattern
+  compiles to a valid query that matches nothing, so validation rejects it;
+  ring-size queries (`[r{12-}]`) do work in RDKit.js, which is what makes
+  "macrocyclic" expressible.
+- **Arbitrary SMARTS search.** `/structure` lazy-loads RDKit.js in the
+  browser for a pattern the reader types, the one case that cannot be
+  precomputed. Without scripting or the WebAssembly it falls back to the
+  precomputed class links.
+- **Similar materials and computed properties.** Tanimoto similarity over
+  Morgan fingerprints, and logP, TPSA and heavy-atom count as
+  volatility-adjacent context (never presented as measured fact). The page
+  hides matches below 0.3 as noise and says so.
 
-- **Structural similarity.** Morgan/ECFP fingerprints → Tanimoto similarity →
-  "structurally similar materials" on every material page. Precomputed top-N
-  in the data pipeline at seed time; served as plain rows.
-- **Substructure / class search.** "All esters," "macrocyclic musks,"
-  "contains a lactone ring." **Split in two, 2026-09-05** (P4-D). The fixed
-  class list is _precomputed at seed time_ into `material_chemical_classes`
-  and filtered in SQL at `/materials?class=…`; only arbitrary SMARTS queries
-  run client-side in RDKit.js (WASM), on `/structure`.
+## Provenance
 
-  This revises the original "runs client-side over the corpus's SMILES".
-  Browsing "all macrocyclic musks" is the common path, and as rows it is
-  server-rendered, paginated, shareable, crawlable, works with scripting off,
-  and composes with the family filter — everything `/materials` already is
-  and would have forfeited. No reader should download 6.6 MB of WebAssembly
-  to see a list of names. Membership is also exactly the kind of value this
-  project already governs: a deterministic recomputation, so it is stamped
-  with `rdkit_version` and carries no citation, beside computed properties
-  and similarity. An arbitrary pattern genuinely cannot be precomputed, so
-  that — and only that — pays for the WASM, and when it fails to load the
-  page falls back to the precomputed class links rather than to nothing.
+Computed values carry the RDKit version that produced them instead of a
+citation: they are deterministic recomputations, not cited facts.
 
-  The class SMARTS live in `chemical-classes.json` and are validated by
-  compiling them before any write. Two traps, both measured: an empty pattern
-  compiles to a _valid_ query that matches nothing, so it would define a
-  permanently empty class rather than failing loudly; and ring-size queries
-  (`[r{12-}]`) do work in RDKit.js, which is what makes "macrocyclic"
-  expressible at all.
+Similarity and computed properties arrive precomputed in the data files; the
+seed only writes them. They were produced with RDKit.js 2025.03.4 in Node
+(Crippen logP, TPSA, heavy atoms, Tanimoto over folded 2048-bit Morgan
+fingerprints) by a research script that is **not in either repository**, and
+only Iso E Super, Javanol and Civetone have them so far. The version stamp
+alone does not record fingerprint parameters, so a regeneration with
+different settings would produce different numbers under the same stamp. The
+fix, when this is rebuilt: commit the script and record the fingerprint
+parameters beside `rdkit_version`.
 
-- **Computed properties.** logP, TPSA, heavy-atom count — volatility-adjacent
-  context (loose correlates of top/heart/base behavior), never presented as
-  measured fact. Stamped with the RDKit version that produced them.
-- **2D structure rendering.** Table stakes for a chemical reference. Drawn
-  from SMILES by RDKit.js in Node at seed time (`scripts/draw.ts`), stored in
-  `material_structure_drawings` with its `rdkit_version`, and inlined into the
-  material page's server render, replacing hotlinked images as the primary
-  structure display. Until 2026-10-02 it was drawn in the browser, which made
-  every reader download the 6.6 MB WASM after hydration to redraw a picture
-  that only changes when the seed runs.
+## Structure–odor experiment (not built)
 
-Split of labor: RDKit (Python) computes in `perfumers-codex-data`; the seed
-draws structures and classifies them with RDKit.js in Node; the browser runs
-RDKit.js only on `/structure`, where the reader's pattern cannot be
-precomputed. There the WASM is lazy-loaded and kept out of the critical path
-(Lighthouse >90 stands).
+A fingerprint → odor-descriptor classifier trained on public labelled
+datasets (Leffingwell, GoodScents-derived), whose licences must be reviewed
+before use and which are never redistributed as project data.
 
-The first three cited drafts (2026-09-05) were computed with RDKit.js
-2025.03.4 in Node as a stopgap — Crippen logP, TPSA, heavy atoms, and
-Tanimoto over folded 2048-bit Morgan fingerprints. When the Python pipeline
-exists, regenerate from it and record the fingerprint parameters beside
-`rdkit_version`; the version stamp alone does not distinguish two fingerprint
-configurations.
+The deliverable is the evaluation, not the model: olfaction is the hardest
+modality in ML, the datasets are small and noisy, and structure–odor cliffs
+are real, so a mediocre model is the likely outcome.
 
-## 2. Structure–odor experiment — committed for v1
+- Held-out split first; per-descriptor AUROC/F1, not one flattering
+  aggregate; a written failure analysis.
+- Predictions go in `odor_predictions` with a `model_version` and render only
+  in the clearly labelled experimental module
+  (`components/material/odor-predictions.tsx`, already built, showing nothing
+  until rows exist), never mixed with `material_descriptions`.
 
-A fingerprint → odor-descriptor classifier, trained on public labeled
-datasets (Leffingwell, GoodScents-derived; kept under their own licenses in
-the experiment repo), predicting odor character from structure.
+## Evaluation discipline
 
-Honesty is the design constraint. Olfaction is the hardest modality in ML:
-the public datasets are small and noisily labeled, and structure–odor cliffs
-are real — near-identical molecules can smell completely different. A
-mediocre model is the likely outcome, and that is fine, because the
-deliverable is the evaluation:
+Search is held to the same standard: a gold set of query → expected-material
+pairs (`lib/search/gold-set.ts`) asserted in Vitest, and zero-result
+production queries feed it.
 
-- **Published metrics** on a held-out set — per-descriptor scores, not one
-  flattering aggregate.
-- **A failure analysis** — where it fails and why, including the activity
-  cliffs it cannot cross.
-- **Labeled predictions in the app** — an "experimental" module on material
-  pages showing predicted descriptors with the model version, always separate
-  from the human-written description (schema-enforced: `odor_predictions`
-  vs. `material_descriptions`). Where a human description exists, the
-  side-by-side _is_ the demo of honest evaluation.
+## Deferred
 
-This is an experiment with published metrics, not a product feature, and it
-is framed that way everywhere it appears.
-
-## Evaluation methodology (applies project-wide)
-
-The same discipline backs both search and the experiment:
-
-- **Search:** a curated gold set of query → expected-material pairs (trade
-  names, CAS numbers, abbreviations, misspellings like "galoxolide"),
-  measured as recall@k and expected-rank assertions in Vitest. Zero-result
-  production queries feed the gold set.
-- **Structure–odor:** held-out split before anything else, per-descriptor
-  AUROC/F1, and a written error analysis. No metric, no claim.
-
-## Deferred (in priority order)
-
-| Item                                                            | Status                                                                          |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Interactive odor map (UMAP over fingerprints/descriptors)       | Stretch at launch, else first post-launch feature — highest demo-value-per-hour |
-| MCP server — the reference as queryable tools for LLM clients   | v1.1                                                                            |
-| IFRA amendment diffing (what changed, which materials affected) | v1.1 — pairs with the 52nd Amendment re-verification                            |
-| Embeddings / pgvector hybrid retrieval                          | When the corpus outgrows FTS + trigram + synonyms                               |
-
-Synonym and name resolution — arguably the actual hard problem — is not on
-this list because it is already core v1 scope: canonical IDs, the
-`material_synonyms` alias table, and pg_trgm fuzzy matching.
+| Item | When |
+| --- | --- |
+| Interactive odor map (UMAP over fingerprints or descriptors) | Stretch goal; ask first |
+| MCP server exposing the reference to LLM clients | v1.1 |
+| IFRA amendment diffing | v1.1, with the 52nd Amendment re-verification |
+| Embeddings / pgvector retrieval | When the corpus outgrows FTS + trigram + synonyms |
