@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useActionState } from 'react'
 
 import { requestPasswordReset } from '@/app/(auth)/actions'
+import { TurnstileField } from '@/components/auth/turnstile'
 import { Field, FormNotice } from '@/components/account/form-parts'
 import { useAccountForm } from '@/components/account/use-account-form'
 import { Button } from '@/components/ui/button'
@@ -80,6 +81,8 @@ export function ForgotPasswordForm() {
                 autoComplete="email"
                 {...form.fieldProps('email')}
               />
+
+              <TurnstileField action="password-reset" resetKey={state} />
 
               <Button
                 type="submit"

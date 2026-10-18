@@ -110,6 +110,17 @@ const schemas = {
    * request, so the endpoint is closed until the maker opts in.
    */
   CRON_SECRET: optionalSecret(),
+
+  /**
+   * CLOUDFLARE TURNSTILE (lib/turnstile.ts). Optional, SERVER-ONLY.
+   *
+   * The secret half of the bot check on sign-in, sign-up, password reset and
+   * the current-password check. Unset means the server skips the check, so
+   * the forms work before the maker creates the Turnstile widget. Set it
+   * together with NEXT_PUBLIC_TURNSTILE_SITE_KEY: a secret with no site key
+   * refuses every sign-in, because no form ever sends a token.
+   */
+  TURNSTILE_SECRET_KEY: optionalSecret(),
 } as const
 
 type Schemas = typeof schemas

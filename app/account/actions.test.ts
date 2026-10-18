@@ -22,6 +22,9 @@ const deleteUser = vi.fn()
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth }),
 }))
+vi.mock('@/lib/supabase/auth-server', () => ({
+  createAuthClient: async () => ({ auth }),
+}))
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ auth: { admin: { deleteUser } } }),
 }))

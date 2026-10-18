@@ -6,7 +6,9 @@ import { isAuthError } from '@supabase/supabase-js'
 import { z } from 'zod'
 
 import { env } from '@/lib/env'
+import { createAuthClient } from '@/lib/supabase/auth-server'
 import { createClient } from '@/lib/supabase/server'
+import { passesTurnstile, TURNSTILE_FAILED_MESSAGE } from '@/lib/turnstile'
 import {
   googleSignInSchema,
   signInSchema,
@@ -23,9 +25,11 @@ import {
  * POST, so nothing here trusts client-side validation: every action
  * re-parses its input with `safeParse` (D6) before touching Supabase.
  *
- * Rate limiting on sign-up and sign-in is not built yet (AGENTS.md, Auth and
- * security). `signInWithGoogle` below needs the same protection: starting an
- * OAuth round trip is as cheap to spam as a login POST.
+ * Sign-up, sign-in and the reset email first pass the Cloudflare Turnstile
+ * check (lib/turnstile.ts), then call Supabase through createAuthClient(), so
+ * Supabase rate-limits each reader by their own IP address instead of
+ * Vercel's. `signInWithGoogle` has neither: Google does its own bot checks,
+ * and starting the round trip creates nothing.
  */
 
 /**
@@ -72,7 +76,11 @@ export async function signUp(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const supabase = await createClient()
+  if (!(await passesTurnstile(formData))) {
+    return { formError: TURNSTILE_FAILED_MESSAGE }
+  }
+
+  const supabase = await createAuthClient()
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -110,7 +118,11 @@ export async function signIn(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const supabase = await createClient()
+  if (!(await passesTurnstile(formData))) {
+    return { formError: TURNSTILE_FAILED_MESSAGE }
+  }
+
+  const supabase = await createAuthClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
 
   if (error) {
@@ -153,7 +165,11 @@ export async function requestPasswordReset(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const supabase = await createClient()
+  if (!(await passesTurnstile(formData))) {
+    return { formError: TURNSTILE_FAILED_MESSAGE }
+  }
+
+  const supabase = await createAuthClient()
   const redirectTo = new URL('/auth/confirm', env.NEXT_PUBLIC_SITE_URL)
   redirectTo.searchParams.set('next', '/reset-password')
   const { error } = await supabase.auth.resetPasswordForEmail(

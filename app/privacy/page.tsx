@@ -174,7 +174,8 @@ export default function PrivacyPage() {
             from this site, and structure diagrams are drawn by this site
             from the molecule’s SMILES string rather than fetched from
             somewhere else, so reading a material page does not quietly
-            announce you to another company.
+            announce you to another company. The one exception is the bot
+            check on the sign-in forms, described below.
           </li>
         </LegalList>
       </LegalSection>
@@ -271,6 +272,24 @@ export default function PrivacyPage() {
             , including its Limited Use requirements. You can cut the link from
             your Google account’s third-party connections page at any time;
             deleting your account here removes what Google sent.
+          </li>
+          <li>
+            <strong className="font-medium">Cloudflare Turnstile</strong>{' '}
+            checks that the sign-up, sign-in, password-reset and
+            change-password forms are filled in by a person rather than a
+            script. Only those forms load it. It runs in your browser and
+            sends Cloudflare signals about the browser and your IP address;
+            the site then asks Cloudflare whether the check passed, sending
+            your IP address with that question. It sets no cookies, and the
+            site keeps nothing from it beyond the answer for that one
+            request. Cloudflare describes what it collects in its{' '}
+            <a
+              href="https://www.cloudflare.com/turnstile-privacy-policy/"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              Turnstile privacy addendum
+            </a>
+            .
           </li>
         </LegalList>
       </LegalSection>
@@ -487,6 +506,13 @@ export default function PrivacyPage() {
           The date at the top of this page changes with it, and anything that
           alters what is collected or who sees it will be described here rather
           than folded in quietly.
+        </p>
+        <p>
+          <strong className="font-medium">18 October 2026:</strong> added
+          Cloudflare Turnstile, the bot check on the sign-in forms, and noted
+          that the site now passes your IP address to Supabase when you sign
+          in, so its limits on repeated attempts apply to you alone rather than
+          to every reader at once.
         </p>
         <p>
           <strong className="font-medium">17 October 2026:</strong> removed the{' '}
