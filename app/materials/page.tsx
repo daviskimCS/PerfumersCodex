@@ -171,17 +171,19 @@ async function Browse({
 }) {
   const query = readQuery(await searchParams)
 
-  const [{ items, total }, allFamilies, allClasses] = await Promise.all([
-    listMaterials({
-      sort: query.sort,
-      familySlug: query.family,
-      classSlug: query.class,
-      page: query.page,
-      pageSize: DEFAULT_PAGE_SIZE,
-    }),
-    listFamilies(),
-    listChemicalClasses(),
-  ])
+  const [{ items, total, thumbnails }, allFamilies, allClasses] =
+    await Promise.all([
+      listMaterials({
+        sort: query.sort,
+        familySlug: query.family,
+        classSlug: query.class,
+        page: query.page,
+        pageSize: DEFAULT_PAGE_SIZE,
+        withThumbnails: true,
+      }),
+      listFamilies(),
+      listChemicalClasses(),
+    ])
 
   const pageCount = Math.max(Math.ceil(total / DEFAULT_PAGE_SIZE), 1)
   const activeFamily = allFamilies.find(
@@ -218,7 +220,10 @@ async function Browse({
           <MaterialCardGrid className="mt-4">
             {items.map((material) => (
               <li key={material.id}>
-                <MaterialCard material={material} />
+                <MaterialCard
+                  material={material}
+                  structureSvg={thumbnails.get(material.id) ?? null}
+                />
               </li>
             ))}
           </MaterialCardGrid>

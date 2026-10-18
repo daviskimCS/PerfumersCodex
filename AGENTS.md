@@ -11,7 +11,7 @@ This file defines the rules of this codebase. When in doubt, follow these rules 
 
 ## Project context
 
-A curated, public, open-source aromachemical reference web app for working perfumers. Citation-driven, editorially curated, polished. Solo-built by Davis Kim. Live at perfumerscodex.com (once deployed). Deeper design docs live in `/docs`.
+A curated, public, open-source aromachemical reference web app for working perfumers. Citation-driven, editorially curated, polished. Solo-built by Davis Kim. Deployed at perfumerscodex.com. Deeper design docs live in `/docs`.
 
 ## Stack
 
@@ -21,20 +21,19 @@ A curated, public, open-source aromachemical reference web app for working perfu
 - Postgres on Supabase + Drizzle ORM (table definitions in `db/schema.ts`; all access via `lib/db/` — see below)
 - Supabase Auth via `@supabase/ssr` (email/password + Google OAuth) — never use the deprecated auth-helpers packages
 - Supabase API keys: new-style `sb_publishable_` / `sb_secret_` only
-- Row-Level Security on **every** public table (deny-by-default since migration 0002, 2026-08-30) — Supabase grants anon full DML over PostgREST by default, so a table without RLS is world-writable once the site is live. Editorial tables carry no policies (the app reads them through Drizzle, which bypasses RLS); user tables carry owner-scoped policies. Views and materialized views cannot carry RLS, so every one created in `public` must `REVOKE ALL … FROM anon, authenticated` in the same migration (`material_search_view`: migration 0007, written 2026-10-02 — maker to apply, maker-todo item 0)
+- Row-Level Security on **every** public table (deny-by-default since migration 0002, 2026-08-30) — Supabase grants anon full DML over PostgREST by default, so a table without RLS is world-writable once the site is live. Editorial tables carry no policies (the app reads them through Drizzle, which bypasses RLS); user tables carry owner-scoped policies. Views and materialized views cannot carry RLS, so every one created in `public` must `REVOKE ALL … FROM anon, authenticated` in the same migration (`material_search_view`: migration 0007, applied live 2026-10-03)
 - Vercel deployment (function region matches Supabase region)
-- Upstash Redis (Vercel Marketplace) for rate limiting only — not a cache
 - Vitest for unit tests (node environment, colocated `*.test.ts`)
 - Zod for validation — one schema per form, shared by client and server
-- GitHub Actions for typecheck + tests on PRs
-- Python data ingestion in separate repo: perfumers-codex-data
-- RDKit (Python, in perfumers-codex-data): fingerprints, Tanimoto similarity precompute, computed properties — stamped with rdkit_version
+- GitHub Actions on every PR and push to main: typecheck, lint, unit tests, and an `integration` job against a local Supabase stack
+- Material data lives in a separate repo, daviskimCS/PerfumersCodexData: cited JSON files plus research dossiers, read by `npm run db:seed -- <dir>`. No ingestion or RDKit code is committed there; similarity and computed properties arrive precomputed in the files (RDKit.js 2025.03.4, stamped with rdkit_version, so far only for Iso E Super, Javanol and Civetone)
+- Vercel Cron calls `/api/keep-alive` daily (`vercel.json`, `CRON_SECRET`) so the free Supabase project never pauses; security headers on every response in `next.config.ts`
 - RDKit.js (WASM): the seed draws each 2D structure once in Node (`scripts/draw.ts` → `material_structure_drawings`, stamped with rdkit_version, migration 0009) and material pages inline that SVG server-side. The browser loads the WASM only on `/structure`, for patterns a reader types (lazy-loaded, never in the critical path). Never load it on a material page to redraw what the seed stored
 
 ## Architectural rules
 
 - All DB access goes through `lib/db/`. No inline SQL in route handlers or components.
-- **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts` — except `scripts/` build tooling, which may import `db/schema.ts` directly (it still takes its client from `lib/db/`). Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
+- **Module layout (docs/architecture.md D1):** `db/` declares the database shape (`schema.ts`, generated `migrations/`); `lib/db/` is the only place that imports the Drizzle client, a Supabase client, or `db/schema.ts` — except `scripts/` build tooling, which may import `db/schema.ts` directly (it still takes its client from `lib/db/`), and the auth and account flows (`app/(auth)/`, `app/auth/`, `app/account/`), which call Supabase Auth through `lib/supabase/` directly. Their data rows still go through `lib/db/`. Pages and components call `lib/db/` functions and receive `lib/types.ts` shapes — never raw Drizzle rows. Imports use the `@/` alias.
 - **Type contracts:** `lib/types.ts` is contract-locked. It is hand-written from `docs/database-schema.md`, not inferred from Drizzle, so UI and schema work stay decoupled. Conform to it; don't edit it.
 - **Search boundary (docs/architecture.md D2):** SQL returns _evidence_ (match flags, similarities, ts_rank), TypeScript assigns _rank_. `lib/search/{normalize,rank}.ts` stay pure and database-free so the gold set runs without Postgres.
 - **Page states (docs/architecture.md D4):** every data-fetching route segment ships `loading.tsx` (skeleton matching final layout) and `error.tsx` (plain language + `retry()` — not `reset()`, which re-renders without re-fetching; it was `unstable_retry()` before Next 16.3 — never a raw error or stack trace). Unknown slugs call `notFound()`. Empty states are content passed to the shared `components/empty-state.tsx`, never new bespoke components. Never catch-and-render-blank — a silent empty section lies about the data.
@@ -67,19 +66,19 @@ A curated, public, open-source aromachemical reference web app for working perfu
 ## Auth and security
 
 - Supabase Auth handles auth flows. Don't roll custom auth.
-- Server-side, verify the caller with `supabase.auth.getClaims()` for reads and gating (the proxy's session refresh, the header, "is this reader signed in", bookmark and note reads): it verifies the token's signature locally against the project's JWKS, no auth-server round trip. Use `supabase.auth.getUser()` before sensitive writes (account deletion, email and password changes): it asks the auth server, so a session revoked elsewhere is refused at once, where a locally-verified token stays valid until it expires (an hour at most). Never `getSession()`, which trusts unvalidated cookie data. (Changed 2026-10-02 from "always `getUser()`" — it cost a signed-in reader two to three auth round trips per page. The local check needs asymmetric signing keys, maker-todo item 11; until then `getClaims()` falls back to `getUser()` on its own.)
+- Server-side, verify the caller with `supabase.auth.getClaims()` for reads and gating (the proxy's session refresh, the header, "is this reader signed in", bookmark and note reads): it verifies the token's signature locally against the project's JWKS, no auth-server round trip. Use `supabase.auth.getUser()` before sensitive writes (account deletion, email and password changes): it asks the auth server, so a session revoked elsewhere is refused at once, where a locally-verified token stays valid until it expires (an hour at most). Never `getSession()`, which trusts unvalidated cookie data. `/account` and `/account/export` also use `getUser()`, so they show the account as the auth server holds it. The local check needs asymmetric signing keys (maker-todo item 11); until then `getClaims()` falls back to a round trip on its own.
 - All user-data tables have RLS policies. Test with multiple accounts before merging.
 - Account deletion _actually deletes_ data. No soft-deletes for user-owned rows. It runs through the Supabase admin API with the secret key in a server action (the logged-in client cannot delete itself); `ON DELETE CASCADE` on user tables does the cleanup — verify it with a throwaway account.
-- Rate limit: signup, login, search.
+- Rate limit sign-up, sign-in and search before public sign-up. **Not built yet** (no Redis: see Forbidden).
 - No secrets in client bundle. Verify before deploy.
 - **Validation (docs/architecture.md D6):** one Zod schema per form/domain in `lib/validation/`, imported by both the client form and the server action — "server matches client" holds by construction. Server actions always re-parse with `safeParse`; a parse failure returns field-keyed errors, never a thrown 500.
-- Environment variables are read only through `lib/env.ts` (Zod-parsed once at module load). No raw `process.env` elsewhere — a missing var should fail loudly at boot.
+- Server-side environment variables are read only through `lib/env.ts` (Zod, parsed per variable on first access, then cached), so a missing var fails loudly where it is first needed while `next build` needs none. Exceptions: the browser Supabase client's literal `process.env.NEXT_PUBLIC_*` (inlined at build) and build tooling (`drizzle.config.ts`, `scripts/`, `tests/integration/`).
 
 ## Aesthetic
 
 - Minimalist, editorial. Reference: Apple developer docs, not a startup landing page.
 - Generous whitespace. Thoughtful typography hierarchy.
-- Imagery is limited to chemical structure diagrams (hotlinked from PubChem with attribution).
+- Imagery is limited to chemical structure diagrams, drawn by RDKit at seed time.
 - Light + dark mode, both first-class.
 - Consistent spacing scale, type scale, color tokens. No one-off styles.
 
@@ -140,6 +139,15 @@ Skip tests for:
 - **Auth round trips cut (2026-10-02):** a signed-in page view made two to three Supabase Auth calls before rendering (the proxy's refresh, the header's own `getUser()`, the page's `getCurrentUserId()`), the first of them on every search keystroke. Now: `getClaims()` everywhere a read decides what to show (local signature check once maker-todo item 11 turns on asymmetric keys), the header shares the page's `cache()`-deduped call and streams behind its own Suspense boundary, and `/api/search` skips the session refresh (still behind the gate). `getUser()` stays on the account mutations. A data cache over editorial reads was considered and rejected: the review gate's instant-hide promise cannot survive one that `npm run db:review` (outside the Next runtime) cannot invalidate. Perf notes: the project thread's `perf/bottlenecks.md`.
 - **In progress:** maker reviewing the three drafts and authoring the remaining two
 - **Accounts completed and tested (2026-10-12):** password reset (`/forgot-password` → `/reset-password`, gated to fresh recovery sessions), self-serve data export (`/account/export`), Google-only accounts handled, sign-up notice. `npm run test:integration` runs the real actions against a local Supabase stack (`supabase/config.toml`, CI job `integration`): sign-up/confirm/sign-in/out, password change and reset, email change, deletion cascade, two-account RLS, and Google up to the hand-off. It is Vitest, no browser. Legal map and Davis's remaining steps: `docs/legal/account-data.md`, maker-todo item 12.
+- **Built (2026-10-18):** every v1 route except the admin dashboard, correction form, blog and the structure–odor experiment; rate limiting and error monitoring are not built. Status by area: `docs/overview.md`.
+- **Maker's open items live in `docs/maker-todo.md`** — human-only work (dashboards, editorial). Check it before assuming something is unfinished for a code reason.
+- **Pre-launch password gate is LIVE (maker, 2026-09-03, `f67399b`):** an app-level fence in `proxy.ts` + `lib/gate.ts`. `SITE_GATE_PASSWORD` turns it on; **unset means off**, so local dev, CI and `next build` need nothing. Every route rewrites to the construction page except `/unlock`, `/icon.svg`, `/opengraph-image`, `/apple-icon`. It is a fence, not auth — RLS and Supabase Auth still do the real work behind it. Consequence for agents: **the production site cannot be probed without the password**; verify against a local production build or a Vercel preview instead.
+- **Live database:** 18 materials (14 researched drafts, 4 synthetic fixtures), all fingerprinted and `awaiting review`, 0 published, so readers see none until the maker publishes. Migrations 0000–0009 are applied live; 0010 (note length cap) is the maker's to apply. Last re-seed 2026-10-11 from PerfumersCodexData `c2dd854`. Only Iso E Super and Javanol carry the maker's olfactive descriptions. 15 `PROPOSED — maker to replace` families are still live, and `publish` refuses a material whose family is PROPOSED.
+- **Never run `npm run db:seed -- scripts/fixtures` against the live database:** `usage_categories` upserts by id, and the fixture file would rename all eleven real IFRA categories "Test Category N". Prune the four fixtures with `--prune` when the maker says so (maker-todo item 8).
+- **Renaming a source key** in the data repo collides on `sources_url_uniq` until the live row is renamed to match: the seed adopts a same-URL row only when its key is NULL.
+- **Seed input rules:** every material needs `identity_source_key` and a `source_key` per synonym; validation refuses a Standard and a verified absence for the same amendment, and one URL under two keys. Class membership is derived by the seed, never authored.
+- **No data cache over editorial reads:** the review gate hides a changed page at once, and `npm run db:review` runs outside the Next runtime, where it could not invalidate a cache.
+- **Tests:** `npm test` is database-free; `npm run test:integration` runs the real auth and account actions against a local Supabase stack (CI job `integration`; `tests/integration/README.md`).
 - **Unverified:** the browser half of bookmarks and notes (button, `/saved`), and real Google sign-in (manual check in `tests/integration/README.md`). Account deletion leaves Supabase's auth audit log rows behind (maker-todo item 12).
 - **Blockers:** none
 
@@ -147,7 +155,7 @@ Skip tests for:
 
 - **Canonical-domain mismatch:** `NEXT_PUBLIC_SITE_URL` and og:url advertise the apex (`perfumerscodex.com`), but Vercel has `www` as the primary domain and 308-redirects apex → www. Fix in the Vercel dashboard (make the apex primary so www redirects to it) — no code change. Until then the site advertises a URL that redirects.
 - **Repo is still private** — the public-from-day-one constraint is unmet. Flip visibility when ready; LICENSE/LICENSE-DATA are already in place.
-- Vercel project email/alias (`hello@perfumerscodex.com`) still pending; nothing blocks on it until Week 20 (Resend).
+- No custom SMTP sender yet: Supabase's built-in sender reaches only the project team, so sign-up and reset emails cannot reach the public until it exists (maker-todo item 12).
 
 ## V2 backlog (do not implement now)
 

@@ -1,31 +1,36 @@
-# Perfumers Codex — Design Docs
+# Design docs
 
-| Doc                                            | Purpose                                                                                                         |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| [overview.md](./overview.md)                   | What this project is, why it exists, target users                                                               |
-| [scope.md](./scope.md)                         | What ships in v1, what's deferred, why                                                                          |
-| [tech-stack.md](./tech-stack.md)               | Locked stack with reasoning and cut points                                                                      |
-| [data-strategy.md](./data-strategy.md)         | Sourcing, licensing, ethical/legal handling                                                                     |
-| [database-schema.md](./database-schema.md)     | Tables, relationships, design decisions                                                                         |
-| [architecture.md](./architecture.md)           | Code-level decisions: module layout, search boundary, type contracts, page states, tests, validation            |
-| [cheminformatics.md](./cheminformatics.md)     | RDKit features, the structure–odor experiment, evaluation methodology                                           |
-| [licensing.md](./licensing.md)                 | MIT (code) + CC-BY-SA (data), reasoning                                                                         |
-| [quality-checklist.md](./quality-checklist.md) | The "boring quality" bar the app is held to                                                                     |
-| [CHECKLIST.md](./CHECKLIST.md)                 | The agent work queue: Phases 1–3 (done) and Phase 4, what remains of v1                                         |
-| [maker-todo.md](./maker-todo.md)               | What only the maker can do — accounts, verification, editorial decisions — and the cited drafts awaiting review |
-| [waves/](./waves/)                             | The dispatch record: one file per wave, entry criteria, prompts, what was found                                 |
+<<<<<<< HEAD
 
-These docs are canonical: they describe what the project is and how it's
-built, they're versioned with the code they describe, and they're written to be
-public (the repository itself stays private until maker-todo item 9). Change
-them here, not in a copy.
+| Doc                                              | What it holds                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| [overview.md](./overview.md)                     | What the project is, who it is for, v1 scope and status, what is deferred                            |
+| [architecture.md](./architecture.md)             | Code-level decisions: module layout, search boundary, type contracts, page states, tests, validation |
+| [database-schema.md](./database-schema.md)       | Every table, the review gate, search infrastructure and ranking rules                                |
+| [tech-stack.md](./tech-stack.md)                 | The stack, why each piece, what is deliberately not used                                             |
+| [data-strategy.md](./data-strategy.md)           | How material data is sourced, cited, checked and published                                           |
+| [cheminformatics.md](./cheminformatics.md)       | Structures, classes, similarity, and the planned structure–odor experiment                           |
+| [licensing.md](./licensing.md)                   | MIT code, CC BY-SA data, and why                                                                     |
+| [quality-checklist.md](./quality-checklist.md)   | The quality bar every page, form, table and route is held to                                         |
+| [legal/account-data.md](./legal/account-data.md) | What account data is kept, for how long, and the values `/privacy` and `/terms` depend on            |
+| [maker-todo.md](./maker-todo.md)                 | Open work only the maker can do                                                                      |
+| [ui-backlog.md](./ui-backlog.md)                 | UI findings from the October 2026 audit left for later, ranked by impact                             |
+| =======                                          |
+| Doc                                              | What it holds                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| [overview.md](./overview.md)                     | What the project is, who it is for, v1 scope and status, what is deferred                            |
+| [architecture.md](./architecture.md)             | Code-level decisions: module layout, search boundary, type contracts, page states, tests, validation |
+| [database-schema.md](./database-schema.md)       | Every table, the review gate, search infrastructure and ranking rules                                |
+| [tech-stack.md](./tech-stack.md)                 | The stack, why each piece, what is deliberately not used                                             |
+| [data-strategy.md](./data-strategy.md)           | How material data is sourced, cited, checked and published                                           |
+| [cheminformatics.md](./cheminformatics.md)       | Structures, classes, similarity, and the planned structure–odor experiment                           |
+| [licensing.md](./licensing.md)                   | MIT code, CC BY-SA data, and why                                                                     |
+| [quality-checklist.md](./quality-checklist.md)   | The quality bar every page, form, table and route is held to                                         |
+| [legal/account-data.md](./legal/account-data.md) | What account data is kept, for how long, and the values `/privacy` and `/terms` depend on            |
+| [maker-todo.md](./maker-todo.md)                 | Open work only the maker can do                                                                      |
 
-The codebase _rules_ — the constraints an agent or contributor works under —
-live one level up in [`AGENTS.md`](../AGENTS.md), loaded automatically via
-`CLAUDE.md`.
+> > > > > > > 2d0061d (docs: reconcile AGENTS.md and README with the code; repoint comments that cited deleted docs)
 
-Personal planning (time budget, week-by-week milestones, cut-point strategy,
-career framing) is deliberately **not** in this repo. It's private, it changes
-weekly, and none of it is needed to understand or build the project. Project
-tasks that need a human — accounts, dashboards, editorial judgment — are the
-exception: they live in [maker-todo.md](./maker-todo.md).
+The rules a contributor or agent works under are in
+[`AGENTS.md`](../AGENTS.md). How facts are represented in the material files
+is the data repository's `DATA-DECISIONS.md`.

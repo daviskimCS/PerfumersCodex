@@ -54,6 +54,9 @@ export default async function StructurePage({
     listChemicalClasses(),
   ])
 
+  // Presets for empty classes would each match nothing published.
+  const presets = classes.filter((c) => c.materialCount > 0)
+
   return (
     <div className="mx-auto w-full max-w-page px-gutter py-section md:px-gutter-lg">
       <h1 className="text-3xl">Structure search</h1>
@@ -63,15 +66,20 @@ export default async function StructurePage({
       <p className="mt-3 max-w-measure text-muted-foreground">
         This finds every material whose molecule contains a particular
         structural fragment — a ketone, a macrocyclic ring, a substitution
-        pattern — written as a SMARTS query. The presets are a starting point:
-        each one loads the pattern behind a structural class we already index,
-        and you can edit it from there.
+        pattern — written as a SMARTS query.
+        {/* Only when there are presets to point at. */}
+        {presets.length === 0 ? null : (
+          <>
+            {' '}
+            The presets are a starting point: each one loads the pattern behind
+            a structural class we already index, and you can edit it from there.
+          </>
+        )}
       </p>
 
       <StructureSearch
         candidates={candidates}
-        // Presets for empty classes would each match nothing published.
-        classes={classes.filter((c) => c.materialCount > 0)}
+        classes={presets}
         pattern={readPattern(params)}
       />
     </div>

@@ -1,4 +1,4 @@
-import type { SourceType, SynonymType } from '@/lib/types'
+import type { SourceType, SynonymType, UsageLimit } from '@/lib/types'
 
 /**
  * Display formatting shared by the material detail page and its panels.
@@ -88,4 +88,25 @@ export function similarityBand(tanimoto: number): SimilarityBand {
   if (tanimoto >= 0.5) return 'related'
   if (tanimoto >= 0.3) return 'distant'
   return 'unrelated'
+}
+
+/**
+ * The amendment and verified date every limit shares, or null when they
+ * differ. Usually they are the same for every row (one Standard, checked
+ * once), and then repeating them in two columns eleven times said one fact
+ * eleven times and took a third of the table's width. Shared, they become
+ * one line above the table; mixed, the per-row columns come back.
+ */
+export function sharedProvenance(
+  limits: Pick<UsageLimit, 'ifraAmendmentVersion' | 'verifiedAt'>[]
+): { verified: string } | null {
+  if (limits.length === 0) return null
+  const amendment = limits[0].ifraAmendmentVersion
+  const verified = datePart(limits[0].verifiedAt)
+  const uniform = limits.every(
+    (limit) =>
+      limit.ifraAmendmentVersion === amendment &&
+      datePart(limit.verifiedAt) === verified
+  )
+  return uniform ? { verified } : null
 }

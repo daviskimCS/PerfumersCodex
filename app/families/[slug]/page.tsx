@@ -70,12 +70,13 @@ export default async function FamilyPage({ params }: FamilyRouteProps) {
   // A wrong slug is a 404, not an error state (docs/architecture.md D4).
   if (!family) notFound()
 
-  const [{ items, total }, allFamilies] = await Promise.all([
+  const [{ items, total, thumbnails }, allFamilies] = await Promise.all([
     listMaterials({
       familySlug: family.slug,
       sort: 'name',
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
+      withThumbnails: true,
     }),
     listFamilies(),
   ])
@@ -168,7 +169,10 @@ export default async function FamilyPage({ params }: FamilyRouteProps) {
             <MaterialCardGrid className="mt-4">
               {items.map((material) => (
                 <li key={material.id}>
-                  <MaterialCard material={material} />
+                  <MaterialCard
+                    material={material}
+                    structureSvg={thumbnails.get(material.id) ?? null}
+                  />
                 </li>
               ))}
             </MaterialCardGrid>

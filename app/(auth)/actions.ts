@@ -23,10 +23,9 @@ import {
  * POST, so nothing here trusts client-side validation: every action
  * re-parses its input with `safeParse` (D6) before touching Supabase.
  *
- * Rate limiting on signup/login is deferred to Week 18 (Upstash) — recorded
- * in docs/waves/wave-3.md; do not bolt it on here. `signInWithGoogle` below
- * is covered by the same deferral: starting an OAuth round trip is as cheap
- * to spam as a login POST, and it gets the same Upstash bucket in Week 18.
+ * Rate limiting on sign-up and sign-in is not built yet (AGENTS.md, Auth and
+ * security). `signInWithGoogle` below needs the same protection: starting an
+ * OAuth round trip is as cheap to spam as a login POST.
  */
 
 /**

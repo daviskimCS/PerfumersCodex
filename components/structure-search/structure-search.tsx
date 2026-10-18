@@ -257,21 +257,31 @@ export function StructureSearch({
       </p>
 
       <section aria-labelledby={`${headingId}-presets`} className="mt-8">
+        {/* No published material belongs to any class yet: a "Presets" label
+            over nothing read as a broken page, so the label goes with the
+            list and only the corpus line below stays. */}
         <h2
           id={`${headingId}-presets`}
-          className="text-2xs tracking-wide text-muted-foreground uppercase"
+          className={
+            classes.length === 0
+              ? 'sr-only'
+              : 'text-2xs tracking-wide text-muted-foreground uppercase'
+          }
         >
           Presets
         </h2>
 
-        <PresetList
-          classes={classes}
-          // GUARD 4, first half: until RDKit is actually ready — including
-          // forever, if it fails — every preset is a link to the precomputed
-          // class filter, which needs neither WASM nor JavaScript.
-          mode={engine.status === 'ready' ? 'smarts' : 'class'}
-          activePattern={query}
-        />
+        {classes.length === 0 ? null : (
+          <PresetList
+            classes={classes}
+            // GUARD 4, first half: until RDKit is actually ready — including
+            // forever, if it fails — every preset is a link to the
+            // precomputed class filter, which needs neither WASM nor
+            // JavaScript.
+            mode={engine.status === 'ready' ? 'smarts' : 'class'}
+            activePattern={query}
+          />
+        )}
 
         <p className="mt-3 max-w-measure text-sm text-muted-foreground">
           Matching runs over the {candidates.length}{' '}
@@ -318,6 +328,8 @@ export function StructureSearch({
           query={query}
           outcome={outcome}
           matches={matches}
+          hasPresets={classes.length > 0}
+          hasCandidates={candidates.length > 0}
         />
       </section>
     </>
@@ -352,11 +364,17 @@ function ResultsBody({
   query,
   outcome,
   matches,
+  hasPresets,
+  hasCandidates,
 }: {
   engine: Engine
   query: string
   outcome: PendingOutcome
   matches: readonly StructureCandidate[]
+  /** False while no published material belongs to any class. */
+  hasPresets: boolean
+  /** False while no published material has a structure to match. */
+  hasCandidates: boolean
 }): ReactNode {
   // GUARD 4, second half. The matcher is gone for this reader; the page is
   // not. Everything precomputed still works, and the empty state says where.
@@ -383,7 +401,7 @@ function ResultsBody({
       <MaterialCardGrid className="mt-4">
         {Array.from({ length: 3 }, (_, card) => (
           <li key={card}>
-            <MaterialCardSkeleton />
+            <MaterialCardSkeleton withThumbnail={false} />
           </li>
         ))}
       </MaterialCardGrid>
@@ -396,13 +414,23 @@ function ResultsBody({
   if (engine.status !== 'ready') return null
 
   // GUARD 1, rendered: no pattern, so no filtering and no claim about one.
+  // The copy names only what is on the page: no preset to pick when there
+  // are none, and nothing to match against before a structure is published.
   if (query === '') {
     return (
       <EmptyState
         className="mt-6"
         icon={Hexagon}
-        title="Nothing matched yet"
-        description="Pick a preset above to load its pattern, then edit it — or write a SMARTS fragment of your own. Materials appear here as soon as a pattern is entered."
+        title={
+          hasCandidates ? 'Nothing matched yet' : 'No structures to search yet'
+        }
+        description={
+          !hasCandidates
+            ? 'Patterns are matched against published materials with a recorded structure, and none is published yet. You can still try a pattern: it checks your SMARTS as you type.'
+            : hasPresets
+              ? 'Pick a preset above to load its pattern, then edit it — or write a SMARTS fragment of your own. Materials appear here as soon as a pattern is entered.'
+              : 'Write a SMARTS fragment above. Materials appear here as soon as a pattern is entered.'
+        }
         action={
           <Button asChild variant="outline" size="lg">
             <Link href="/materials">Browse all materials</Link>

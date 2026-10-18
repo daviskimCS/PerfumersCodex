@@ -7,16 +7,21 @@ import {
   HomeStructure,
   HomeStructureFallback,
 } from '@/components/home-structure'
+import { MaterialCard, MaterialCardGrid } from '@/components/material-card'
 import { Button } from '@/components/ui/button'
 import { listFamilies } from '@/lib/db/families'
-import { countMaterials, getRandomDrawnMaterialSlug } from '@/lib/db/materials'
+import {
+  countMaterials,
+  getRandomDrawnMaterialSlug,
+  listMaterials,
+} from '@/lib/db/materials'
 
 /**
  * The homepage (W5-A / P2-H) — the real one, replacing the scaffold's
  * "under construction" placeholder.
  *
- * Four things and no more: what this is, a way into search, a way into the
- * taxonomy, and an honest count. Beside them, one published structure drawing
+ * Five things and no more: what this is, a way into search, the latest
+ * entries, a way into the taxonomy, and an honest count. Beside them, one published structure drawing
  * itself in (`components/home-structure.tsx`), the site's one image. The copy is `docs/overview.md`'s own
  * description with the self-praise trimmed; nothing here claims a capability
  * the corpus does not currently have, which is why the count line reads
@@ -58,10 +63,16 @@ const PRINCIPLES = [
 ]
 
 export default async function HomePage() {
-  const [materialCount, families, structureSlug] = await Promise.all([
+  const [materialCount, families, structureSlug, latest] = await Promise.all([
     countMaterials(),
     listFamilies(),
     getRandomDrawnMaterialSlug(),
+    listMaterials({
+      sort: 'recently-updated',
+      page: 1,
+      pageSize: 3,
+      withThumbnails: true,
+    }),
   ])
 
   return (
@@ -71,10 +82,9 @@ export default async function HomePage() {
           <h1 className="font-display text-4xl md:text-5xl">Perfumers Codex</h1>
 
           <p className="mt-6 text-lg text-muted-foreground">
-            A curated, citation-driven aromachemical reference for working
-            perfumers: one well-cited source of truth for the identity, safety
-            data, olfactive character and usage of the aromachemicals and
-            naturals used in modern perfumery.
+            A curated, cited reference for working perfumers: identity, IFRA
+            limits, odor and sources for each aromachemical and natural, on one
+            page.
           </p>
 
           {/* The honest number. An empty corpus says so rather than boasting
@@ -112,6 +122,37 @@ export default async function HomePage() {
           </Suspense>
         )}
       </div>
+
+      {/* A way into actual entries without searching first. The same card
+          as every list; nothing renders until something is published. */}
+      {latest.items.length === 0 ? null : (
+        <section aria-labelledby="latest-heading" className="mt-section">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2
+              id="latest-heading"
+              className="text-sm font-normal text-muted-foreground"
+            >
+              Recently updated
+            </h2>
+            <Link
+              href="/materials?sort=recently-updated"
+              className="text-sm text-brand underline underline-offset-4 hover:no-underline"
+            >
+              All materials
+            </Link>
+          </div>
+          <MaterialCardGrid className="mt-4">
+            {latest.items.map((material) => (
+              <li key={material.id}>
+                <MaterialCard
+                  material={material}
+                  structureSvg={latest.thumbnails.get(material.id) ?? null}
+                />
+              </li>
+            ))}
+          </MaterialCardGrid>
+        </section>
+      )}
 
       <section
         aria-labelledby="principles-heading"

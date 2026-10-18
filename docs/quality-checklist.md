@@ -1,127 +1,58 @@
-# Quality Checklist
+# Quality checklist
 
-The "boring quality" work that separates a portfolio project from a real one. ~25-30% of total project hours go here. It's correct.
+The "boring quality" bar every surface is held to. It is a bar, not a record:
+the boxes stay unticked, and each audit records its findings in its pull
+request.
 
-This is a checklist, not a milestone. Apply continuously. Audit explicitly during polish weeks (15 and 21).
+## Every page
 
-Wave 7 (2026-09-02) ran the per-page and per-form lists across every shipped surface — six defects found and fixed, recorded in [CHECKLIST.md](./CHECKLIST.md). The boxes below stay unticked on purpose: this file is the bar, not the record.
+- [ ] Empty state designed (shared `components/empty-state.tsx`, never blank)
+- [ ] Loading skeleton matches the final layout
+- [ ] Error state says what happened and offers a retry
+- [ ] Mobile layout intentional, checked on a real phone
+- [ ] Keyboard navigable, with visible, consistent focus indicators
+- [ ] ARIA labels on icon-only buttons; WCAG AA contrast in both themes
+- [ ] Title, description and Open Graph metadata
+- [ ] Lighthouse > 90 (Performance, Accessibility, Best Practices, SEO)
+- [ ] Renders correctly in Safari
 
-## Per-page checklist
+## Every form
 
-For every public page (search, material detail, family page, account, etc.):
+- [ ] Inline, field-level messages, shown after blur, announced to screen readers
+- [ ] Submit button shows a pending state
+- [ ] Server re-validates with the same Zod schema
+- [ ] Destructive actions confirm first
+- [ ] Success feedback after submission
 
-- [ ] Empty state designed and implemented (not blank)
-- [ ] Loading state matches final layout (skeleton, no visual jump)
-- [ ] Error state with helpful messaging (what happened, what to do)
-- [ ] Mobile layout intentional (not just "doesn't break")
-- [ ] Keyboard navigable (Tab, Enter, Escape, arrow keys where applicable)
-- [ ] Focus indicators visible and consistent
-- [ ] ARIA labels on icon-only buttons
-- [ ] Color contrast passes WCAG AA (Chrome DevTools audit)
-- [ ] Page metadata: title, description, Open Graph tags
-- [ ] Lighthouse score >90 (Performance, Accessibility, Best Practices, SEO)
-- [ ] Renders correctly in Safari (where things break)
+## Every table
 
-## Per-form checklist
+- [ ] Primary key; foreign keys with deliberate `ON DELETE`
+- [ ] `NOT NULL` and `CHECK` wherever they hold
+- [ ] Indexes on the columns used to filter, join and sort
+- [ ] RLS enabled; user tables tested with two accounts
+- [ ] Changed only through a migration
 
-For every form (search, signup, login, settings, notes):
+## Every route handler and server action
 
-- [ ] Inline validation messages (not "fields contain errors")
-- [ ] Errors appear after blur, not on every keystroke
-- [ ] Submit button shows loading state when active
-- [ ] Disabled state for invalid forms
-- [ ] Server-side validation matches client-side (defense in depth)
-- [ ] Confirmation for destructive actions (delete account, etc.)
-- [ ] Success feedback after submission (toast, page change, etc.)
+- [ ] Authentication and authorization checked, or explicitly public
+- [ ] Input parsed with Zod
+- [ ] Correct status codes; no secrets in logs
+- [ ] Rate limited if public (sign-up, sign-in, search)
 
-## Per-database-table checklist
+## Before public sign-up
 
-For every table:
+- [ ] Rate limiting on sign-up, sign-in and search
+- [ ] A custom SMTP sender (the built-in one reaches only the project team)
+- [ ] Password reset and account deletion verified end to end
+- [ ] No secrets in the client bundle
+- [ ] Privacy policy and terms final, not drafts
+- [ ] Error monitoring catches and reports errors
 
-- [ ] Primary key defined
-- [ ] Foreign keys with appropriate ON DELETE behavior
-- [ ] NOT NULL constraints on every column that should never be null
-- [ ] CHECK constraints on bounded values (percentages 0-100, etc.)
-- [ ] Indexes on columns used in WHERE / JOIN / ORDER BY
-- [ ] If user-owned: Row-Level Security policies tested with multiple accounts
-- [ ] Migrations are reversible where reasonable
-- [ ] No ad-hoc DB edits — all changes via Drizzle migrations
+## Before launch
 
-## Per-API-route checklist
-
-For every route handler:
-
-- [ ] Authentication checked (or explicitly public)
-- [ ] Authorization checked for protected resources
-- [ ] Input validated (Zod schema or equivalent)
-- [ ] Errors return appropriate status codes (4xx for client, 5xx for server)
-- [ ] No secrets logged
-- [ ] Rate limited if exposed publicly (signup, login, search)
-- [ ] Structured logging on error paths
-
-## Per-component checklist
-
-For every component:
-
-- [ ] Props typed strictly (no `any`)
-- [ ] Default state handled (no broken renders on missing props)
-- [ ] Re-renders minimized where it matters
-- [ ] Animation/transition feels intentional, not generic
-
-## Repository checklist
-
-- [ ] README has: project description, screenshot, live URL, setup instructions, architecture overview
-- [ ] LICENSE file (MIT)
-- [ ] LICENSE-DATA file (CC-BY-SA)
-- [ ] CONTRIBUTING.md (even if minimal — sets expectations)
-- [ ] Issue templates (bug, feature request, data correction)
-- [ ] PR template
-- [ ] CI passes on main
-- [ ] No secrets in commit history (verify with `git log -p` or a tool)
-- [ ] `.env.example` documents required env vars
-- [ ] Branch protection on main (require PR, require CI pass)
-
-## Pre-launch security checklist
-
-Before opening signup to the public:
-
-- [ ] All RLS policies verified with multi-account tests
-- [ ] Rate limiting on signup, login, search
-- [ ] CSP headers configured
-- [ ] No client-side secrets (verify production bundle)
-- [ ] Auth flow handles edge cases (expired tokens, deleted users, etc.)
-- [ ] Session timeout reasonable
-- [ ] Password reset flow works end-to-end
-- [ ] Account deletion truly deletes data
-- [ ] Privacy policy live, accurate, accessible
-- [ ] Terms of service live and accessible
-- [ ] Sentry catches and reports errors
-- [ ] Analytics anonymizes IPs (or doesn't collect them)
-
-## Pre-launch product checklist
-
-- [ ] Homepage compelling for first-time visitor
-- [ ] Onboarding for new users (3 screens max)
-- [ ] About page tells the story honestly
-- [ ] All material data citations present and links work
-- [ ] Open Graph image looks good when shared
-- [ ] Favicon present and correct in all common sizes
-- [ ] 404 page handled gracefully
-- [ ] Empty search returns useful "try these instead" content
-- [ ] Mobile responsive verified on real iPhone and real Android phone
-- [ ] All hover states work, all focus states work
-- [ ] Light + dark mode both look polished
-- [ ] Demo video recorded and embedded somewhere
-- [ ] Launch blog post drafted, reviewed, and ready to publish
-- [ ] All model-generated content (odor predictions) clearly labeled as experimental, with model version shown
-- [ ] RDKit.js lazy-loaded; structure-bearing pages still pass Lighthouse >90
-
-## How to use this checklist
-
-- During phase work: keep it visible, check items as you go
-- During polish weeks (15 and 21): explicit walkthrough, page by page
-- Pre-launch (Week 21–22): full checklist run; nothing in production until everything's checked
-
-## What this checklist enforces
-
-The difference between projects that read as real, finished products and ones that don't.
+- [ ] Every published page's citations resolve
+- [ ] Open Graph cards and favicon look right when shared
+- [ ] Light and dark themes both polished
+- [ ] Any model output labelled experimental, with its model version
+- [ ] Repository: README with screenshot and live URL, CI green on `main`,
+      branch protection, no secrets in history

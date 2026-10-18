@@ -6,6 +6,7 @@ import {
   SOURCE_TYPE_LABELS,
   SYNONYM_TYPE_LABELS,
   humanize,
+  sharedProvenance,
   similarityBand,
   sourceTypeLabel,
   synonymTypeLabel,
@@ -94,5 +95,41 @@ describe('similarityBand', () => {
     [1, 'close'],
   ] as const)('%d reads as %s', (tanimoto, band) => {
     expect(similarityBand(tanimoto)).toBe(band)
+  })
+})
+
+describe('sharedProvenance', () => {
+  const row = (ifraAmendmentVersion: string, verifiedAt: string) => ({
+    ifraAmendmentVersion,
+    verifiedAt,
+  })
+
+  it('folds rows that share an amendment and a verified day', () => {
+    expect(
+      sharedProvenance([
+        row('49th', '2026-09-04T22:55:00Z'),
+        row('49th', '2026-09-04T08:00:00Z'),
+      ])
+    ).toEqual({ verified: '2026-09-04' })
+  })
+
+  it.each([
+    [
+      'different amendments',
+      [
+        row('49th', '2026-09-04T00:00:00Z'),
+        row('51st', '2026-09-04T00:00:00Z'),
+      ],
+    ],
+    [
+      'different days',
+      [
+        row('49th', '2026-09-04T00:00:00Z'),
+        row('49th', '2026-09-05T00:00:00Z'),
+      ],
+    ],
+    ['no rows', []],
+  ])('keeps the per-row columns for %s', (_label, rows) => {
+    expect(sharedProvenance(rows)).toBeNull()
   })
 })
