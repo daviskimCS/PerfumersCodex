@@ -36,15 +36,16 @@ What is not built or not yet verified:
 - **Rate limiting is not in place yet.**
 - **No admin dashboard, correction form or error monitoring** yet.
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
-- **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (an odour phrase) depends on descriptions that do not exist yet, so it cannot pass against the live corpus.
+- **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (the odour phrase "amber wood") depends on description text the live corpus does not contain, so it would not pass against it.
 - **The structure–odor experiment is not built.**
+- **Similarity scores and computed properties are not reproducible from the repositories yet.** They arrive precomputed in the data files (three materials so far), produced by a research script that is not committed, and the RDKit version stamp does not record the fingerprint parameters.
 - **The review gate has edges.** It lives in app code, so an older deployment pointed at the live database would show unreviewed material. List entries rely on a stored fingerprint that the seed refreshes, so a writer that skips that refresh can leave a list entry stale until the next refresh; detail pages re-check on every request. Structural-class names and descriptions are shown on the class filter and `/structure` without review.
 
 ## How it's built
 
 Built by one developer working with AI coding agents. [`AGENTS.md`](./AGENTS.md) is the rulebook every session starts from: architecture boundaries, data rules, and what must never be generated. Olfactive descriptions are written only by the maker. Cited facts are researched by agents from primary sources, each one confirmed by two independent checker agents, and are published only after the maker reviews them.
 
-Work is planned in waves ([`docs/waves/`](./docs/waves/)). The wave 3–5 plans were reviewed by a separate agent before implementation. Agents check results against the build output and the database where they can. Items that need a real person are marked done with the caveat recorded, and are tracked in [`docs/maker-todo.md`](./docs/maker-todo.md).
+Work ships as reviewed pull requests with CI green (typecheck, lint, unit and integration tests). Agents check results against the build output and the database where they can; anything only a person can verify is recorded as unverified rather than claimed, and the maker's open items are in [`docs/maker-todo.md`](./docs/maker-todo.md).
 
 ## Stack
 

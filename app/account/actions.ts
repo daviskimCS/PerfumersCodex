@@ -48,9 +48,8 @@ import {
  * style preference: an id taken from the request instead of from `getUser()`
  * would make this an account-deletion endpoint for arbitrary users.
  *
- * Rate limiting on these three mutations is the **Week 18 Upstash pass**
- * (docs/waves/wave-6.md, constraint 4). This comment is the deferral record —
- * do not bolt it on here, and do not drop it from AGENTS.md's obligations.
+ * Rate limiting on these three mutations is not built yet (AGENTS.md, Auth and
+ * security). This comment is the deferral record — do not drop the obligation.
  * Supabase applies its own send-rate limits to the confirmation email in the
  * meantime, which is why `over_email_send_rate_limit` is mapped below.
  */
@@ -376,7 +375,7 @@ export async function resetPassword(
  * row goes. Nothing here hand-deletes rows — a hand-written list would silently
  * miss the next user table someone adds. That cascade is the thing standing
  * between "account deleted" and "rows orphaned", and it is verified against a
- * throwaway account by the maker (docs/waves/wave-6.md, "After the wave").
+ * real account by tests/integration/email-password.integration.test.ts.
  *
  * `deleteUser(id)` defaults to a HARD delete (`shouldSoftDelete` defaults to
  * false) — which is the requirement, not an accident: user-owned data is

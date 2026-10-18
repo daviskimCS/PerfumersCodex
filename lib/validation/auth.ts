@@ -48,7 +48,7 @@ export type AuthFieldErrors = {
 
 /**
  * Result state returned by the auth server actions and consumed via
- * `useActionState` (docs/waves/wave-3.md W3-A). Exactly one of the optional
+ * `useActionState`. Exactly one of the optional
  * members is set on any non-idle result:
  *
  * - `fieldErrors` — safeParse failure, rendered inline under each field (D6)

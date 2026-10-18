@@ -22,7 +22,7 @@ import { signIn } from '@/app/(auth)/actions'
  * Cross-account isolation: the publishable key ships in every browser, so
  * anyone can call the Data API directly with their own session. Row-Level
  * Security is the only thing between one reader and another's notes, and
- * this file is the proof, with two real accounts (docs/maker-todo.md item 3).
+ * this file is the proof, with two real accounts.
  */
 
 // Material names come from the editorial side through Drizzle, which needs
