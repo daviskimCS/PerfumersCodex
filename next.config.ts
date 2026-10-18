@@ -3,11 +3,11 @@ import type { NextConfig } from 'next'
 /**
  * Security headers on every response.
  *
- * Deliberately NOT a script-src CSP. App Router pages carry inline scripts
- * (the RSC payload, the theme script in app/layout.tsx), so a script policy
- * either allows 'unsafe-inline', which stops nothing, or needs a per-request
- * nonce, which forces every page to render dynamically. What ships instead
- * are the directives that cost nothing and break nothing:
+ * The Content-Security-Policy here is the floor for everything, files and
+ * API answers included: no framing, no `<base>`, no plugins. HTML pages get
+ * the full policy from proxy.ts instead (lib/csp.ts), the same three rules
+ * plus a per-request script nonce, which replaces this header on those
+ * responses.
  *
  * - frame-ancestors 'none' (and X-Frame-Options for old browsers): no other
  *   site can frame a page, so the account forms cannot be clickjacked.
