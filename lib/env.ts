@@ -103,27 +103,6 @@ const schemas = {
     }),
 
   /**
-   * PRE-LAUNCH GATE (lib/gate.ts). Both optional, both SERVER-ONLY.
-   *
-   * Never rename either of these to NEXT_PUBLIC_*. Next inlines those into the
-   * client bundle by textual substitution, which would publish the password to
-   * exactly the people the gate exists to keep out.
-   *
-   * SITE_GATE_PASSWORD is the switch as well as the password: UNSET MEANS THE
-   * GATE IS OFF. That is deliberate. `next build` and CI run with no
-   * environment at all and must keep working, and a variable that goes missing
-   * from a hosting dashboard must never lock the maker out of their own site.
-   *
-   * SITE_GATE_SECRET signs the unlock cookie. When it is unset, lib/gate.ts
-   * falls back to using the password as the HMAC key rather than inventing a
-   * default — a hard-coded fallback secret in a public repository is not a
-   * secret. Set it in production anyway: it is the difference between a gate
-   * whose signing key is a memorable phrase and one whose key is random.
-   */
-  SITE_GATE_PASSWORD: optionalSecret(),
-  SITE_GATE_SECRET: optionalSecret(),
-
-  /**
    * KEEP-ALIVE CRON (app/api/keep-alive, vercel.json). Optional, SERVER-ONLY.
    *
    * Vercel sends it as `Authorization: Bearer <CRON_SECRET>` on every cron

@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  * No `loading.tsx` / `error.tsx` beside either page (docs/architecture.md
  * D4): both segments are static text — they fetch nothing and have no
  * failure mode, so those files would be scaffolding for states that cannot
- * occur. Same reasoning as `app/coming-soon/page.tsx`.
+ * occur.
  */
 
 /**
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  * Change it here when either one is revised, and say what changed in the
  * page's own "Changes" section.
  */
-export const LEGAL_LAST_UPDATED = '12 October 2026'
+export const LEGAL_LAST_UPDATED = '17 October 2026'
 
 /**
  * Link styling for prose. The same treatment as the footer's licence links

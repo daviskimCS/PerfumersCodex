@@ -35,9 +35,9 @@ lib/
 scripts/              Build tooling: seed.ts, review.ts, classify.ts, draw.ts
 tests/integration/    Account and RLS tests against a local Supabase stack
 proxy.ts              Repo root — Supabase token-refresh proxy (Next 16's name
-                      for middleware) plus the pre-launch password gate
-                      (lib/gate.ts). The one location Next.js fixes; the only
-                      file outside the layout above with a job.
+                      for middleware). The pre-launch password gate it also
+                      ran was removed on 2026-10-17. The one location Next.js
+                      fixes; the only file outside the layout above with a job.
 ```
 
 Rules:
