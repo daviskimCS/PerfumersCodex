@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { contentSecurityPolicy, createNonce } from '@/lib/csp'
 import { updateSession } from '@/lib/supabase/proxy'
 
 /**
@@ -22,8 +23,9 @@ export const config = {
 }
 
 /**
- * Supabase session refresh, so a signed-in reader is not quietly logged out
- * when their access token expires.
+ * Two jobs on every page request: a fresh script nonce and the policy that
+ * names it (lib/csp.ts), and the Supabase session refresh, so a signed-in
+ * reader is not quietly logged out when their access token expires.
  *
  * Until 2026-10-17 this also ran the pre-launch password gate, which
  * rewrote every route to a construction page. The site is public now, and
@@ -36,9 +38,24 @@ export async function proxy(request: NextRequest) {
   // `updateSession` costs nothing for an anonymous visitor (no cookie, no
   // network), but a signed-in reader's expired token would otherwise be
   // refreshed against Supabase on a request whose handler then ignores it.
+  // It returns JSON, so it needs no script policy either.
   if (SESSIONLESS_PATHNAMES.has(request.nextUrl.pathname)) {
     return NextResponse.next({ request })
   }
 
-  return await updateSession(request)
+  const nonce = createNonce()
+  const policy = contentSecurityPolicy({
+    nonce,
+    pathname: request.nextUrl.pathname,
+    dev: process.env.NODE_ENV === 'development',
+  })
+  // On the request, Next.js reads the nonce out of the policy and puts it on
+  // every script it renders; app/layout.tsx reads `x-nonce` for the theme
+  // script. updateSession forwards these request headers to the render.
+  request.headers.set('x-nonce', nonce)
+  request.headers.set('content-security-policy', policy)
+
+  const response = await updateSession(request)
+  response.headers.set('content-security-policy', policy)
+  return response
 }

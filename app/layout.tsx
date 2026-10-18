@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import localFont from 'next/font/local'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
@@ -90,11 +91,15 @@ const themeScript = `(function(){try{var p=localStorage.getItem("theme");if(p!==
 // Smoothing is set in app/globals.css, and the class has to stay off this
 // markup for that to hold: `antialiased` is a utility, and the utilities layer
 // outranks @layer base.
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // The script policy (lib/csp.ts, set in proxy.ts) runs only scripts that
+  // carry this request's nonce. Next.js adds it to its own; this one is ours.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     // suppressHydrationWarning because themeScript mutates this element's
     // `class` and `data-theme-pref` before React hydrates. It is scoped to
@@ -106,7 +111,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: themeScript }}
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <SiteHeader />

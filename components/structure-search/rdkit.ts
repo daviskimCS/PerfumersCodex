@@ -71,6 +71,17 @@ function loadGlue(): Promise<void> {
 }
 
 export async function loadRDKit(): Promise<RDKitModule> {
+  if (arrivedByClientNavigation()) {
+    // RDKit.js compiles WebAssembly and builds functions with `new Function`,
+    // which the script policy allows on /structure only (lib/csp.ts). A
+    // document opened by a client-side link keeps the policy of the page it
+    // was loaded for, so RDKit.js would fail here. Load this page properly;
+    // the fresh document carries /structure's policy. Never resolves: the
+    // page is going away.
+    window.location.reload()
+    return new Promise(() => {})
+  }
+
   pending ??= (async () => {
     await loadGlue()
     const init = window.initRDKitModule
@@ -84,4 +95,14 @@ export async function loadRDKit(): Promise<RDKitModule> {
   })
 
   return pending
+}
+
+/**
+ * Was this document loaded for a different page, and the reader brought here
+ * by a client-side link? Then it still runs under that page's policy.
+ */
+function arrivedByClientNavigation(): boolean {
+  const [entry] = performance.getEntriesByType('navigation')
+  if (!entry) return false
+  return new URL(entry.name).pathname !== window.location.pathname
 }

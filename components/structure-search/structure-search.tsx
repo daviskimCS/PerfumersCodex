@@ -117,7 +117,8 @@ export function StructureSearch({
   // After mount, never during render (AGENTS.md: RDKit is never in the
   // critical path). `loadRDKit` memoises at module scope, so a client-side
   // navigation back to this page reuses the instantiated module and only a
-  // full reload pays for the WASM again.
+  // full reload pays for the WASM again. (Arriving here by a client-side
+  // link from another page reloads once: the script policy, lib/csp.ts.)
   useEffect(() => {
     let cancelled = false
 
