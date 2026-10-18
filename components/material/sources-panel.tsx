@@ -39,7 +39,7 @@ export function SourcesPanel({ sources }: { sources: Citation[] }) {
                 key={source.id}
                 id={sourceAnchorId(number)}
                 tabIndex={-1}
-                className="grid scroll-mt-28 md:scroll-mt-24 grid-cols-[2.5rem_minmax(0,1fr)] rounded-md outline-offset-4 target:bg-brand-subtle/60 focus-visible:outline-2 focus-visible:outline-ring"
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)] rounded-md outline-offset-4 target:bg-brand-subtle/60 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <span
                   aria-hidden="true"

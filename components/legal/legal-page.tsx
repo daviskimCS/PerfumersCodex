@@ -107,10 +107,7 @@ export function LegalSection({
   const headingId = `${id}-heading`
   return (
     <section aria-labelledby={headingId} className="mt-10 first:mt-0">
-      <h2
-        id={headingId}
-        className="border-b border-border pb-2 text-xl scroll-mt-24"
-      >
+      <h2 id={headingId} className="border-b border-border pb-2 text-xl">
         {heading}
       </h2>
       <div className="mt-4 space-y-4">{children}</div>

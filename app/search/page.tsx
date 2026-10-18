@@ -117,7 +117,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                       <li key={example}>
                         <Link
                           href={`/search?q=${encodeURIComponent(example)}`}
-                          className="inline-flex h-7 items-center rounded-full border border-border bg-surface px-3 text-sm transition-colors hover:border-border-strong hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                          className="inline-flex h-7 items-center rounded-full border border-border bg-surface px-3 text-sm transition-colors hover:border-border-strong hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                         >
                           {example}
                         </Link>

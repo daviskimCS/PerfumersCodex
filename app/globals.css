@@ -541,6 +541,23 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Keeps whatever the page scrolls to clear of the sticky header (h-14,
+     md:h-16) and, on a phone's material page, the "On this page" bar pinned
+     under it: in-page links, citations, and keyboard focus (SC 2.4.11).
+     Tabbing backwards used to leave the focused element under those bars.
+     It has to be scroll-padding on the page, not scroll-margin on the
+     targets: Chrome ignores scroll-margin when Tab moves focus to an element
+     that is already on screen. One value for every target, so a link and a
+     tab stop land in the same place. */
+  html {
+    scroll-padding-top: 6rem;
+  }
+  :root:has(nav[aria-label='On this page']) {
+    @variant max-md {
+      scroll-padding-top: 7rem;
+    }
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
