@@ -104,9 +104,14 @@ export default async function RootLayout({
     // suppressHydrationWarning because themeScript mutates this element's
     // `class` and `data-theme-pref` before React hydrates. It is scoped to
     // <html> alone and does not extend to descendants.
+    //
+    // data-scroll-behavior: pages with an "On this page" list scroll
+    // smoothly to a section (globals.css); this has Next jump instead when it
+    // scrolls a new page to the top, as on a link to a similar material.
     <html
       lang="en"
       data-theme-pref="system"
+      data-scroll-behavior="smooth"
       className={`${jetbrainsMono.variable} h-full`}
       suppressHydrationWarning
     >

@@ -558,6 +558,17 @@
     }
   }
 
+  /* A page with an "On this page" list (material pages, /about) glides to the
+     section a link names instead of jumping, so the reader sees which way
+     they went. Citations to Sources glide too. Not site-wide: Next scrolls a
+     new page to the top with the same property, and `data-scroll-behavior`
+     on <html> (app/layout.tsx) has it jump for those. Reduced motion jumps. */
+  @media (prefers-reduced-motion: no-preference) {
+    :root:has(nav[aria-label='On this page']) {
+      scroll-behavior: smooth;
+    }
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
