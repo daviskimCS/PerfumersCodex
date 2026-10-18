@@ -143,6 +143,10 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
   // announcing its own emptiness here would be noise, not information.
   if (!hasAnyIdentifier) return null
 
+  const identityCite = (
+    <Cite sources={material.sources} sourceId={material.identitySourceId} />
+  )
+
   return (
     <section aria-labelledby="identity-heading" className="mt-12">
       <details className="group/identity border-y border-border">
@@ -155,10 +159,6 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
             <h2 id="identity-heading" className="inline text-base font-medium">
               Names and identifiers
             </h2>
-            <Cite
-              sources={material.sources}
-              sourceId={material.identitySourceId}
-            />
             <span className="text-sm text-muted-foreground">
               {' · '}
               {identitySummary(material, synonyms)}
@@ -171,8 +171,33 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
         </summary>
         <div className="pb-4">
           <FieldList>
-            <Field term="IUPAC name" value={material.iupacName} />
-            <Field term="SMILES" value={material.smiles} mono />
+            {/* The identity record's citation rides on the first identity
+                value rather than the summary line: a link inside <summary>
+                is a control nested in a control, which keyboard and screen
+                reader users cannot reach reliably. */}
+            <Field
+              term="IUPAC name"
+              value={
+                material.iupacName === null ? null : (
+                  <>
+                    {material.iupacName}
+                    {identityCite}
+                  </>
+                )
+              }
+            />
+            <Field
+              term="SMILES"
+              value={
+                material.smiles === null ? null : (
+                  <>
+                    {material.smiles}
+                    {material.iupacName === null ? identityCite : null}
+                  </>
+                )
+              }
+              mono
+            />
             {SYNONYM_GROUPS.map(({ type, label }) => {
               const names = synonyms.filter((synonym) => synonym.type === type)
               return (
