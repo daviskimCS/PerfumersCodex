@@ -126,8 +126,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               Trade names are written several different ways, so the spelling is
               worth a second look — or try the chemical name instead. A CAS
               number has to match exactly, hyphens included. The reference is
-              also still being written by hand, so the entry may simply not be
-              published yet.
+              also still growing, so the entry may simply not be published yet.
             </>
           }
           action={

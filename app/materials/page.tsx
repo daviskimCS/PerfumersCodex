@@ -497,7 +497,7 @@ function EmptyResults({ query, total }: { query: BrowseQuery; total: number }) {
       className="mt-6"
       icon={FlaskConical}
       title="The reference is being curated"
-      description="Every entry is researched, written, and cited by hand, and the first materials haven't been published yet. Check back soon."
+      description="Every entry is researched from primary sources and reviewed by hand before it's published, and the first materials haven't been published yet. Check back soon."
     />
   )
 }

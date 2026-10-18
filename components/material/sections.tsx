@@ -67,13 +67,26 @@ export function MaterialSections({
             // the pinned list under it, when a link lands here.
             className="scroll-mt-28 border-t border-border pt-8 first:border-t-0 first:pt-0 md:scroll-mt-24"
           >
-            <p
-              id={`${id}-label`}
-              className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
+            {/* The section rises in as it scrolls into view (`reveal`,
+                globals.css). It is this wrapper that moves, never the
+                section, because a browser aims an in-page link at where the
+                target is drawn: a section still 24px low when "Safety" is
+                clicked would land 24px under the header. Sources only fades
+                (`--reveal-rise: 0`), since each entry in it is itself a
+                citation's target. */}
+            <div
+              className={
+                id === 'sources' ? 'reveal [--reveal-rise:0px]' : 'reveal'
+              }
             >
-              {label}
-            </p>
-            <div className="mt-6 text-base">{sections[id]}</div>
+              <p
+                id={`${id}-label`}
+                className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
+              >
+                {label}
+              </p>
+              <div className="mt-6 text-base">{sections[id]}</div>
+            </div>
           </section>
         ))}
       </div>

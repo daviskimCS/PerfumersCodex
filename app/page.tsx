@@ -45,11 +45,11 @@ export const metadata: Metadata = {
 const PRINCIPLES = [
   {
     title: 'Citation-driven',
-    body: 'Every fact links to its source. Nothing is scraped without attribution or generated.',
+    body: 'Identity, safety and IFRA facts link to their sources. Computed values name the software that computed them, and nothing is scraped without attribution.',
   },
   {
     title: 'Curated, not aggregated',
-    body: 'Hand-selected materials, with descriptions written from the bench rather than compiled from catalogues.',
+    body: 'Hand-selected materials. Descriptions, as they are written, come from the bench rather than from catalogues.',
   },
   {
     title: 'Reviewed before it’s published',
@@ -82,14 +82,16 @@ export default async function HomePage() {
           <p className="mt-6 font-mono text-sm">
             {materialCount === 0 ? (
               <span className="text-muted-foreground">
-                No materials published yet — every entry is researched, written,
-                and cited by hand.
+                No materials published yet — every entry is researched from
+                primary sources and reviewed by hand before it goes up.
               </span>
             ) : (
               <>
                 {materialCount} {materialCount === 1 ? 'material' : 'materials'}
                 ,{' '}
-                <span className="text-muted-foreground">every fact cited.</span>
+                <span className="text-muted-foreground">
+                  every identity and safety fact cited.
+                </span>
               </>
             )}
           </p>
@@ -113,7 +115,7 @@ export default async function HomePage() {
 
       <section
         aria-labelledby="principles-heading"
-        className="mt-section border-t border-border pt-8"
+        className="reveal mt-section border-t border-border pt-8"
       >
         <h2
           id="principles-heading"
@@ -136,7 +138,7 @@ export default async function HomePage() {
       {families.length === 0 ? null : (
         <section
           aria-labelledby="families-heading"
-          className="mt-section border-t border-border pt-8"
+          className="reveal mt-section border-t border-border pt-8"
         >
           <h2
             id="families-heading"
