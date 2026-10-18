@@ -133,6 +133,23 @@ export default async function MaterialPage({ params }: MaterialRouteProps) {
               </p>
             ) : null}
 
+            {/* Formula and weight sit with the CAS number because they are
+                what a reader checks at a glance; the rest of the identity
+                block folds away below (components/material/identity.tsx). */}
+            {material.molecularFormula !== null ||
+            material.molecularWeight !== null ? (
+              <p className="mt-1 font-mono text-sm">
+                {[
+                  material.molecularFormula,
+                  material.molecularWeight === null
+                    ? null
+                    : `${material.molecularWeight} g/mol`,
+                ]
+                  .filter((part) => part !== null)
+                  .join(' · ')}
+              </p>
+            ) : null}
+
             {material.families.length > 0 ? (
               <ul className="mt-6 flex flex-wrap gap-2">
                 {material.families.map((family) => (

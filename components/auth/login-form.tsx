@@ -253,9 +253,7 @@ export function LoginForm() {
           </Button>
         </form>
 
-        <GoogleAuth />
-
-        <AccountTermsNotice className="mt-6" />
+        <GoogleAuth notice={<AccountTermsNotice variant="google" />} />
 
         <p className="mt-6 text-sm text-muted-foreground">
           No account yet?{' '}

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Citation, Hazard, IfraAbsence, UsageLimit } from '@/lib/types'
 
 import { Cite } from './cite'
-import { compareVersions, datePart } from './format'
+import { compareVersions, datePart, sharedProvenance } from './format'
 import { PanelSection } from './section'
 
 /**
@@ -42,6 +42,14 @@ function limitPhrase(limit: UsageLimit): string {
         : `${limit.maxPct}% maximum, by specification`
   }
 }
+
+/**
+ * IFRA Category 4, fine fragrance: the row most perfumers on this site look
+ * up first, so it is tinted to be found at a glance. Presentation only; the
+ * category numbering is IFRA's own and has been stable since the 49th
+ * Amendment.
+ */
+const FINE_FRAGRANCE_CATEGORY = 4
 
 /**
  * Every amendment this material has been checked against — whether the check
@@ -152,6 +160,7 @@ export function SafetyPanel({
   hazards: Hazard[]
   sources: Citation[]
 }) {
+  const shared = sharedProvenance(usageLimits)
   return (
     <div>
       <PanelSection
@@ -186,10 +195,22 @@ export function SafetyPanel({
           // Looked, and found no Standard: a cited fact, not an empty state.
           <IfraAbsenceStatement absences={ifraAbsences} sources={sources} />
         ) : (
-          // Below md the Amendment and Verified columns fold into a line
-          // under the limit: four columns at phone width left the category
-          // name a word per line and pushed the limit off the screen.
+          // Mixed provenance: below md the Amendment and Verified columns
+          // fold into a line under the limit, because four columns at phone
+          // width left the category name a word per line and pushed the
+          // limit off the screen. Shared provenance: one line above the
+          // table instead, and two columns.
           <div>
+            {shared !== null ? (
+              <p className="mb-2 font-mono text-xs text-muted-foreground">
+                {/* The amendment itself is the badge beside the heading. */}
+                {usageLimits.length === 1
+                  ? 'Verified'
+                  : `All ${usageLimits.length} verified`}{' '}
+                {shared.verified} · maximum concentration in the finished
+                product
+              </p>
+            ) : null}
             <table className="w-full border-collapse text-left">
               <caption className="sr-only">
                 IFRA category limits, with the amendment each was verified
@@ -203,25 +224,33 @@ export function SafetyPanel({
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Limit
                   </th>
-                  <th
-                    scope="col"
-                    className="hidden py-2 pr-4 font-medium md:table-cell"
-                  >
-                    Amendment
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden py-2 font-medium md:table-cell"
-                  >
-                    Verified
-                  </th>
+                  {shared === null ? (
+                    <>
+                      <th
+                        scope="col"
+                        className="hidden py-2 pr-4 font-medium md:table-cell"
+                      >
+                        Amendment
+                      </th>
+                      <th
+                        scope="col"
+                        className="hidden py-2 font-medium md:table-cell"
+                      >
+                        Verified
+                      </th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
                 {usageLimits.map((limit) => (
                   <tr
                     key={`${limit.categoryId}:${limit.ifraAmendmentVersion}`}
-                    className="border-b border-border/60 align-top"
+                    className={
+                      limit.categoryId === FINE_FRAGRANCE_CATEGORY
+                        ? 'border-b border-border/60 bg-brand-subtle align-top'
+                        : 'border-b border-border/60 align-top'
+                    }
                   >
                     {/* Wraps: IFRA's category names run to 80 characters
                         ("Products applied to the face and body using the hands
@@ -229,7 +258,11 @@ export function SafetyPanel({
                         the limit itself off the right edge. */}
                     <th
                       scope="row"
-                      className="w-1/2 py-3 pr-4 font-normal md:w-[45%] md:pr-6"
+                      className={
+                        limit.categoryId === FINE_FRAGRANCE_CATEGORY
+                          ? 'w-1/2 py-3 pr-4 pl-2 font-normal shadow-[inset_3px_0_0_var(--brand)] md:w-[45%] md:pr-6'
+                          : 'w-1/2 py-3 pr-4 pl-2 font-normal md:w-[45%] md:pr-6'
+                      }
                     >
                       <span className="grid grid-cols-[1.75rem_minmax(0,1fr)] md:grid-cols-[2rem_minmax(0,1fr)]">
                         <span className="font-mono text-sm text-muted-foreground">
@@ -254,17 +287,23 @@ export function SafetyPanel({
                           {limit.notes}
                         </span>
                       ) : null}
-                      <span className="mt-1 block font-mono text-xs text-muted-foreground md:hidden">
-                        {limit.ifraAmendmentVersion} Amendment · verified{' '}
-                        {datePart(limit.verifiedAt)}
-                      </span>
+                      {shared === null ? (
+                        <span className="mt-1 block font-mono text-xs text-muted-foreground md:hidden">
+                          {limit.ifraAmendmentVersion} Amendment · verified{' '}
+                          {datePart(limit.verifiedAt)}
+                        </span>
+                      ) : null}
                     </td>
-                    <td className="hidden py-3 pr-4 font-mono text-sm whitespace-nowrap md:table-cell">
-                      {limit.ifraAmendmentVersion}
-                    </td>
-                    <td className="hidden py-3 font-mono text-sm whitespace-nowrap text-muted-foreground md:table-cell">
-                      {datePart(limit.verifiedAt)}
-                    </td>
+                    {shared === null ? (
+                      <>
+                        <td className="hidden py-3 pr-4 font-mono text-sm whitespace-nowrap md:table-cell">
+                          {limit.ifraAmendmentVersion}
+                        </td>
+                        <td className="hidden py-3 font-mono text-sm whitespace-nowrap text-muted-foreground md:table-cell">
+                          {datePart(limit.verifiedAt)}
+                        </td>
+                      </>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

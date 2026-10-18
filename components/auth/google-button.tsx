@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useActionState } from 'react'
+import { Suspense, useActionState, type ReactNode } from 'react'
 import { Roboto } from 'next/font/google'
 import { useSearchParams } from 'next/navigation'
 
@@ -72,7 +72,17 @@ function noticeFor(code: string | null): string | null {
  * button, and the honest one-liner. Mounted as a single element on both
  * pages so the two can never drift.
  */
-export function GoogleAuth() {
+export function GoogleAuth({
+  notice,
+}: {
+  /**
+   * Legal small print shown directly above the button, where it is in view
+   * at the moment of the click. `/login` passes the terms notice here: its
+   * Google button creates an account for an address it has not seen, so it
+   * needs the notice as much as `/signup` does.
+   */
+  notice?: ReactNode
+} = {}) {
   return (
     <div className="mt-6 flex flex-col gap-6">
       {/* Decorative rules either side of a real word: the "or" is text in
@@ -91,6 +101,8 @@ export function GoogleAuth() {
         which falls back to /account. A dead button here would be worse than
         a slightly less specific destination.
       */}
+      {notice}
+
       <Suspense fallback={<GoogleForm next={null} notice={null} />}>
         <GoogleFormFromUrl />
       </Suspense>
@@ -156,11 +168,6 @@ function GoogleForm({
           {pending ? 'Taking you to Google…' : 'Continue with Google'}
         </span>
       </button>
-
-      <p className="text-sm text-muted-foreground">
-        The same button either way — if you haven’t used Google here before, it
-        creates your account.
-      </p>
     </form>
   )
 }

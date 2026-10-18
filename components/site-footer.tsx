@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { ThemeToggle } from '@/components/theme-toggle'
+
 const LICENCE_LINK_CLASSNAME =
   // nowrap: "CC BY-SA 4.0" otherwise breaks at its hyphen on a phone.
   'whitespace-nowrap text-foreground underline decoration-brand-muted underline-offset-4 transition-colors hover:decoration-brand'
@@ -24,6 +26,14 @@ export function SiteFooter() {
             <Link href="/terms" className={LICENCE_LINK_CLASSNAME}>
               Terms
             </Link>
+            {/* The codebase is half of what this project is, and public. */}
+            <a
+              href="https://github.com/daviskimCS/PerfumersCodex"
+              rel="noopener"
+              className={LICENCE_LINK_CLASSNAME}
+            >
+              Source
+            </a>
           </p>
 
           {/*
@@ -49,6 +59,14 @@ export function SiteFooter() {
             </a>
             .
           </p>
+        </div>
+
+        {/* The theme switch at phone width, where the header has no room for
+            it (components/site-header.tsx). Both instances read one store,
+            so they never disagree. */}
+        <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground sm:hidden">
+          <span aria-hidden="true">Theme</span>
+          <ThemeToggle />
         </div>
       </div>
     </footer>
