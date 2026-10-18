@@ -161,7 +161,7 @@ function GoogleForm({
         // Disabled only while the request is in flight: a second submit would
         // start a second PKCE flow and abandon the first one's verifier.
         disabled={pending}
-        className={`${roboto.className} flex h-10 w-full items-center justify-center gap-3 rounded-[4px] border border-[#747775] bg-white px-3 text-sm leading-5 tracking-[0.25px] text-[#1F1F1F] transition-colors outline-none hover:bg-[#EEEEEE] focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-60 dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#262627]`}
+        className={`${roboto.className} flex h-10 w-full items-center justify-center gap-3 rounded-[4px] border border-[#747775] bg-white px-3 text-sm leading-5 tracking-[0.25px] text-[#1F1F1F] transition-colors outline-none hover:bg-[#EEEEEE] focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60 dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#262627]`}
       >
         <GoogleG />
         <span>

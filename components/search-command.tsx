@@ -416,7 +416,7 @@ export function SearchCommand() {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => (open ? closePalette() : openPalette())}
-        className="hidden h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-base text-muted-foreground transition-colors outline-none hover:border-border-strong focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:flex md:text-sm"
+        className="hidden h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-base text-muted-foreground transition-colors outline-none hover:border-border-strong focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring sm:flex md:text-sm"
       >
         <Search aria-hidden="true" className="size-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate">Search</span>
@@ -645,7 +645,7 @@ export function SearchCommand() {
                     <button
                       type="button"
                       onClick={() => goToResultsPage(query)}
-                      className="inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-3 focus-visible:ring-ring"
                     >
                       <CornerDownLeft aria-hidden="true" className="size-3" />
                       See all results for “{trimmedQuery}”

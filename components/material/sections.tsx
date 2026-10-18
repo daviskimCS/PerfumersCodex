@@ -63,9 +63,9 @@ export function MaterialSections({
             key={id}
             id={id}
             aria-labelledby={`${id}-label`}
-            // Clears the sticky site header (h-14 / md:h-16) and, on a phone,
-            // the pinned list under it, when a link lands here.
-            className="scroll-mt-28 border-t border-border pt-8 first:border-t-0 first:pt-0 md:scroll-mt-24"
+            // A link landing here clears the sticky header and the pinned
+            // list through the page's scroll-padding (globals.css).
+            className="border-t border-border pt-8 first:border-t-0 first:pt-0"
           >
             {/* The section rises in as it scrolls into view (`reveal`,
                 globals.css). It is this wrapper that moves, never the

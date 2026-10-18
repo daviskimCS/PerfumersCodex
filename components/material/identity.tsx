@@ -69,7 +69,7 @@ function SynonymGroup({
       {shown.length > 0 ? <NameList names={shown} sources={sources} /> : null}
       {folded.length > 0 ? (
         <details className="group">
-          <summary className="w-fit cursor-pointer rounded-sm text-sm text-brand underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          <summary className="w-fit cursor-pointer rounded-sm text-sm text-brand underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none">
             <span className="group-open:hidden">
               {`Show ${folded.length} systematic ${folded.length === 1 ? 'name' : 'names'}`}
             </span>
@@ -150,7 +150,7 @@ export function MaterialIdentity({ material }: { material: MaterialDetail }) {
   return (
     <section aria-labelledby="identity-heading" className="mt-12">
       <details className="group/identity border-y border-border">
-        <summary className="flex cursor-pointer list-none items-start gap-2 py-3 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-start gap-2 py-3 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden">
           {/* Top-aligned: on a phone the summary wraps to several lines. */}
           <span className="mt-0.5">
             <SectionIcon icon={Fingerprint} />

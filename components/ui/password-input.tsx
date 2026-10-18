@@ -35,7 +35,7 @@ function PasswordInput({
         aria-pressed={visible}
         aria-controls={props.id}
         disabled={props.disabled}
-        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none"
+        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none"
       >
         {visible ? (
           <EyeOff aria-hidden="true" className="size-4" />
