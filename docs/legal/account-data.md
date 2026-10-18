@@ -169,7 +169,9 @@ asserts the default).
 
 1. **Contain.** Rotate the Supabase secret key and, if relevant, the Google
    client secret; invalidate every session by rotating and then revoking the
-   JWT signing key; put the site behind the gate.
+   JWT signing key; if the leak is ongoing, take the site offline (the
+   password gate was removed on 2026-10-17 and lives in git history,
+   `f67399b`).
 2. **Establish what leaked:** which tables, which users, which time window.
    The integration suite's RLS file is a quick check that isolation still
    holds.
