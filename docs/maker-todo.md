@@ -14,7 +14,12 @@ Obsidian vault, not here.
 
 ## 🔴 Blocking — something is wrong or unproven until these are done
 
-### 0. Apply migrations 0007 and 0008, then deploy (2026-10-02)
+### 0. Apply migrations 0007 and 0008, then deploy (2026-10-02) — steps 1–3 DONE
+
+**Status (2026-10-17):** 0007 and 0008 applied live 2026-10-03, the code is
+merged, and every live material is fingerprinted and `awaiting review`. What
+remains is step 4 (replace the PROPOSED families) and step 5 (review and
+publish). The rest of this item is kept for the reasoning.
 
 Two migrations are written but not applied. Both live only on the
 `claude/eloquent-pasteur-rg57zs` branch until it merges, so **run
@@ -104,7 +109,14 @@ Not yet applied live — an agent has no credentials.
    it must appear.
 5. Optional: the dashboard's Security Advisor should no longer list the view.
 
-### 0b. Migration 0009 (structure drawings) — before you publish anything
+### 0b. ~~Migration 0009 (structure drawings)~~ — DONE 2026-10-11
+
+Applied live 2026-10-03, PR #24 merged, re-seeded 2026-10-11 from
+PerfumersCodexData `c2dd854` (8 drawings written, fresh hashes, 18 materials
+all `awaiting review`). Steps 1–3 below are done; step 4 is yours.
+The re-seed needed one key rename on `sources` first (see AGENTS.md, review
+gate): rename a source key in the data repo and the live row must be renamed
+to match, or the seed collides on `sources_url_uniq`.
 
 PR #24 stores each 2D structure diagram, so it adds a field to what every
 material page renders. That changes every material's review fingerprint.
@@ -401,9 +413,8 @@ short, before launch:
 ## Cited material drafts — awaiting your review
 
 Researched 2026-09-04/05 into `/Users/daviskim/Desktop/WorkDir/project/perfumers-codex-data`
-(**not a git repo yet** — creating it, and choosing its licence, is still
-yours; until then these files are unversioned and an accidental overwrite is
-unrecoverable). Each material has a `<slug>.json` that validates against
+(now versioned as github.com/daviskimCS/PerfumersCodexData; it has no licence
+file yet, and choosing one is still yours). Each material has a `<slug>.json` that validates against
 `materialFileSchema` and a `dossier-<slug>.md` recording every fact with its
 URL and verbatim quote, every **dropped** fact with the refuters' reasons,
 everything unavailable, and the odor quotes.
@@ -416,8 +427,9 @@ fetched from a primary source, then re-fetched by two independent adversarial
 checkers whose default stance was to refute; a fact needed **both** to
 confirm it. Anything either could not confirm was dropped from the JSON and
 recorded in the dossier instead. Nothing came from model memory. `description`
-is `null` in all three — olfactive descriptions are yours, and the dossiers
-collect the source quotes to write from.
+was `null` in all three — olfactive descriptions are yours, and the dossiers
+collect the source quotes to write from. (Since written for Iso E Super and
+Javanol and live as of the 2026-10-11 re-seed; Civetone's is still open.)
 
 | Material    | CAS         | Verified | Dropped | IFRA                            | Hazards                     | Synonyms |
 | ----------- | ----------- | -------- | ------- | ------------------------------- | --------------------------- | -------- |
