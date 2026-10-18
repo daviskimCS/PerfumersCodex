@@ -388,6 +388,19 @@ export default function PrivacyPage() {
             not remove its past entries straight away; they are removed when
             that period runs out.
           </li>
+          {/* Matches the 30-day prune in the maker's backup job (a launchd
+              script on his Mac, kept outside this repo). If the window
+              changes there, it changes here. */}
+          <li>
+            <strong className="font-medium">Backups.</strong> Once a day the
+            whole database, accounts and notes included, is copied into an
+            encrypted backup that only I hold the key to. One copy stays on my
+            own computer and one is kept off-site, both encrypted, and each
+            backup is deleted after 30 days. So for up to 30 days after you
+            delete your account, it can still exist inside those backups. If I
+            ever have to restore one, I will delete again any account that was
+            deleted after the backup was taken, before the site goes back up.
+          </li>
           <li>
             <strong className="font-medium">Analytics</strong> are counts held
             by Vercel under its own retention. Nothing in them identifies you.
@@ -417,13 +430,14 @@ export default function PrivacyPage() {
             </Link>{' '}
             has a delete button. It removes your sign-in, your saved materials
             and your private notes immediately. It is a real deletion, not a
-            flag on a row that stays behind: the application keeps no copy,
-            offers no undo, and cannot restore any of it afterwards. The one
-            exception is the sign-in event log described under{' '}
+            flag on a row that stays behind: the application keeps no copy and
+            offers no undo. The two exceptions are described under{' '}
             <a href="#retention" className={LEGAL_LINK_CLASSNAME}>
               how long any of it is kept
             </a>
-            , whose past entries age out rather than going at once. The codex
+            : the sign-in event log, whose past entries age out rather than
+            going at once, and the encrypted daily backups, which drop your
+            account within 30 days. The codex
             itself is unaffected — it stays public and free to read without an
             account.
           </li>
@@ -506,6 +520,11 @@ export default function PrivacyPage() {
           The date at the top of this page changes with it, and anything that
           alters what is collected or who sees it will be described here rather
           than folded in quietly.
+        </p>
+        <p>
+          <strong className="font-medium">18 October 2026:</strong> added the
+          encrypted daily backups and how long they keep a deleted account (30
+          days).
         </p>
         <p>
           <strong className="font-medium">18 October 2026:</strong> added
