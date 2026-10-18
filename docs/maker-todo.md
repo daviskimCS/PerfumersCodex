@@ -17,14 +17,6 @@ checklist; this file holds what the code depends on.
   the first three waits on this.
 - **Write the remaining olfactive descriptions** (Civetone and the eleven
   later drafts have none).
-- **Ship the IFRA category codes** (migration 0012, fingerprint v2). In
-  this order: (1) dump the database, then from a fresh worktree of the PR's
-  branch `npm ci && npm run db:migrate`; (2) re-seed from the data
-  repository's PR branch; (3) merge both PRs; (4) `db:review show` and
-  `publish` each material again. Never merge before step 1: the new code
-  fails on a table without `sort_order`. The old code on the new table only
-  hides pages whose fingerprint changed (tested), so steps 1 to 3 need not
-  be rushed. Every published material stays hidden until its step 4.
 - **Choose a licence file for the data repository.** The site publishes the
   data under CC BY-SA 4.0 (`LICENSE-DATA` here), but `PerfumersCodexData` has
   no licence file.
