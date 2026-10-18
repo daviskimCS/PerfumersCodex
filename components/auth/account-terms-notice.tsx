@@ -16,6 +16,9 @@ const LINK_CLASSNAME =
  * What the law asks for here is that the reader is told, at the point they
  * hand over an email address, what governs the account and where the privacy
  * information is (GDPR Art. 13; Google's OAuth policy for the Google path).
+ * It also states the age floor the Terms set (16 and over, worldwide, chosen
+ * 2026-10-18): a statement rather than a birth date, which would be data the
+ * site has no other use for.
  */
 export function AccountTermsNotice({
   className,
@@ -34,7 +37,7 @@ export function AccountTermsNotice({
     return (
       <p className={cn('text-sm text-muted-foreground', className)}>
         New here? Continuing with Google creates your account, which means you
-        accept the{' '}
+        confirm you’re 16 or over and accept the{' '}
         <Link href="/terms" className={LINK_CLASSNAME}>
           Terms
         </Link>
@@ -49,7 +52,8 @@ export function AccountTermsNotice({
 
   return (
     <p className={cn('text-sm text-muted-foreground', className)}>
-      Creating an account, with email or with Google, means you accept the{' '}
+      Creating an account, with email or with Google, means you confirm you’re
+      16 or over and accept the{' '}
       <Link href="/terms" className={LINK_CLASSNAME}>
         Terms
       </Link>

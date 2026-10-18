@@ -409,6 +409,19 @@ export default function PrivacyPage() {
             account.
           </li>
           <li>
+            <strong className="font-medium">
+              Can’t sign in any more?
+            </strong>{' '}
+            A forgotten password is fixed by resetting it from the sign-in page.
+            If you still can’t get in, email the address under{' '}
+            <a href="#contact" className={LEGAL_LINK_CLASSNAME}>
+              contact
+            </a>{' '}
+            from the address the account was made with, and I will delete the
+            account within 30 days. Writing from that address is how I know
+            the request is yours.
+          </li>
+          <li>
             <strong className="font-medium">Take a copy with you.</strong> The{' '}
             <Link href="/account" className={LEGAL_LINK_CLASSNAME}>
               account page
@@ -460,7 +473,7 @@ export default function PrivacyPage() {
           described here (in data protection terms, the controller). One person
           maintains it, and email reaches him directly:{' '}
           {/* MAKER: hello@perfumerscodex.com is planned but NOT set up — it is
-              a Week 20 item in docs/maker-todo.md, alongside Resend. Put the
+              part of item 12 in docs/maker-todo.md, with custom SMTP. Put the
               address you actually read here, and replace this placeholder. */}
           <LegalPlaceholder>
             maker: contact email — hello@perfumerscodex.com is planned but not
