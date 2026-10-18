@@ -5,10 +5,10 @@
 - **Slugs as URL identifiers, not IDs.** `/materials/iso-e-super` is readable, SEO-friendly, stable.
 - **Citations are structural, not optional.** Every fact-bearing row has a non-nullable `source_id`.
 - **Soft deletes on editorial content.** `deleted_at` columns on materials and descriptions; never lose history.
-- **Nothing is published unreviewed** (migration `0008`, 2026-10-02). Readers see a material only when `deleted_at IS NULL AND reviewed_hash = content_hash`. Both columns hold a fingerprint of what the material's page renders, including the shared rows it shows (family and IFRA category names, hazard statements, class names, full citation rows). The seed refreshes `content_hash` for every live material after each run; only `npm run db:review publish`, given the fingerprint the maker was shown, sets `reviewed_hash`. Any change to what a reviewed page shows hides it until it is reviewed again, and the detail page re-checks the fingerprint on every request. One predicate, `materialIsPublished` in `lib/db/published.ts`, applies this everywhere. Families with no published material are hidden too.
+- **Nothing is published unreviewed** (migration `0008`). Readers see a material only when `deleted_at IS NULL AND reviewed_hash = content_hash`. Both columns hold a fingerprint of what the material's page renders, including the shared rows it shows (family and IFRA category names, hazard statements, class names, full citation rows). The seed refreshes `content_hash` for every live material after each run; only `npm run db:review publish`, given the fingerprint the maker was shown, sets `reviewed_hash`. Any change to what a reviewed page shows hides it until it is reviewed again, and the detail page re-checks the fingerprint on every request. One predicate, `materialIsPublished` in `lib/db/published.ts`, applies this everywhere. Families with no published material are hidden too.
 - **Constraints liberally applied.** NOT NULL, FOREIGN KEY, CHECK constraints are documentation that the database enforces.
-- **Timestamps everywhere.** `created_at` and `updated_at` on every mutable table.
-- **Row-Level Security on every table, deny-by-default** (migration `0002`, 2026-08-30). Supabase grants `anon` full DML over PostgREST, so a table without RLS is world-writable the moment the site is live. Editorial tables carry no policies — the app reads them through Drizzle, which connects as `postgres` and bypasses RLS; user tables carry owner-scoped policies. Never touch user tables through Drizzle.
+- **Timestamps where rows are edited in place.** `created_at` and `updated_at` on `materials`, `material_descriptions`, `material_usage_guidance` and `user_notes`. Fact rows the seed replaces wholesale (synonyms, limits, hazards, landmark uses, sources, absences) carry none.
+- **Row-Level Security on every table, deny-by-default** (migration `0002`). Supabase grants `anon` full DML over PostgREST, so a table without RLS is world-writable the moment the site is live. Editorial tables carry no policies — the app reads them through Drizzle, which connects as `postgres` and bypasses RLS; user tables carry owner-scoped policies. Never touch user tables through Drizzle.
 
 ## Core tables
 
@@ -26,7 +26,7 @@ The central table — one row per aromachemical or natural material.
 | iupac_name         | text NULLABLE                      |                                                                                                                                                                                                                             |
 | smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                                                                                                   |
 | molecular_formula  | text NULLABLE                      |                                                                                                                                                                                                                             |
-| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once. Added nullable in migration `0004`, NOT NULL in `0005` (2026-09-05). |
+| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once.                                                                     |
 | molecular_weight   | numeric NULLABLE                   |                                                                                                                                                                                                                             |
 | created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
 | updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                                                                             |
@@ -45,9 +45,9 @@ Many synonyms per material — drives search.
 | material_id  | uuid FK → materials NOT NULL |                                                                                                                                        |
 | name         | text NOT NULL                |                                                                                                                                        |
 | synonym_type | enum NOT NULL                | trade_name / iupac / common_name / abbreviation / supplier_name                                                                        |
-| source_id    | uuid FK → sources NOT NULL   | Per row — synonyms come from different documents (PubChem list, TGSC, the IFRA Standard's commercial names). Migrations `0004`/`0005`. |
+| source_id    | uuid FK → sources NOT NULL   | Per row — synonyms come from different documents (PubChem list, TGSC, the IFRA Standard's commercial names).                            |
 
-Index: `(material_id)`, full-text index on `name`.
+Indexes: `(material_id)`; a trigram GIN index on `name` (migration `0001`). Synonyms reach full-text search only through `material_search_view`.
 
 ### `families`
 
@@ -66,8 +66,8 @@ Many-to-many join.
 
 | Column                               | Type                | Notes |
 | ------------------------------------ | ------------------- | ----- |
-| material_id                          | uuid FK → materials |       |
-| family_id                            | uuid FK → families  |       |
+| material_id                          | uuid FK → materials NOT NULL |       |
+| family_id                            | uuid FK → families NOT NULL  |       |
 | PRIMARY KEY (material_id, family_id) |                     |       |
 
 ### `usage_categories`
@@ -76,8 +76,8 @@ IFRA's 11 categories. Static reference data, seeded once.
 
 | Column      | Type          | Notes                           |
 | ----------- | ------------- | ------------------------------- |
-| id          | smallint PK   | 1–11 to match IFRA numbering    |
-| name        | text NOT NULL | e.g. "Category 1: Lip products" |
+| id          | smallint PK   | 1–11 to match IFRA numbering; CHECK id BETWEEN 1 AND 11 (Category 12 and subcategories: see Deferred schema work) |
+| name        | text NOT NULL | The product-type description, without IFRA's "Category N" prefix |
 | description | text          |                                 |
 
 ### `material_usage_limits`
@@ -100,7 +100,7 @@ UNIQUE (material_id, category_id, ifra_amendment_version).
 
 ### `chemical_classes`
 
-Structural classes a molecule can belong to — "ester", "macrocyclic ketone", "contains a lactone ring" (migration `0006`, 2026-09-05). Reference data, seeded from `chemical-classes.json` like `usage_categories` and `hazard_codes`.
+Structural classes a molecule can belong to — "ester", "macrocyclic ketone", "contains a lactone ring" (migration `0006`). Reference data, seeded from `chemical-classes.json` like `usage_categories` and `hazard_codes`.
 
 | Column      | Type              | Notes                                                                                                                                                      |
 | ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -123,11 +123,13 @@ Which materials belong to which class.
 | rdkit_version                         | text NOT NULL                       | Provenance, exactly as on `material_computed_properties` and `material_similarity` |
 | PRIMARY KEY (material_id, class_slug) |                                     |                                                                                    |
 
+Index: `(class_slug)`, for the `/materials?class=…` filter.
+
 **Not a cited fact and carries no `source_id`.** Membership is a deterministic recomputation from `materials.smiles` and the class's SMARTS, so it is stamped with the RDKit version that produced it (AGENTS.md). It is never authored by hand: the seed derives it, so a data file cannot claim a class the structure does not support. A NULL-SMILES material — a natural or any other mixture — simply has no rows here.
 
 ### `material_ifra_absences`
 
-A verified absence of an IFRA Standard, checked against one amendment's complete index (migration `0004`, 2026-09-05). Without it a material with no Standard was indistinguishable from one nobody had researched — zero `material_usage_limits` rows either way, and the safety panel said "none entered yet" to both.
+A verified absence of an IFRA Standard, checked against one amendment's complete index (migration `0004`). It lets the page tell "checked: no Standard exists" apart from "not researched", which would otherwise both be zero `material_usage_limits` rows.
 
 | Column                                            | Type                         | Notes                                               |
 | ------------------------------------------------- | ---------------------------- | --------------------------------------------------- |
@@ -137,6 +139,8 @@ A verified absence of an IFRA Standard, checked against one amendment's complete
 | verified_at                                       | timestamptz NOT NULL         |                                                     |
 | notes                                             | text NULLABLE                |                                                     |
 | PRIMARY KEY (material_id, ifra_amendment_version) |                              |                                                     |
+
+Index: `(material_id)`.
 
 Never overwritten: when a later amendment brings a Standard, its `material_usage_limits` rows sit beside this row as history. Validation refuses a file carrying both a limit and an absence for the same amendment. No limits and no absence means "not researched", and the UI says exactly that.
 
@@ -156,8 +160,8 @@ Join table.
 
 | Column                                 | Type                       | Notes |
 | -------------------------------------- | -------------------------- | ----- |
-| material_id                            | uuid FK → materials        |       |
-| hazard_code                            | text FK → hazard_codes     |       |
+| material_id                            | uuid FK → materials NOT NULL |       |
+| hazard_code                            | text FK → hazard_codes NOT NULL |       |
 | source_id                              | uuid FK → sources NOT NULL |       |
 | PRIMARY KEY (material_id, hazard_code) |                            |       |
 
@@ -168,7 +172,7 @@ Citations.
 | Column       | Type                                       | Notes                                                                                                                                                                                                                         |
 | ------------ | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | id           | uuid PK                                    |                                                                                                                                                                                                                               |
-| key          | text NULLABLE, UNIQUE (`sources_key_uniq`) | Global identity from the seed input, so one document cited by many materials is one row (migration `0003`, 2026-09-04). Every live row is keyed; the column is nullable only so legacy rows could be adopted by the backfill. |
+| key          | text NULLABLE, UNIQUE (`sources_key_uniq`) | Global identity from the seed input, so one document cited by many materials is one row (migration `0003`). Every live row is keyed; the column is nullable for legacy reasons. |
 | type         | enum NOT NULL                              | ifra / sds / pubchem / gsc / perfumer_blog / book / interview / other                                                                                                                                                         |
 | url          | text NULLABLE                              |                                                                                                                                                                                                                               |
 | title        | text NOT NULL                              |                                                                                                                                                                                                                               |
@@ -200,7 +204,7 @@ Partial unique index: `UNIQUE (material_id) WHERE deleted_at IS NULL` — one _a
 
 ### `material_usage_guidance`
 
-Practical usage guidance — backs the "Usage" tab beyond IFRA limits. (The per-material data targets in [data-strategy.md](./data-strategy.md) promise typical %, threshold, and dilution guidance; this is where they live.)
+Practical usage guidance — backs the Usage section beyond IFRA limits. A recommended maximum that is not an IFRA limit goes in `threshold_note`, never in `typical_pct_max` (data repo DATA-DECISIONS D15a).
 
 | Column                  | Type                                | Notes                                             |
 | ----------------------- | ----------------------------------- | ------------------------------------------------- |
@@ -227,12 +231,12 @@ Practical usage guidance — backs the "Usage" tab beyond IFRA limits. (The per-
 | notes        | text NULLABLE                |       |
 | source_id    | uuid FK → sources NOT NULL   |       |
 
-## Cheminformatics tables (added August 2026)
+## Cheminformatics tables
 
-Backs the v1 cheminformatics scope ([scope.md](./scope.md), [cheminformatics.md](./cheminformatics.md)). Design notes:
+Backs the cheminformatics features ([cheminformatics.md](./cheminformatics.md)). Design notes:
 
 - **`smiles` is nullable** — naturals are mixtures with no single structure; every cheminformatics feature simply skips NULL-SMILES materials.
-- **Substructure search needs no schema** — it runs client-side in RDKit.js over the corpus's SMILES strings.
+- **Class membership is precomputed** (`material_chemical_classes`, above); only arbitrary SMARTS patterns run client-side, on `/structure`, and need no schema.
 - **Provenance for computed rows is the tool version, not a `source_id`** — the values are deterministic recomputations; `rdkit_version` records exactly what produced them.
 - **Model predictions never touch `material_descriptions`** — they live in their own table, carry a `model_version`, and render only inside a clearly-labeled experimental module.
 
@@ -289,7 +293,7 @@ UNIQUE (material_id, descriptor, model_version).
 
 ### `users`
 
-Managed by Supabase Auth — schema is theirs. Application reads `auth.users` for ID and email.
+Managed by Supabase Auth; the schema is theirs. `db/schema.ts` declares a stub of `auth.users` only so the cascade foreign keys can be written; nothing reads through it. The caller's identity comes from `supabase.auth.getClaims()` (reads) or `getUser()` (sensitive writes).
 
 ### `user_saved_materials`
 
@@ -298,11 +302,11 @@ Bookmarks. RLS-protected.
 | Column                             | Type                                   | Notes                                                                    |
 | ---------------------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
 | user_id                            | uuid FK → auth.users ON DELETE CASCADE | Cascade makes Supabase account deletion actually delete user data (GDPR) |
-| material_id                        | uuid FK → materials                    |                                                                          |
+| material_id                        | uuid FK → materials NOT NULL           |                                                                          |
 | created_at                         | timestamptz NOT NULL                   |                                                                          |
 | PRIMARY KEY (user_id, material_id) |                                        |                                                                          |
 
-RLS policy: SELECT/INSERT/DELETE allowed only when `auth.uid() = user_id`.
+RLS policy: SELECT/INSERT/DELETE allowed only when `auth.uid() = user_id`. No UPDATE policy: a bookmark is added or removed, never edited.
 
 ### `user_notes`
 
@@ -318,15 +322,15 @@ Free-text private notes per material.
 | updated_at  | timestamptz NOT NULL                            |                                                                           |
 
 UNIQUE (user_id, material_id) — one note per user per material.
-RLS: same as above.
+RLS: SELECT/INSERT/DELETE as above, plus UPDATE with the same check in both `USING` and `WITH CHECK`, so a note cannot be re-pointed at another user.
 
 ## Operational tables
 
-These back v1 scope items ([scope.md](./scope.md)) that previously had no schema: the correction form and the admin dashboard's "top searches."
+These back the planned correction form and admin dashboard ([overview.md](./overview.md#v1-scope-and-status)).
 
 ### `correction_submissions`
 
-The "submit a correction" form. Public insert (rate-limited), maker-only read.
+For the planned "submit a correction" form. **A placeholder:** RLS is on with no policies, and no code reads or writes it yet; corrections go by email until the form ships.
 
 | Column      | Type                         | Notes                                  |
 | ----------- | ---------------------------- | -------------------------------------- |
@@ -348,7 +352,7 @@ Drives the admin dashboard's "search count" and "top searches." Privacy-delibera
 | result_count | int NOT NULL         | 0 = a miss — the most useful signal for synonym-table gaps |
 | created_at   | timestamptz NOT NULL |                                                            |
 
-Retention: **intended** to purge rows older than ~90 days via a Supabase scheduled job — **not implemented as of 2026-09-05** (verified against the live database: no `pg_cron`, no `cron` schema, no job). Rows are kept indefinitely until it is. `/privacy` says exactly that rather than promising a retention period nothing enforces; both need updating together when the job lands.
+Retention: rows are kept indefinitely. A ~90-day purge job was intended but does not exist (no `pg_cron`, no job). `/privacy` says exactly that rather than promising a retention period nothing enforces; both need updating together when the job lands.
 
 ## Search infrastructure
 
@@ -363,9 +367,11 @@ Joins materials + synonyms + descriptions into a unified searchable corpus.
 Design notes (each fixes a real failure mode):
 
 - **`'simple'` config for names/synonyms, `'english'` only for descriptions.** English stemming mangles trade names — they aren't English words and must match verbatim.
-- **CAS numbers are _not_ in the vector.** The `'english'`/`'simple'` tokenizers split `54464-57-2` unpredictably; CAS search is an exact-match short-circuit on the indexed `cas_number` column in `lib/search.ts` (rule 0 below).
+- **CAS numbers are _not_ in the vector.** The `'english'`/`'simple'` tokenizers split `54464-57-2` unpredictably; CAS search is an exact-match short-circuit on the indexed `cas_number` column (rule 0 below; `isCasNumber` in `lib/search/normalize.ts`, `findByCasNumber` in `lib/db/search.ts`).
 - **Synonyms and descriptions aggregate in lateral subqueries**, not a flat `GROUP BY` join — joining both tables directly cross-multiplies rows when a material has several synonyms and more than one description row.
 - **A plain unique index on `id` is mandatory** — `REFRESH MATERIALIZED VIEW CONCURRENTLY` refuses to run without one.
+- **The view filters only `deleted_at`.** The review gate is applied at query time (`materialIsPublishedAs('m')` in `lib/db/search.ts`), so an unpublished material never matches.
+- **Closed to the Data API.** A view cannot carry RLS, so migration `0007` revokes all access from `anon` and `authenticated`. Any migration that drops and recreates the view must repeat the `REVOKE`.
 
 ```sql
 CREATE MATERIALIZED VIEW material_search_view AS
@@ -404,11 +410,11 @@ Refresh: editorial data only changes via the seed script in v1, so refresh is on
 0. Exact match on `cas_number` (normalized) → immediate top, short-circuit
 1. Exact match on `canonical_name` → top
 2. Exact match on a synonym → second
-3. Prefix/trigram match on canonical or synonym (pg_trgm) → third
+3. Prefix match on `canonical_name`, or trigram similarity ≥ 0.3 on the name or a synonym → third (a prefix hit scores above a trigram-only hit)
 4. Full-text match weighted by `setweight` (A > B > C) → remainder
-5. Tie-break: most recently updated material first
+5. Tie-break: most recently updated material first, then id. A candidate matching no rule is dropped.
 
-These rules belong in `lib/search.ts` with Vitest cases for each. Log every query + result count to `search_queries` — zero-result queries are the to-do list for the synonym table.
+Rule 0 lives in `lib/search/index.ts`; rules 1–5 in `lib/search/rank.ts`, with Vitest cases for each. Log every query + result count to `search_queries` — zero-result queries are the to-do list for the synonym table.
 
 ## Schema decisions and rationale
 
@@ -416,29 +422,24 @@ These rules belong in `lib/search.ts` with Vitest cases for each. Log every quer
 - **Why mandatory `source_id`:** the entire project's value proposition is "every fact has a citation." Encoding that in the schema rather than convention is good engineering.
 - **Why versioned IFRA limits:** standards change with each amendment. Old standards must remain queryable. Never overwrite — insert new rows with new amendment version.
 - **Why soft deletes only on editorial content:** users can hard-delete their own data (GDPR); editorial content keeps history for audit and recovery.
-- **Why text array for `key_facets` instead of join table:** facets are tags, not entities. They don't need their own lifecycle. PostgreSQL arrays + GIN indexing handle this cleanly.
+- **Why text array for `key_facets` instead of join table:** facets are tags, not entities. They don't need their own lifecycle. A PostgreSQL array handles this (no index yet; add a GIN index if facets become a filter).
 - **Why predictions live apart from descriptions:** the editorial layer is the product's trust anchor. Model output carries its own provenance (`model_version`), renders only as labeled-experimental, and can be regenerated or withdrawn wholesale without touching human-written content.
 - **Why computed properties have `rdkit_version` instead of `source_id`:** they aren't cited facts, they're deterministic recomputations — the honest provenance is the exact tool that produced them.
 
-## Open questions from the first cited drafts (2026-09-05)
+## Deferred schema work
 
-The first three real materials (Iso E Super, Javanol, Civetone — see
-[maker-todo.md](./maker-todo.md)) produced verified facts this schema cannot
-hold, and two of them are defects on the live page. Decide these before the
-corpus grows; each sets a convention every later material follows.
+Facts the first materials produced that the schema cannot hold yet. Each has
+an interim rule in the data repository's `DATA-DECISIONS.md`, which owns the
+list (backlog S1–S5):
 
-1. ~~**A verified IFRA absence.**~~ **Decided 2026-09-05:** `material_ifra_absences`, one row per material per amendment (above).
-2. ~~**Identity facts have no `source_id`.**~~ **Decided 2026-09-05:** `materials.identity_source_id` (one per material) and `material_synonyms.source_id` (per row); the detail page's citation walk now starts with them.
-3. **IFRA subcategories.** Categories 5 and 10 split into subcategories with
-   different limits; the table stores one value per category. Storing the
-   most restrictive under-states what a body lotion or a spray may carry.
-   `usage_categories` also stops at 11, so Category 12 is unrepresentable.
-4. **Where verified physical properties, registry identifiers (FEMA, JECFA,
-   EC, UNII), supplier substantivity figures and non-IFRA recommended maxima
-   live.** All three materials produced them; all are parked in source
-   `notes`.
-5. **Minority GHS classifications.** Civetone's H315 is a 20 % self-notified
-   position; `material_hazards` has no way to say so.
-6. **Amendment label convention** for `ifra_amendment_version` — the
-   Standard's own amendment, or the index it is current in. The unique key
-   is (category, amendment), so one convention must hold.
+- **S1.** IFRA subcategories (5A–5D, 10A–10B) and Category 12. Interim: store
+  the strictest subcategory's limit, breakdown in `notes` (D9).
+- **S2.** Physical properties and registry identifiers (FEMA, JECFA, EC,
+  UNII, substantivity). Interim: source `notes` and the dossier (D18).
+- **S3.** A citation per `usage_guidance` field.
+- **S4.** Hazard absences and notifier share. Interim: store majority GHS
+  classifications only (D14a).
+- **S5.** A `recommended_max_pct` field. Interim: `threshold_note` (D15a).
+
+Adding any of these to what a material page renders changes every review
+fingerprint.
