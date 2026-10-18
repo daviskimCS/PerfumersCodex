@@ -48,14 +48,28 @@ export async function GET(request: NextRequest): Promise<Response> {
   // not even logged), but stopping at the boundary means a keystroke-per-
   // request client cannot make an empty round-trip cost a connection.
   if (query.trim() === '') {
-    return Response.json({ query, results: [] } satisfies SearchResponse)
+    // no-store here too: the palette sends an empty query to wake the
+    // function when it opens (components/search-command.tsx), which only
+    // works if the answer never comes from a cache.
+    return Response.json({ query, results: [] } satisfies SearchResponse, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
 
+  const started = performance.now()
   const results = await searchMaterials(query)
+  const searchMs = performance.now() - started
 
   return Response.json({ query, results } satisfies SearchResponse, {
-    // Private and uncached: search results reflect the live corpus, and the
-    // query string is the user's, not something to leave in a shared cache.
-    headers: { 'Cache-Control': 'no-store' },
+    headers: {
+      // Private and uncached: search results reflect the live corpus, and the
+      // query string is the user's, not something to leave in a shared cache.
+      'Cache-Control': 'no-store',
+      // Time spent inside the pipeline (database included), shown in the
+      // browser's network panel. Whatever the request took beyond it is the
+      // network, a cold start or the platform, so production latency can be
+      // read off a real request rather than guessed from a local build.
+      'Server-Timing': `search;desc="Search pipeline";dur=${searchMs.toFixed(1)}`,
+    },
   })
 }

@@ -35,11 +35,18 @@ import { cn } from '@/lib/utils'
  * (`--popover` is the one pair the rails deliberately leave alone, which is why
  * the skip link can float above the rail; a whole panel needs more than a pair.)
  *
- * On state shape: what a request produced is stored, and everything the UI
- * shows is *derived* from whether that stored answer belongs to the query
- * currently in the box. No effect writes state synchronously — that is both
- * what `react-hooks/set-state-in-effect` requires and what makes a stale
- * response structurally unable to be displayed.
+ * On state shape: what each request produced is stored, keyed by its query,
+ * and everything the UI shows is *derived* from whether an answer exists for
+ * the query currently in the box. No effect writes state synchronously — that
+ * is both what `react-hooks/set-state-in-effect` requires and what makes a
+ * stale response structurally unable to be announced as the answer.
+ *
+ * While the next answer is on its way, the last one stays on screen instead
+ * of a "Searching…" placeholder: blanking the list on every keystroke made
+ * search feel slower than its round trip. Answers are kept for as long as the
+ * palette is open, so backspacing to an earlier query needs no request at
+ * all; reopening starts empty, so a material the review gate has since hidden
+ * is never shown from memory.
  */
 
 /** Debounce window. "~150ms" per the checklist item — long enough to skip the
@@ -56,6 +63,26 @@ const NO_RESULTS: SearchResult[] = []
 interface SearchAnswer {
   query: string
   results: SearchResult[]
+}
+
+/** Every answer this palette session has received, by query. */
+type AnswerCache = ReadonlyMap<string, SearchResult[]>
+
+const NO_ANSWERS: AnswerCache = new Map()
+
+/**
+ * Wake the search function before the first keystroke reaches it.
+ *
+ * An empty query is answered without touching the database
+ * (app/api/search/route.ts), so this costs one tiny request per opening. At
+ * today's traffic the function is usually cold when a reader opens the
+ * palette, and a cold start measured about 300 ms on top of a warm request
+ * (2026-10-18, from the maker's machine): paying it while the reader is still
+ * typing keeps it off the first result. Failures are ignored: this is a hint,
+ * and the real request reports its own errors.
+ */
+function warmSearch(): void {
+  void fetch('/api/search?q=', { priority: 'low' }).catch(() => {})
 }
 
 /* ---------------------------------------------------------------------------
@@ -89,7 +116,9 @@ export function SearchCommand() {
 
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState('')
-  const [answer, setAnswer] = React.useState<SearchAnswer | null>(null)
+  const [answers, setAnswers] = React.useState<AnswerCache>(NO_ANSWERS)
+  /** The most recent answer to arrive, shown while the next one loads. */
+  const [lastAnswer, setLastAnswer] = React.useState<SearchAnswer | null>(null)
   /** The query a request failed on, so one failure cannot become a retry loop. */
   const [failedQuery, setFailedQuery] = React.useState<string | null>(null)
   const [recent, setRecent] = React.useState<string[]>([])
@@ -115,13 +144,20 @@ export function SearchCommand() {
    * response never overwrites a fast later one.
    */
   const requestSeq = React.useRef(0)
+  /** Whether this opening of the palette has scheduled a request yet. */
+  const sentFirstRequest = React.useRef(false)
 
   /* --- everything the panel renders, derived from the query in the box --- */
   const trimmedQuery = query.trim()
-  const answered = answer !== null && answer.query === trimmedQuery
-  const results = answered ? answer.results : NO_RESULTS
+  const answeredResults = answers.get(trimmedQuery)
+  const answered = answeredResults !== undefined
   const failed = trimmedQuery !== '' && failedQuery === trimmedQuery
   const searching = trimmedQuery !== '' && !answered && !failed
+  /** Results for an earlier query, kept on screen while this one loads. */
+  const carriedOver =
+    searching && lastAnswer !== null && lastAnswer.results.length > 0
+  const results =
+    answeredResults ?? (carriedOver ? lastAnswer.results : NO_RESULTS)
   const showingRecent = trimmedQuery === '' && recent.length > 0
   const optionCount = showingRecent ? recent.length : results.length
   /** Clamped at read time: the option list changes out from under the index. */
@@ -134,10 +170,13 @@ export function SearchCommand() {
         : null
     setRecent(readRecentSearches())
     setQuery('')
-    setAnswer(null)
+    setAnswers(NO_ANSWERS)
+    setLastAnswer(null)
     setFailedQuery(null)
     setActiveIndex(-1)
+    sentFirstRequest.current = false
     setOpen(true)
+    warmSearch()
   }, [])
 
   const closePalette = React.useCallback(() => {
@@ -233,6 +272,13 @@ export function SearchCommand() {
     const { signal } = controller
     const sequence = ++requestSeq.current
 
+    // The first request of an open palette goes out at once: there is
+    // nothing on screen yet to keep the reader company while a debounce
+    // waits. After that, results stay up while the next answer loads, so the
+    // debounce costs nothing visible and saves a request per fast keystroke.
+    const delay = sentFirstRequest.current ? DEBOUNCE_MS : 0
+    sentFirstRequest.current = true
+
     const timer = window.setTimeout(() => {
       const run = async () => {
         try {
@@ -247,7 +293,10 @@ export function SearchCommand() {
           const payload = (await response.json()) as SearchResponse
           if (signal.aborted || sequence !== requestSeq.current) return
 
-          setAnswer({ query: trimmedQuery, results: payload.results })
+          setAnswers((previous) =>
+            new Map(previous).set(trimmedQuery, payload.results)
+          )
+          setLastAnswer({ query: trimmedQuery, results: payload.results })
           setActiveIndex(-1)
         } catch {
           if (signal.aborted || sequence !== requestSeq.current) return
@@ -260,7 +309,7 @@ export function SearchCommand() {
       }
 
       void run()
-    }, DEBOUNCE_MS)
+    }, delay)
 
     return () => {
       window.clearTimeout(timer)
@@ -583,7 +632,7 @@ export function SearchCommand() {
                     <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                       Search by name, trade name, or CAS number.
                     </p>
-                  ) : searching ? (
+                  ) : searching && !carriedOver ? (
                     <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                       Searching…
                     </p>
@@ -598,6 +647,9 @@ export function SearchCommand() {
                       role="listbox"
                       id={listboxId}
                       aria-label="Search results"
+                      // Not dimmed while busy: faded text would fall below
+                      // the contrast the palette's rows are held to.
+                      aria-busy={carriedOver}
                     >
                       {results.map((result, index) => (
                         <Link
