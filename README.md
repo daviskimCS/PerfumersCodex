@@ -38,7 +38,6 @@ What is not built or not yet verified:
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
 - **Search tests are database-free.** The ranking tests run on synthetic evidence; there is no end-to-end search test against the real corpus. One gold-set case (the odour phrase "amber wood") depends on description text the live corpus does not contain, so it would not pass against it.
 - **The structure–odor experiment is not built.**
-- **IFRA subcategories are flattened.** IFRA splits Categories 5, 7, 10 and 11 into subcategories with different limits and added Category 12; the schema holds Categories 1–11 only, so a split category shows its strictest subcategory's limit and says so in its note. That is safe but understates what some product types may carry.
 - **Similarity scores and computed properties are not reproducible from the repositories yet.** They arrive precomputed in the data files (three materials so far), produced by a research script that is not committed, and the RDKit version stamp does not record the fingerprint parameters.
 - **The review gate has edges.** It lives in app code, so an older deployment pointed at the live database would show unreviewed material. List entries rely on a stored fingerprint that the seed refreshes, so a writer that skips that refresh can leave a list entry stale until the next refresh; detail pages re-check on every request. Structural-class names and descriptions are shown on the class filter and `/structure` without review. The open engineering findings are ranked in [`docs/engineering-backlog.md`](./docs/engineering-backlog.md).
 
@@ -75,7 +74,7 @@ npm run dev
 | `npm run db:review <verb>` | Review gate: `list`, `show <slug>`, `publish <slug> <fingerprint>`, `revoke <slug>`, `refresh`                  |
 | `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                                             |
 
-Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`. `SITE_GATE_PASSWORD` turns on the pre-launch password gate; leave it unset locally — unset means off.
+Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`.
 
 Seeding replaces each material's fact rows with what its data file says, so keep superseded IFRA amendments in the file if their history should stay in the database. `scripts/fixtures` is for empty databases only: it overwrites reference rows such as IFRA category names by id.
 

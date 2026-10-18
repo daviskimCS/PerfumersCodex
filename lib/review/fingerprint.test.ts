@@ -36,8 +36,8 @@ function detail(): MaterialDetail {
     ],
     usageLimits: [
       {
-        categoryId: 1,
-        categoryName: 'Test Category 1',
+        categoryId: '5A',
+        categoryName: 'Test Category 5A',
         restrictionType: 'restriction',
         maxPct: 50,
         notes: null,
@@ -160,10 +160,7 @@ describe('materialFingerprint', () => {
       'a citation url (shared source)',
       (d) => (d.sources[1].url = 'https://example.com/moved'),
     ],
-    [
-      'a similar material name (another material)',
-      (d) => (d.similar[0].canonicalName = 'Renamed Beta'),
-    ],
+    ['an IFRA category code', (d) => (d.usageLimits[0].categoryId = '5B')],
     ['computed properties', (d) => (d.computed = null)],
     [
       'the structure drawing (derived)',
@@ -180,5 +177,32 @@ describe('materialFingerprint', () => {
     const changed = detail()
     mutate(changed)
     expect(materialFingerprint(changed)).not.toBe(materialFingerprint(detail()))
+  })
+
+  // Neighbours are links to pages that pass the gate on their own, and their
+  // scores are recomputed, not cited (fingerprint.ts). Renaming a draft or
+  // seeding a new one must not hide a published page that lists it.
+  const ignored: Array<[string, (d: MaterialDetail) => void]> = [
+    [
+      'a similar material name (another material)',
+      (d) => (d.similar[0].canonicalName = 'Renamed Beta'),
+    ],
+    [
+      'a new similar material',
+      (d) =>
+        d.similar.push({
+          slug: 'test-material-gamma',
+          canonicalName: 'Test Material Gamma',
+          tanimoto: 0.4,
+          rdkitVersion: 'test',
+        }),
+    ],
+    ['no similar materials', (d) => (d.similar = [])],
+  ]
+
+  it.each(ignored)('does not change when %s', (_name, mutate) => {
+    const changed = detail()
+    mutate(changed)
+    expect(materialFingerprint(changed)).toBe(materialFingerprint(detail()))
   })
 })

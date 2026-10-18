@@ -40,16 +40,18 @@ function limitPhrase(limit: UsageLimit): string {
       return limit.maxPct === null
         ? 'Specification'
         : `${limit.maxPct}% maximum, by specification`
+    case 'no_restriction':
+      return 'No restriction'
   }
 }
 
 /**
  * IFRA Category 4, fine fragrance: the row most perfumers on this site look
  * up first, so it is tinted to be found at a glance. Presentation only; the
- * category numbering is IFRA's own and has been stable since the 49th
+ * category codes are IFRA's own and have been stable since the 49th
  * Amendment.
  */
-const FINE_FRAGRANCE_CATEGORY = 4
+const FINE_FRAGRANCE_CATEGORY = '4'
 
 /**
  * Every amendment this material has been checked against — whether the check
@@ -264,7 +266,7 @@ export function SafetyPanel({
                           : 'w-1/2 py-3 pr-4 pl-2 font-normal md:w-[45%] md:pr-6'
                       }
                     >
-                      <span className="grid grid-cols-[1.75rem_minmax(0,1fr)] md:grid-cols-[2rem_minmax(0,1fr)]">
+                      <span className="grid grid-cols-[2.5rem_minmax(0,1fr)] md:grid-cols-[2.75rem_minmax(0,1fr)]">
                         <span className="font-mono text-sm text-muted-foreground">
                           {limit.categoryId}
                         </span>

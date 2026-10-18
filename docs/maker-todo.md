@@ -17,11 +17,13 @@ checklist; this file holds what the code depends on.
   the first three waits on this.
 - **Write the remaining olfactive descriptions** (Civetone and the eleven
   later drafts have none).
-- **Choose how IFRA subcategories are stored** (5A–5D, 7A/7B, 10A/10B,
-  11A/11B and Category 12). Today each split category stores its strictest
-  subcategory, which understates what some product types may carry. Options
-  and costs: `docs/engineering-backlog.md` item 1. Every option means
-  re-reviewing each material with IFRA limits once, so it is cheapest now.
+- **Ship the IFRA category codes** (migration 0012, fingerprint v2). In
+  this order, because the new code cannot read the old table: (1) from a
+  fresh worktree of the PR's branch, `npm ci && npm run db:migrate`; (2) merge
+  the app PR; (3) merge the data repository's PR and re-seed from it;
+  (4) `db:review show` and `publish` each published material again. Every
+  published material is hidden from step 1 until its step 4: the
+  fingerprint version changed, so each one needs one fresh review.
 - **Choose a licence file for the data repository.** The site publishes the
   data under CC BY-SA 4.0 (`LICENSE-DATA` here), but `PerfumersCodexData` has
   no licence file.
@@ -50,8 +52,8 @@ that already has a password account joins that account. Test it once.
 review gate). Prune with `npm run db:seed -- <data-repo> --prune`, which
 soft-deletes materials absent from the input and refuses if the input is
 under half the live corpus without `--force-prune`. **Never seed
-`scripts/fixtures` into the live database:** its usage categories share ids
-1–11 with the real IFRA list and would rename every real category.
+`scripts/fixtures` into the live database:** its usage categories share
+codes with the real IFRA list and would rename every real category.
 
 ## Supabase and Vercel settings
 
