@@ -480,8 +480,8 @@
   ); /* #7c7873 — SC 1.4.11: 3.40:1 over the
      texture, which LIGHTENS the dark page rather than darkening it, so the
      worst case is the brightest crest. This is the tightest pair in the
-     design — re-measure before touching the dark grain. Since the turbulence
-     moves on its own layer the browser sweep finds 3.26:1 (BACKGROUND). */
+     design — re-measure before touching the dark grain. The browser sweep
+     of the whole stack finds 3.34:1 (BACKGROUND). */
 
   /* Dark mode's rails are already dark, so the chrome set forwards the page
      tokens rather than inverting. These read the inherited computed values,
@@ -653,25 +653,24 @@
      whole number of periods per tile, which is why the numbers are not
      exactly the ratio written above.
 
-     THE TEXTURE MOVES ON ITS OWN LAYER. The two turbulence tiles live on a
-     fixed `body::before` that drifts with a transform, while the root keeps
-     the colour and the two gradients. Until 2026-10-14 the whole stack sat
-     here and drifted by animating `background-position`, 120s and sub-pixel.
-     Nobody could see that motion, yet it repainted the entire window on every
-     frame for as long as the page was open: about 90% of the main thread on
-     an idle page in headless Chromium, against roughly 0.1% for a transform,
-     which the compositor moves without repainting anything. So the drift is
-     now both visible (about 240px over 24s, the way wind moves a ripple
-     field) and nearly free.
+     ONE STILL SURFACE THAT SCROLLS WITH THE PAGE. Every layer, turbulence
+     included, sits here, so the texture moves with the text like printed
+     paper. From 2026-10-14 to 2026-10-18 the turbulence lived on a fixed,
+     drifting `body::before` while the gradients stayed here, and the two
+     disagreed on every scroll: the grain held still against the window while
+     the colour bands slid past under it. Pinning both to the window would
+     also have agreed, but this is a reference page read top to bottom, and a
+     backdrop that stays put while the content slides over it reads as a
+     screen, not a sheet. Options with clips: material-ui/background/ in the
+     project files.
 
-     The cost of the split: the rubber-band overscroll strip and anything the
-     compositor exposes mid-scroll show the colour and gradients without the
-     turbulence, because a fixed layer does not reach the canvas. The layer
-     overhangs the viewport by more than its travel, so its edges never show
-     while it moves. The order of the stack is unchanged (turbulence over
-     gradients over colour), so the composite is the same set of pixels at a
-     different alignment. prefers-reduced-motion holds the layer still and
-     keeps the texture.
+     NOTHING HERE ANIMATES, and nothing may. An animated root background
+     repaints the whole window on every frame: the 120s `background-position`
+     drift that sat here until 2026-10-14 kept about 90% of the main thread
+     busy on an idle page in headless Chromium. Held still, the stack is painted
+     once and scrolling only moves those pixels, about 0 ms of main-thread
+     work idle and the cheapest of the four options while scrolling. Motion
+     belongs on the structure drawing (STRUCTURE DRAW below), not on the page.
 
      CONTRAST: every token that sits on this layer is verified against the
      COMPOSITED worst case, not the flat background — a texture silently
@@ -681,14 +680,11 @@
      wash periods, so every phase relationship between the two gradients
      occurs — read every pixel, and take the darkest in light mode, the
      LIGHTEST in dark. Figures are recorded in the palette blocks above.
-     Since the turbulence moved to its own layer (2026-10-14) the check is
-     taken from the browser instead: the page with its content hidden,
-     screenshotted at scroll offsets across 2,700px and at five points of the
-     drift, every pixel read. Before the split it agreed with the canvas
-     figures to within 0.06. After it, light mode is unchanged (5.13:1 for
-     --muted-foreground, 3.57:1 for --border-strong) and dark --border-strong
-     fell from 3.34:1 to 3.26:1, because the moving tiles now cross the bands
-     at alignments the fixed stack never produced. Still above 3:1.
+     The browser gives a second check: the page with its content hidden,
+     screenshotted at scroll offsets across 2,700px, every pixel read. It
+     agrees with the canvas to within 0.06 (2026-10-18: light 5.17:1 for
+     --muted-foreground and 3.59:1 for --border-strong; dark --border-strong
+     3.34:1, up from 3.26:1 while the turbulence drifted on its own layer).
      Re-run it after any change to a --grain-* token; edits that look purely
      cosmetic do move these numbers.
      ========================================================================== */
@@ -696,6 +692,7 @@
   html {
     background-color: var(--background);
     background-image:
+      var(--grain-chop), var(--grain-swell),
       linear-gradient(
         to bottom,
         transparent 0%,
@@ -714,6 +711,8 @@
       );
     background-repeat: repeat;
     background-size:
+      auto,
+      auto,
       100% 590px,
       100% 1370px;
   }
@@ -733,36 +732,6 @@
 
   input[type='search']::-webkit-search-cancel-button:hover {
     background-color: var(--foreground);
-  }
-
-  /* The moving turbulence (see THE TEXTURE MOVES above). z-index -1 puts it
-     above the root's canvas and below everything in the body, which has no
-     stacking context of its own. The overhang (160px) exceeds the furthest
-     the transform travels (120px), so no edge ever enters the viewport. */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: -160px;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--grain-chop), var(--grain-swell);
-    background-repeat: repeat;
-    animation: grain-drift 24s ease-in-out infinite alternate;
-  }
-
-  @keyframes grain-drift {
-    from {
-      transform: translate3d(-120px, -40px, 0);
-    }
-    to {
-      transform: translate3d(120px, 60px, 0);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    body::before {
-      animation: none;
-    }
   }
 
   /* ==========================================================================
