@@ -22,8 +22,9 @@ fact about the system or a step with an owner.
 
 Not held anywhere: payment data, phone numbers, addresses, Google tokens
 (Supabase does not persist the provider token), anything from Google beyond
-`email` and `profile` scopes (enforced by the code and asserted in
-`tests/integration/google.integration.test.ts`).
+`email` and `profile` scopes (Supabase's defaults: `signInWithGoogle`
+requests no extra scopes, and `tests/integration/google.integration.test.ts`
+asserts the default).
 
 ## 2. What applies
 
