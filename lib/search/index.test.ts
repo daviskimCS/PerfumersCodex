@@ -46,6 +46,7 @@ function makeCandidate(
     casNumber: null,
     exactSynonymMatch: false,
     matchedSynonym: null,
+    synonymPrefixMatch: false,
     trigramSimilarity: 0,
     tsRank: 0,
     updatedAt: '2026-01-15T00:00:00.000Z',

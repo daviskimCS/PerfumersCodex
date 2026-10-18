@@ -66,8 +66,10 @@ unit-testable without Postgres.
    `cas_number` column. A hit is the single tier-0 result; a miss falls
    through.
 3. **Fetch candidates** (`lib/db/search.ts`): one round trip returning up to
-   50 evidence rows (exact-synonym flag, trigram similarities, weighted
-   `ts_rank`, `updated_at`), with no ordering promise.
+   50 evidence rows (exact-synonym and synonym-prefix flags, trigram
+   similarities, weighted `ts_rank`, `updated_at`), with no ordering promise.
+   A prefix of the name or a synonym is a candidate leg of its own: trigrams
+   miss short prefixes of long names ("eth" against "Ethyl vanillin").
 4. **Rank** (`lib/search/rank.ts`, pure): assign tiers, sort by (tier, score
    desc, updatedAt desc), keep each material's best tier.
 5. **Log** `(query, result_count)` to `search_queries` through `after()`, so a
@@ -76,7 +78,8 @@ unit-testable without Postgres.
 The boundary, the order and the tier meanings are fixed; the exact
 `SearchCandidate` columns (`lib/search/types.ts`, pipeline-internal) may
 change. The gold set (`lib/search/gold-set.ts`) runs against synthetic
-candidates, and one round trip per search keeps the 150 ms p95 budget honest.
+candidates, `tests/integration/search.integration.test.ts` runs the SQL
+itself against real Postgres, and one round trip per search keeps the 150 ms p95 budget honest.
 
 ## D3 — Type contracts
 

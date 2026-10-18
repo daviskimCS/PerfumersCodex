@@ -128,7 +128,7 @@ Skip tests for:
 - **Renaming a source key** in the data repo collides on `sources_url_uniq` until the live row is renamed to match: the seed adopts a same-URL row only when its key is NULL.
 - **Seed input rules:** every material needs `identity_source_key` and a `source_key` per synonym; validation refuses a Standard and a verified absence for the same amendment, and one URL under two keys. Class membership is derived by the seed, never authored.
 - **No data cache over editorial reads:** the review gate hides a changed page at once, and `npm run db:review` runs outside the Next runtime, where it could not invalidate a cache.
-- **Tests:** `npm test` is database-free; `npm run test:integration` runs the real auth and account actions against a local Supabase stack (CI job `integration`; `tests/integration/README.md`).
+- **Tests:** `npm test` is database-free; `npm run test:integration` runs the real auth and account actions, and the search SQL, against a local Supabase stack (CI job `integration`; `tests/integration/README.md`).
 - **Unverified:** the browser half of bookmarks and notes (button, `/saved`), and real Google sign-in (manual check in `tests/integration/README.md`). Account deletion leaves Supabase's auth audit log rows behind (maker-todo item 12).
 - **Blockers:** none
 
