@@ -203,11 +203,11 @@ export default function AboutPage() {
               the same material.
             </p>
             <p>
-              The table has one row for each category or subcategory, under
-              the code IFRA prints in the Standard, with IFRA’s description of
-              the products it covers. Use the row for the product you are
-              actually making. Category 4 is highlighted because it is the row
-              most readers look for first.
+              The table has one row for each category or subcategory, under the
+              code IFRA prints in the Standard, with IFRA’s description of the
+              products it covers. Use the row for the product you are actually
+              making. Category 4 is highlighted because it is the row most
+              readers look for first.
             </p>
             <p>
               <strong>The limit</strong> is the highest share of the material
