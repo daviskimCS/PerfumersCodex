@@ -204,10 +204,8 @@ export default async function AccountPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             This deletes your sign-in, your saved materials and your private
             notes, immediately and for good. There is no undo and no way for us
-            to recover any of it afterwards.{' '}
-            {hasPassword
-              ? 'You’ll need your password to confirm.'
-              : 'You’ll confirm it’s you with Google first.'}
+            to recover any of it afterwards.
+            {hasPassword ? ' You’ll need your password to confirm.' : null}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             The codex itself is unaffected — it stays public and free to read
