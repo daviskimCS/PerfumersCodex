@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from 'react'
 
 import { changePassword } from '@/app/account/actions'
+import { TurnstileField } from '@/components/auth/turnstile'
 import { Field, FormNotice } from '@/components/account/form-parts'
 import { useAccountForm } from '@/components/account/use-account-form'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,8 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           {...form.fieldProps('confirmPassword')}
         />
+
+        <TurnstileField action="change-password" resetKey={state} />
 
         <div>
           <Button type="submit" disabled={pending || !form.isValid}>

@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { signUp } from '@/app/(auth)/actions'
 import { AccountTermsNotice } from '@/components/auth/account-terms-notice'
 import { GoogleAuth } from '@/components/auth/google-button'
+import { TurnstileField } from '@/components/auth/turnstile'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -224,6 +225,8 @@ export function SignupForm() {
                   </p>
                 )}
               </div>
+
+              <TurnstileField action="sign-up" resetKey={state} />
 
               <Button
                 type="submit"
