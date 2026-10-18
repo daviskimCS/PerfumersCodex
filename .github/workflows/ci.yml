@@ -23,6 +23,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # Typecheck passes on code that fails to build (a server-only import in a
+      # client component, two routes claiming one URL). Without this step the
+      # first build is Vercel's, after merge. It needs no env vars: lib/env.ts
+      # reads each one on first use, and no page fetches data at build time.
+      - run: npm run build
 
   # Accounts and auth, for real: a local Supabase stack (auth server, database,
   # Data API, mail catcher) started fresh on the runner, the app migrations
