@@ -94,6 +94,12 @@ async function liveSlugs(): Promise<string[]> {
  * ones a seed run wrote: a shared row (source, family, IFRA category, hazard
  * statement, class) written for one material changes what others render.
  * Run by the seed after every run, and by `db:review refresh`.
+ *
+ * A changed fingerprint also bumps `updated_at`. The seed bumps it only for
+ * the material's own columns, but the child rows (an IFRA limit, a hazard)
+ * are what a reader means by "updated", and "recently updated", search
+ * tie-breaks and the sitemap's `lastModified` all read it. `updated_at` is
+ * not in `MaterialDetail`, so the bump cannot change the fingerprint.
  */
 export async function refreshFingerprints(): Promise<ReviewStatus[]> {
   const statuses: ReviewStatus[] = []
@@ -104,7 +110,7 @@ export async function refreshFingerprints(): Promise<ReviewStatus[]> {
     if (loaded.contentHash !== fingerprint) {
       await db
         .update(materials)
-        .set({ contentHash: fingerprint })
+        .set({ contentHash: fingerprint, updatedAt: new Date() })
         .where(eq(materials.id, loaded.detail.id))
     }
     statuses.push(statusOf(loaded, fingerprint))
@@ -196,6 +202,9 @@ export async function publishMaterial(
     return { fingerprint, alreadyPublished: true, loaded }
   }
 
+  // Compare-and-set on the stored hash: a seed that refreshed it after the
+  // load above has changed the material, and writing the loaded fingerprint
+  // back would put a stale hash in front of the list queries.
   const updated = await db
     .update(materials)
     .set({
@@ -203,11 +212,20 @@ export async function publishMaterial(
       contentHash: fingerprint,
       reviewedAt: new Date(),
     })
-    .where(and(eq(materials.id, loaded.detail.id), isNull(materials.deletedAt)))
+    .where(
+      and(
+        eq(materials.id, loaded.detail.id),
+        isNull(materials.deletedAt),
+        loaded.contentHash === null
+          ? isNull(materials.contentHash)
+          : eq(materials.contentHash, loaded.contentHash)
+      )
+    )
     .returning({ id: materials.id })
   if (updated.length !== 1) {
     throw new ReviewError(
-      `${slug}: it was soft-deleted while this ran; nothing was published`
+      `${slug}: it changed or was soft-deleted while this ran; nothing was ` +
+        `published. Run \`db:review show ${slug}\` and review it again.`
     )
   }
   return { fingerprint, alreadyPublished: false, loaded }

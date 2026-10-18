@@ -25,7 +25,8 @@ export type SourceType =
   | 'other'
 export type SynonymType =
   'trade_name' | 'iupac' | 'common_name' | 'abbreviation' | 'supplier_name'
-export type RestrictionType = 'restriction' | 'prohibition' | 'specification'
+export type RestrictionType =
+  'restriction' | 'prohibition' | 'specification' | 'no_restriction'
 export type Tenacity = 'low' | 'medium' | 'high' | 'very_high'
 export type Projection = 'low' | 'medium' | 'high'
 
@@ -95,7 +96,7 @@ export interface MaterialSummary {
 }
 
 export interface UsageLimit {
-  categoryId: number // 1–11, IFRA numbering
+  categoryId: string // IFRA's code: "1"–"12", subcategories "5A", "10B"
   categoryName: string
   restrictionType: RestrictionType
   maxPct: number | null // null = no numeric limit; read together with restrictionType

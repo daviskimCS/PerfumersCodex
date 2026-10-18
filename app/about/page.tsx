@@ -20,10 +20,8 @@ import { Field, FieldList } from '@/components/material/section'
  *   names and identifiers components/material/identity.tsx
  *   olfactive             components/material/olfactive-panel.tsx
  *   IFRA, GHS             components/material/safety-panel.tsx; one row per
- *                         category 1-11 at the strictest subcategory, Category
- *                         12 not stored: data repo DATA-DECISIONS D9 and
- *                         usage-categories.SOURCE.md. Rewrite the table
- *                         paragraph when IFRA codes (5A, 10B, 12) become rows.
+ *                         IFRA code (5A, 10B, 12): data repo DATA-DECISIONS
+ *                         D19 and usage-categories.SOURCE.md
  *                         Majority GHS only: DATA-DECISIONS D14a
  *   usage                 components/material/usage-panel.tsx; "typical use"
  *                         is a share of the concentrate per
@@ -205,14 +203,11 @@ export default function AboutPage() {
               the same material.
             </p>
             <p>
-              The table has one row for each of Categories 1 to 11, with IFRA’s
-              description of the products it covers. Where a category’s
-              subcategories have different limits, the row shows the strictest
-              of them, and the note under it lists every subcategory’s own
-              limit: read the note and use the limit for the product you are
-              actually making. Category 12 is not in the table yet, so check the
-              Standard itself for it. Category 4 is highlighted because it is
-              the row most readers look for first.
+              The table has one row for each category or subcategory, under the
+              code IFRA prints in the Standard, with IFRA’s description of the
+              products it covers. Use the row for the product you are actually
+              making. Category 4 is highlighted because it is the row most
+              readers look for first.
             </p>
             <p>
               <strong>The limit</strong> is the highest share of the material

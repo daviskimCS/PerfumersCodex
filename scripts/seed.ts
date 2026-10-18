@@ -134,6 +134,7 @@ import {
   FAMILIES_FILE,
   HAZARD_CODES_FILE,
   REFERENCE_FILES,
+  IFRA_CATEGORY_CODES,
   USAGE_CATEGORIES_FILE,
   validateMaterialData,
   type ChemicalClassRecord,
@@ -393,10 +394,19 @@ async function writeUsageCategories(
   if (records.length === 0) return
   await db
     .insert(usageCategories)
-    .values(records)
+    .values(
+      records.map((record) => ({
+        ...record,
+        sortOrder: IFRA_CATEGORY_CODES.indexOf(record.id),
+      }))
+    )
     .onConflictDoUpdate({
       target: usageCategories.id,
-      set: { name: sql`excluded.name`, description: sql`excluded.description` },
+      set: {
+        name: sql`excluded.name`,
+        description: sql`excluded.description`,
+        sortOrder: sql`excluded.sort_order`,
+      },
     })
 }
 

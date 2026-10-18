@@ -53,10 +53,10 @@ export type NoteWriteResult =
  * The caller's note on one material, or null when there isn't one.
  *
  * `getCurrentUserId` is imported from `lib/db/bookmarks.ts` rather than
- * reimplemented: it is the same `getUser()` read (validated against the auth
- * server, never `getSession()`), and it is `cache()`-deduped, so a page that
- * gates the save button and the note editor on a session pays for one round
- * trip rather than two.
+ * reimplemented: it is the same `getClaims()` read (the token's signature
+ * verified, never `getSession()`), and it is `cache()`-deduped, so a page that
+ * gates the save button and the note editor on a session verifies once rather
+ * than twice.
  *
  * Signed out, this is null without asking — RLS would return nothing anyway.
  *
@@ -99,7 +99,7 @@ export async function getNote(materialId: string): Promise<string | null> {
  * PostgREST turns into `ON CONFLICT DO UPDATE`, which the UPDATE policy above
  * permits for the caller's own row and refuses for anyone else's.
  *
- * `user_id` is the id `getUser()` just validated — never a value from the
+ * `user_id` is the id `getClaims()` just verified — never a value from the
  * client — and `WITH CHECK` on both INSERT and UPDATE independently refuses any
  * row whose `user_id` is not the caller's, so the row can only ever be the
  * caller's own and cannot be re-pointed at someone else's account.

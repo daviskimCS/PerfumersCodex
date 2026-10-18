@@ -93,8 +93,8 @@ export function similarityBand(tanimoto: number): SimilarityBand {
 /**
  * The amendment and verified date every limit shares, or null when they
  * differ. Usually they are the same for every row (one Standard, checked
- * once), and then repeating them in two columns eleven times said one fact
- * eleven times and took a third of the table's width. Shared, they become
+ * once), and then repeating them in two columns on every row said one fact
+ * eighteen times and took a third of the table's width. Shared, they become
  * one line above the table; mixed, the per-row columns come back.
  */
 export function sharedProvenance(

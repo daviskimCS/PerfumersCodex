@@ -45,7 +45,7 @@
   ],
   "usage_limits": [
     {
-      "category_id": 1,
+      "category_id": "1",
       "restriction_type": "restriction",
       "max_pct": 50,
       "notes": null,
@@ -54,7 +54,7 @@
       "source_key": "test-source-1"
     },
     {
-      "category_id": 2,
+      "category_id": "2",
       "restriction_type": "prohibition",
       "max_pct": null,
       "notes": "Synthetic prohibition row - exercises max_pct: null",

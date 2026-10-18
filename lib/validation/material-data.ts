@@ -13,7 +13,7 @@ import { z } from 'zod'
  * The input set is one JSON file per material plus four reference files:
  *
  *   families.json          [{ slug, name, parent_slug }]
- *   usage-categories.json  [{ id (1–11), name, description }]
+ *   usage-categories.json  [{ id (IFRA code: "4", "5A"), name, description }]
  *   hazard-codes.json      [{ code, description, category }]
  *   chemical-classes.json  [{ slug, name, smarts, description, sort_order }]
  *   <material>.json        { slug, canonical_name, material_type,
@@ -164,6 +164,7 @@ export const restrictionTypeSchema = z.enum([
   'restriction',
   'prohibition',
   'specification',
+  'no_restriction',
 ])
 export const tenacitySchema = z.enum(['low', 'medium', 'high', 'very_high'])
 export const projectionSchema = z.enum(['low', 'medium', 'high'])
@@ -178,13 +179,45 @@ export const familyRecordSchema = z.strictObject({
 export const familiesFileSchema = z.array(familyRecordSchema)
 
 /**
- * usage-categories.json — the `usage_categories` table. IFRA's numbering is
- * the primary key (1–11). validateMaterialData additionally requires the
- * file to cover all eleven: `material_usage_limits` FKs into this table, so
- * a partial reference file turns valid limits into insert-time FK failures.
+ * IFRA's categories as the Standards print them since the 49th Amendment, in
+ * display order: 1–12, with 5, 7, 10 and 11 split into the subcategories
+ * that carry their own limits. usage-categories.json must list exactly
+ * these; a limit row names one of them. The seed stores each code's index
+ * here as `usage_categories.sort_order`.
+ */
+export const IFRA_CATEGORY_CODES = [
+  '1',
+  '2',
+  '3',
+  '4',
+  '5A',
+  '5B',
+  '5C',
+  '5D',
+  '6',
+  '7A',
+  '7B',
+  '8',
+  '9',
+  '10A',
+  '10B',
+  '11A',
+  '11B',
+  '12',
+] as const
+
+const ifraCategoryCodeSchema = z.enum(IFRA_CATEGORY_CODES, {
+  error: `not an IFRA category code; use one of ${IFRA_CATEGORY_CODES.join(', ')}`,
+})
+
+/**
+ * usage-categories.json — the `usage_categories` table. IFRA's code is the
+ * primary key. validateMaterialData additionally requires the file to cover
+ * every code: `material_usage_limits` FKs into this table, so a partial
+ * reference file turns valid limits into insert-time FK failures.
  */
 export const usageCategoryRecordSchema = z.strictObject({
-  id: z.number().int().min(1).max(11, 'IFRA categories are numbered 1-11'),
+  id: ifraCategoryCodeSchema,
   name: textSchema,
   description: optionalTextSchema,
 })
@@ -270,11 +303,7 @@ export const materialSourceSchema = z.strictObject({
  */
 export const usageLimitRecordSchema = z
   .strictObject({
-    category_id: z
-      .number()
-      .int()
-      .min(1)
-      .max(11, 'IFRA categories are numbered 1-11'),
+    category_id: ifraCategoryCodeSchema,
     restriction_type: restrictionTypeSchema,
     max_pct: pctSchema.nullable(),
     notes: optionalTextSchema,
@@ -288,6 +317,15 @@ export const usageLimitRecordSchema = z
     {
       error:
         'prohibitions carry max_pct: null — a numeric limit contradicts restriction_type (docs/database-schema.md)',
+      path: ['max_pct'],
+    }
+  )
+  .refine(
+    (limit) =>
+      limit.restriction_type !== 'no_restriction' || limit.max_pct === null,
+    {
+      error:
+        'no_restriction carries max_pct: null — IFRA prints "No Restriction" without a figure',
       path: ['max_pct'],
     }
   )
@@ -761,7 +799,7 @@ function checkCategories(
   categories: UsageCategoryRecord[],
   errors: MaterialDataError[]
 ): void {
-  const idsSeen = new Set<number>()
+  const idsSeen = new Set<string>()
   categories.forEach((category, index) => {
     if (idsSeen.has(category.id)) {
       errors.push({
@@ -773,14 +811,14 @@ function checkCategories(
       idsSeen.add(category.id)
     }
   })
-  // All 11 required: material_usage_limits FKs into this table, so a partial
-  // reference file turns valid limits into insert-time FK failures.
-  for (let id = 1; id <= 11; id += 1) {
-    if (!idsSeen.has(id)) {
+  // Every code required: material_usage_limits FKs into this table, so a
+  // partial reference file turns valid limits into insert-time FK failures.
+  for (const code of IFRA_CATEGORY_CODES) {
+    if (!idsSeen.has(code)) {
       errors.push({
         file,
         path: '(root)',
-        message: `missing IFRA category id ${id} — the file must cover all 11`,
+        message: `missing IFRA category ${code} — the file must cover all ${IFRA_CATEGORY_CODES.length} codes`,
       })
     }
   }
@@ -862,7 +900,7 @@ function checkChemicalClasses(
 interface ReferenceSets {
   /** null = that reference file failed to parse; skip resolution against it. */
   familySlugs: Set<string> | null
-  categoryIds: Set<number> | null
+  categoryIds: Set<string> | null
   hazardCodes: Set<string> | null
 }
 

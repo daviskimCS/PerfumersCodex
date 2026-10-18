@@ -97,6 +97,7 @@ export const restrictionTypeEnum = pgEnum('restriction_type', [
   'restriction',
   'prohibition',
   'specification',
+  'no_restriction',
 ])
 
 export const tenacityEnum = pgEnum('tenacity', [
@@ -214,6 +215,15 @@ export const materials = pgTable(
     // Search rule 0 short-circuits on an exact CAS match, so this lookup sits
     // in front of every query that starts with a CAS-shaped string.
     index('materials_cas_number_idx').on(t.casNumber),
+    // One live material per CAS number (DATA-DECISIONS D6: a grade with the
+    // same CAS and molecule is a synonym, not a second material). Naturals
+    // are exempt: an absolute and a CO2 extract of one plant share a CAS
+    // and are different materials.
+    uniqueIndex('materials_cas_number_live_uniq')
+      .on(t.casNumber)
+      .where(
+        sql`${t.casNumber} IS NOT NULL AND ${t.deletedAt} IS NULL AND ${t.materialType} <> 'natural'`
+      ),
     // A review is a hash AND a moment; one without the other is a bug.
     check(
       'materials_review_stamp_check',
@@ -278,22 +288,28 @@ export const materialFamilies = pgTable(
 ).enableRLS()
 
 /**
- * IFRA's 11 categories. Static reference data, seeded once — the id is IFRA's
- * own numbering (1–11), not a generated key, so limits stay readable against
- * the published standards.
+ * IFRA's categories as the Standards print them since the 49th Amendment:
+ * 1–12, with 5, 7, 10 and 11 split into lettered subcategories that carry
+ * their own limits ("5A", "10B"). The code is the key, not a generated id,
+ * so limits stay readable against the published Standards. Static reference
+ * data seeded from usage-categories.json.
  */
 export const usageCategories = pgTable(
   'usage_categories',
   {
-    id: smallint('id').primaryKey(),
+    id: text('id').primaryKey(),
     name: text('name').notNull(),
     description: text('description'),
+    /** Display order: text codes sort "10A" before "2". Set by the seed. */
+    sortOrder: smallint('sort_order').notNull(),
   },
   (t) => [
-    // IFRA publishes exactly categories 1-11; anything else is a typo the
-    // seed should not be able to smuggle in ("constraints liberally applied
-    // - documentation the DB enforces").
-    check('usage_categories_id_range_check', sql`${t.id} BETWEEN 1 AND 11`),
+    // A number from 1 to 12, optionally one subcategory letter. Anything
+    // else is a typo the seed should not be able to smuggle in.
+    check(
+      'usage_categories_id_code_check',
+      sql`${t.id} ~ '^([1-9]|1[0-2])[A-D]?$'`
+    ),
   ]
 ).enableRLS()
 
@@ -305,7 +321,8 @@ export const materialUsageLimits = pgTable(
     materialId: uuid('material_id')
       .notNull()
       .references(() => materials.id),
-    categoryId: smallint('category_id')
+    /** IFRA's code, e.g. "4" or "5A" (`usage_categories.id`). */
+    categoryId: text('category_id')
       .notNull()
       .references(() => usageCategories.id),
     restrictionType: restrictionTypeEnum('restriction_type')
@@ -337,6 +354,12 @@ export const materialUsageLimits = pgTable(
     check(
       'material_usage_limits_max_pct_range_check',
       sql`${t.maxPct} BETWEEN 0 AND 100`
+    ),
+    // IFRA's "No Restriction" has no number. Compared as text so the check
+    // does not use the enum value in the migration that adds it.
+    check(
+      'material_usage_limits_no_restriction_check',
+      sql`${t.restrictionType}::text <> 'no_restriction' OR ${t.maxPct} IS NULL`
     ),
   ]
 ).enableRLS()
@@ -570,20 +593,28 @@ export const materialUsageGuidance = pgTable(
 ).enableRLS()
 
 /** "Material X in Perfume Y" cited references. */
-export const landmarkUses = pgTable('landmark_uses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  materialId: uuid('material_id')
-    .notNull()
-    .references(() => materials.id),
-  perfumeName: text('perfume_name').notNull(),
-  house: text('house'),
-  year: smallint('year'),
-  notes: text('notes'),
-  /** A claim about a real perfume — citation-mandatory. */
-  sourceId: uuid('source_id')
-    .notNull()
-    .references(() => sources.id),
-}).enableRLS()
+export const landmarkUses = pgTable(
+  'landmark_uses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    materialId: uuid('material_id')
+      .notNull()
+      .references(() => materials.id),
+    perfumeName: text('perfume_name').notNull(),
+    house: text('house'),
+    year: smallint('year'),
+    notes: text('notes'),
+    /** A claim about a real perfume — citation-mandatory. */
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id),
+  },
+  (t) => [
+    // Read by material on every page load and every fingerprint, like the
+    // other child tables.
+    index('landmark_uses_material_id_idx').on(t.materialId),
+  ]
+).enableRLS()
 
 /* -------------------------------------------------------------------------
  * Cheminformatics tables (added August 2026)

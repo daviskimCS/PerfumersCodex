@@ -575,7 +575,7 @@ export async function loadMaterialForReview(
       // Category order, then oldest amendment first — verified_at is a real
       // timeline; the amendment label ("51st") is not lexically sortable.
       .orderBy(
-        asc(materialUsageLimits.categoryId),
+        asc(usageCategories.sortOrder),
         asc(materialUsageLimits.verifiedAt)
       ),
     db

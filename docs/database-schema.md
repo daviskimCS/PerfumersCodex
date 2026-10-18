@@ -16,24 +16,24 @@
 
 The central table — one row per aromachemical or natural material.
 
-| Column             | Type                               | Notes                                                                                                                                                  |
-| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| id                 | uuid PK                            |                                                                                                                                                        |
-| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                    |
-| canonical_name     | text NOT NULL                      | The display name                                                                                                                                       |
-| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                          |
-| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null                                                                                                                     |
-| iupac_name         | text NULLABLE                      |                                                                                                                                                        |
-| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                              |
-| molecular_formula  | text NULLABLE                      |                                                                                                                                                        |
-| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once. |
-| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                        |
-| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
-| updated_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                        |
-| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                            |
-| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material         |
-| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders            |
-| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                     |
+| Column             | Type                               | Notes                                                                                                                                                           |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                 | uuid PK                            |                                                                                                                                                                 |
+| slug               | text UNIQUE NOT NULL               | URL identifier (e.g. "iso-e-super")                                                                                                                             |
+| canonical_name     | text NOT NULL                      | The display name                                                                                                                                                |
+| material_type      | enum NOT NULL                      | synthetic / natural / isolate — drives browse filters; the starter list mixes all three and users will expect to filter by it                                   |
+| cas_number         | text NULLABLE, INDEXED             | Some naturals lack CAS; allow null. Unique among live non-natural materials (`0011`; DATA-DECISIONS D6)                                                         |
+| iupac_name         | text NULLABLE                      |                                                                                                                                                                 |
+| smiles             | text NULLABLE                      | Canonical SMILES (PubChem); NULL for naturals/mixtures. Drives rendering, similarity, substructure search                                                       |
+| molecular_formula  | text NULLABLE                      |                                                                                                                                                                 |
+| identity_source_id | uuid FK → sources NOT NULL         | The record the identity scalars (cas_number, iupac_name, smiles, molecular_formula, molecular_weight) come from — one source per material, cited once.          |
+| molecular_weight   | numeric NULLABLE                   |                                                                                                                                                                 |
+| created_at         | timestamptz NOT NULL DEFAULT now() |                                                                                                                                                                 |
+| updated_at         | timestamptz NOT NULL DEFAULT now() | Bumped when the material's own columns change and when its fingerprint changes (an IFRA row, a hazard), so "recently updated" means what the page shows changed |
+| deleted_at         | timestamptz NULLABLE               | Soft delete                                                                                                                                                     |
+| content_hash       | text NULLABLE                      | Review gate (`0008`): stored fingerprint of what the page renders (`lib/review/fingerprint.ts`), refreshed by the seed for every live material                  |
+| reviewed_hash      | text NULLABLE                      | Review gate: written ONLY by `npm run db:review publish`. Readers see the row only while it equals the fingerprint of what the page renders                     |
+| reviewed_at        | timestamptz NULLABLE               | When the maker reviewed it. CHECK: set together with `reviewed_hash` or not at all                                                                              |
 
 ### `material_synonyms`
 
@@ -72,29 +72,32 @@ Many-to-many join.
 
 ### `usage_categories`
 
-IFRA's 11 categories. Static reference data, seeded once.
+IFRA's categories as the Standards print them since the 49th Amendment: 1–12, with 5, 7, 10 and 11 split into subcategories that carry their own limits (migration `0012`). Static reference data, seeded from `usage-categories.json`, which must list exactly the 18 codes in `IFRA_CATEGORY_CODES` (`lib/validation/material-data.ts`).
 
-| Column      | Type          | Notes                                                                                                             |
-| ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| id          | smallint PK   | 1–11 to match IFRA numbering; CHECK id BETWEEN 1 AND 11 (Category 12 and subcategories: see Deferred schema work) |
-| name        | text NOT NULL | The product-type description, without IFRA's "Category N" prefix                                                  |
-| description | text          |                                                                                                                   |
+| Column      | Type              | Notes                                                                                                                                |
+| ----------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| id          | text PK           | IFRA's code: "1"–"4", "5A"–"5D", "6", "7A", "7B", "8", "9", "10A", "10B", "11A", "11B", "12". CHECK `id ~ '^([1-9]\|1[0-2])[A-D]?$'` |
+| name        | text NOT NULL     | The product-type description, without IFRA's "Category N" prefix                                                                     |
+| description | text              |                                                                                                                                      |
+| sort_order  | smallint NOT NULL | Display order (text codes sort "10A" before "2"); the seed sets it from the code's position in `IFRA_CATEGORY_CODES`                 |
+
+Limits from amendments before the 49th used a different category scheme (QRA1); storing those would need their own codes. The parent rows "5", "7", "10" and "11" that the 1–11 scheme left behind stay in the table unreferenced: the seed never deletes reference rows.
 
 ### `material_usage_limits`
 
 Per-material, per-category IFRA limits.
 
-| Column                 | Type                                    | Notes                                                                                                                                                             |
-| ---------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id                     | uuid PK                                 |                                                                                                                                                                   |
-| material_id            | uuid FK → materials NOT NULL            |                                                                                                                                                                   |
-| category_id            | smallint FK → usage_categories NOT NULL |                                                                                                                                                                   |
-| restriction_type       | enum NOT NULL DEFAULT 'restriction'     | restriction / prohibition / specification — IFRA standards come in three kinds; without this, NULL max_pct ambiguously means both "unrestricted" and "prohibited" |
-| max_pct                | numeric NULLABLE                        | NULL = "no numeric limit"; check constraint: 0 ≤ max_pct ≤ 100; prohibitions carry NULL max_pct + restriction_type='prohibition'                                  |
-| notes                  | text NULLABLE                           |                                                                                                                                                                   |
-| source_id              | uuid FK → sources NOT NULL              |                                                                                                                                                                   |
-| ifra_amendment_version | text NOT NULL                           | e.g. "51st"                                                                                                                                                       |
-| verified_at            | timestamptz NOT NULL                    |                                                                                                                                                                   |
+| Column                 | Type                                | Notes                                                                                                                                                                                                                                                   |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                     | uuid PK                             |                                                                                                                                                                                                                                                         |
+| material_id            | uuid FK → materials NOT NULL        |                                                                                                                                                                                                                                                         |
+| category_id            | text FK → usage_categories NOT NULL |                                                                                                                                                                                                                                                         |
+| restriction_type       | enum NOT NULL DEFAULT 'restriction' | restriction / prohibition / specification / no_restriction — without this, NULL max_pct ambiguously means both "unrestricted" and "prohibited". `no_restriction` is IFRA's printed "No Restriction" (often Category 12); CHECK: it carries NULL max_pct |
+| max_pct                | numeric NULLABLE                    | NULL = "no numeric limit"; check constraint: 0 ≤ max_pct ≤ 100; prohibitions carry NULL max_pct + restriction_type='prohibition'                                                                                                                        |
+| notes                  | text NULLABLE                       |                                                                                                                                                                                                                                                         |
+| source_id              | uuid FK → sources NOT NULL          |                                                                                                                                                                                                                                                         |
+| ifra_amendment_version | text NOT NULL                       | e.g. "51st"                                                                                                                                                                                                                                             |
+| verified_at            | timestamptz NOT NULL                |                                                                                                                                                                                                                                                         |
 
 UNIQUE (material_id, category_id, ifra_amendment_version).
 
@@ -230,6 +233,8 @@ Practical usage guidance — backs the Usage section beyond IFRA limits. A recom
 | year         | smallint NULLABLE            |       |
 | notes        | text NULLABLE                |       |
 | source_id    | uuid FK → sources NOT NULL   |       |
+
+Indexes: `(material_id)` (migration `0011`).
 
 ## Cheminformatics tables
 
@@ -430,10 +435,8 @@ Rule 0 lives in `lib/search/index.ts`; rules 1–5 in `lib/search/rank.ts`, with
 
 Facts the first materials produced that the schema cannot hold yet. Each has
 an interim rule in the data repository's `DATA-DECISIONS.md`, which owns the
-list (backlog S1–S5):
+list (backlog S2–S5; S1, IFRA subcategories, shipped as migration `0012`):
 
-- **S1.** IFRA subcategories (5A–5D, 10A–10B) and Category 12. Interim: store
-  the strictest subcategory's limit, breakdown in `notes` (D9).
 - **S2.** Physical properties and registry identifiers (FEMA, JECFA, EC,
   UNII, substantivity). Interim: source `notes` and the dossier (D18).
 - **S3.** A citation per `usage_guidance` field.

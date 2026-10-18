@@ -166,7 +166,7 @@ export async function getSavedMaterials(): Promise<MaterialSummary[]> {
  * saved is a no-op, which is what a double click or a second open tab
  * produces.
  *
- * `user_id` is the id `getUser()` just validated — never a value from the
+ * `user_id` is the id `getClaims()` just verified — never a value from the
  * client — and the `WITH CHECK` policy independently refuses any row whose
  * `user_id` is not the caller's, so the row can only ever be the caller's own.
  * `ignoreDuplicates` is what keeps the upsert on the `ON CONFLICT DO NOTHING`

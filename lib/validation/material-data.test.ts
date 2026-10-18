@@ -93,7 +93,7 @@ describe('validateMaterialData — fixture set', () => {
       'test-material-delta',
     ])
     expect(result.bundle.families).toHaveLength(2)
-    expect(result.bundle.usageCategories).toHaveLength(11)
+    expect(result.bundle.usageCategories).toHaveLength(18)
     expect(result.bundle.hazardCodes).toHaveLength(3)
     expect(result.bundle.chemicalClasses).toHaveLength(9)
   })
@@ -584,10 +584,36 @@ const failureCases: FailureCase[] = [
   {
     name: 'incomplete usage-categories reference file',
     mutate: (input) => {
-      rows(input.usageCategories.data as LooseValue).pop() // drops id 11
+      rows(input.usageCategories.data as LooseValue).pop() // drops 12
     },
     at: { file: 'usage-categories.json', path: '(root)' },
-    message: /missing IFRA category id 11/,
+    message: /missing IFRA category 12/,
+  },
+  {
+    name: 'a parent code where IFRA splits the category',
+    mutate: (input) => {
+      rows(material(input, ALPHA).usage_limits)[0].category_id = '5'
+    },
+    at: { file: ALPHA, path: 'usage_limits[0].category_id' },
+    message: /not an IFRA category code/,
+  },
+  {
+    name: 'a numeric category id (the pre-0012 format)',
+    mutate: (input) => {
+      rows(material(input, ALPHA).usage_limits)[0].category_id = 4
+    },
+    at: { file: ALPHA, path: 'usage_limits[0].category_id' },
+    message: /not an IFRA category code/,
+  },
+  {
+    name: 'no_restriction with a figure',
+    mutate: (input) => {
+      const limit = rows(material(input, ALPHA).usage_limits)[0]
+      limit.restriction_type = 'no_restriction'
+      limit.max_pct = 5
+    },
+    at: { file: ALPHA, path: 'usage_limits[0].max_pct' },
+    message: /No Restriction/,
   },
   {
     name: 'unknown parent family slug',

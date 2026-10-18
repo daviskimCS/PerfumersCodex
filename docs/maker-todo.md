@@ -17,6 +17,14 @@ checklist; this file holds what the code depends on.
   the first three waits on this.
 - **Write the remaining olfactive descriptions** (Civetone and the eleven
   later drafts have none).
+- **Ship the IFRA category codes** (migration 0012, fingerprint v2). In
+  this order: (1) dump the database, then from a fresh worktree of the PR's
+  branch `npm ci && npm run db:migrate`; (2) re-seed from the data
+  repository's PR branch; (3) merge both PRs; (4) `db:review show` and
+  `publish` each material again. Never merge before step 1: the new code
+  fails on a table without `sort_order`. The old code on the new table only
+  hides pages whose fingerprint changed (tested), so steps 1 to 3 need not
+  be rushed. Every published material stays hidden until its step 4.
 - **Choose a licence file for the data repository.** The site publishes the
   data under CC BY-SA 4.0 (`LICENSE-DATA` here), but `PerfumersCodexData` has
   no licence file.
@@ -45,8 +53,8 @@ that already has a password account joins that account. Test it once.
 review gate). Prune with `npm run db:seed -- <data-repo> --prune`, which
 soft-deletes materials absent from the input and refuses if the input is
 under half the live corpus without `--force-prune`. **Never seed
-`scripts/fixtures` into the live database:** its usage categories share ids
-1–11 with the real IFRA list and would rename every real category.
+`scripts/fixtures` into the live database:** its usage categories share
+codes with the real IFRA list and would rename every real category.
 
 ## Supabase and Vercel settings
 
@@ -93,8 +101,6 @@ Details and exact values: `docs/legal/account-data.md` section 3.
 
 ## Later
 
-- **9. Make the code repository public**, then turn on private vulnerability
-  reporting, which `SECURITY.md` relies on.
 - **IFRA 52nd Amendment** (expected late November 2026): re-check every
   limit and every verified absence; add rows stamped "52nd", never overwrite.
 - **Structure–odor training data:** review the licences before any use.

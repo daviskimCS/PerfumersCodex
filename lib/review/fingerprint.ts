@@ -10,8 +10,7 @@ import type { MaterialDetail } from '@/lib/types'
  * `loadMaterialForReview` (lib/db/materials.ts): identity, synonyms, family
  * and class NAMES, IFRA limits with their category NAMES, absences, hazards
  * with their statement TEXT, olfactive description, guidance, landmark
- * uses, computed properties, every live similar material, predictions and
- * the full citation rows. Shared rows are hashed as resolved, so a family
+ * uses, computed properties, predictions and the full citation rows. Shared rows are hashed as resolved, so a family
  * rename, an IFRA category rename, a hazard-text edit, a reclassification,
  * or another material's file overwriting a shared source all change the
  * fingerprint of every material that shows them. That hides those pages
@@ -21,17 +20,26 @@ import type { MaterialDetail } from '@/lib/types'
  * `MaterialDetail` later is covered automatically. Anything a page shows
  * that is NOT in `MaterialDetail` is not covered; keep it that way.
  *
+ * One field is left out on purpose: `similar`. Its scores are recomputed by
+ * RDKit, not cited, and each neighbour is a link to a page that passes this
+ * gate on its own; `getMaterialBySlug` drops unpublished neighbours at
+ * render time. Hashing it meant renaming an unpublished draft, or seeding a
+ * new one into a published material's top neighbours, hid the published
+ * page until the maker reviewed it again.
+ *
  * The version prefix makes an algorithm change explicit. A new prefix
  * un-reviews every material at once, which is the correct consequence.
+ * v2 (October 2026): `similar` left out, and IFRA categories became codes.
  */
-export const FINGERPRINT_VERSION = 'v1'
+export const FINGERPRINT_VERSION = 'v2'
 
 /** Hex digits shown to the maker and accepted by `db:review publish`. */
 export const SHORT_FINGERPRINT_LENGTH = 16
 
 export function materialFingerprint(detail: MaterialDetail): string {
+  // stableStringify drops keys whose value is undefined.
   const digest = createHash('sha256')
-    .update(stableStringify(detail))
+    .update(stableStringify({ ...detail, similar: undefined }))
     .digest('hex')
   return `${FINGERPRINT_VERSION}:sha256:${digest}`
 }
