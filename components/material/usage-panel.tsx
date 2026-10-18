@@ -14,12 +14,20 @@ import { Field, FieldList, PanelSection } from './section'
  * state rather than the section vanishing wholesale.
  */
 
-/** The typical-use range as one phrase, tolerating either bound being absent. */
+/**
+ * The typical-use range as one phrase, tolerating either bound being absent.
+ *
+ * Says what the percentage is of: `typical_pct_*` is a share of the fragrance
+ * concentrate (docs/database-schema.md), while the IFRA limits above it are a
+ * share of the finished product. A bare "up to 2%" left a reader to guess
+ * which, and guessing wrong is off by the whole dilution.
+ */
 function dosageRange(guidance: UsageGuidance): string | null {
   const { typicalPctMin: min, typicalPctMax: max } = guidance
-  if (min !== null && max !== null) return `${min}–${max}%`
-  if (min !== null) return `from ${min}%`
-  if (max !== null) return `up to ${max}%`
+  const base = 'of the concentrate'
+  if (min !== null && max !== null) return `${min}–${max}% ${base}`
+  if (min !== null) return `from ${min}% ${base}`
+  if (max !== null) return `up to ${max}% ${base}`
   return null
 }
 
