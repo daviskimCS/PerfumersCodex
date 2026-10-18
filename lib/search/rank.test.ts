@@ -23,6 +23,7 @@ function makeCandidate(
     casNumber: null,
     exactSynonymMatch: false,
     matchedSynonym: null,
+    synonymPrefixMatch: false,
     trigramSimilarity: 0,
     tsRank: 0,
     updatedAt: UPDATED_AT,
@@ -68,6 +69,15 @@ describe('rankCandidates — tier assignment', () => {
     expect(
       rankCandidates([makeTarget()], 'iso e').map((r) => r.matchTier)
     ).toEqual([3])
+  })
+
+  it('assigns tier 3 to a synonym prefix match', () => {
+    // "timb" is too short a slice of "Timbersilk" for trigrams to be sure of;
+    // the SQL flag is what carries it.
+    const candidate = makeTarget({ synonymPrefixMatch: true })
+    expect(rankCandidates([candidate], 'timb').map((r) => r.matchTier)).toEqual(
+      [3]
+    )
   })
 
   it('assigns tier 3 at the trigram threshold', () => {
@@ -192,6 +202,30 @@ describe('rankCandidates — sort order', () => {
     const trigramOnly = makeCandidate({ trigramSimilarity: 0.95 })
     const prefix = makeTarget()
     const results = rankCandidates([trigramOnly, prefix], 'iso e')
+    expect(results.map((r) => r.slug)).toEqual([
+      'iso-e-super',
+      'test-material-alpha',
+    ])
+  })
+
+  it('ranks a synonym prefix hit above even a perfect trigram-only hit', () => {
+    const trigramOnly = makeCandidate({ trigramSimilarity: 1 })
+    const synonymPrefix = makeBeta({ synonymPrefixMatch: true })
+    const results = rankCandidates([trigramOnly, synonymPrefix], 'test mat x')
+    expect(results.map((r) => r.slug)).toEqual([
+      'test-material-beta',
+      'test-material-alpha',
+    ])
+  })
+
+  it('ranks a canonical-name prefix above a synonym prefix', () => {
+    // Newer, so rule 5 would put it first if the two scored the same.
+    const synonymPrefix = makeCandidate({
+      synonymPrefixMatch: true,
+      updatedAt: '2026-06-01T00:00:00.000Z',
+    })
+    const canonicalPrefix = makeTarget()
+    const results = rankCandidates([synonymPrefix, canonicalPrefix], 'iso')
     expect(results.map((r) => r.slug)).toEqual([
       'iso-e-super',
       'test-material-alpha',

@@ -35,9 +35,17 @@ export interface SearchCandidate {
   matchedSynonym: string | null
 
   /**
+   * True when one of this material's synonyms, normalized like the query,
+   * starts with the query (ranking rule 3, synonym side). SQL-side for the
+   * same reason as `exactSynonymMatch`: the ranker never sees the synonyms.
+   * The canonical-name prefix needs no flag — the ranker checks it on
+   * `canonicalName` directly.
+   */
+  synonymPrefixMatch: boolean
+
+  /**
    * Best pg_trgm `similarity()` of the query against the canonical name or
-   * any synonym, 0–1. This is what serves rule 3 for the synonym side and
-   * what gives typo tolerance ("galoxolide" still finds galaxolide) — FTS
+   * any synonym, 0–1. This is what gives typo tolerance ("galoxolide" still finds galaxolide) — FTS
    * alone cannot do either (database-schema.md, pg_trgm section).
    */
   trigramSimilarity: number

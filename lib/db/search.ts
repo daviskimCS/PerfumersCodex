@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 import { materials, searchQueries } from '@/db/schema'
 import { db } from '@/lib/db'
 import { materialIsPublished, materialIsPublishedAs } from '@/lib/db/published'
+import { TRIGRAM_THRESHOLD } from '@/lib/search/rank'
 import type { SearchCandidate } from '@/lib/search/types'
 
 /**
@@ -61,6 +62,7 @@ interface CandidateRow extends Record<string, unknown> {
   cas_number: string | null
   exact_synonym_match: boolean
   matched_synonym: string | null
+  synonym_prefix_match: boolean
   trigram_similarity: number
   ts_rank: number
   updated_at: Date | string
@@ -71,18 +73,29 @@ interface CandidateRow extends Record<string, unknown> {
  * ordering promise to the caller. Candidate generation is a union of three
  * legs:
  *
- * - trigram `%` on `materials.canonical_name` (base table)
- * - trigram `%` on `material_synonyms.name` (base table)
+ * - `materials.canonical_name` (base table): a prefix match, or trigram `%`
+ * - `material_synonyms.name` (base table): a prefix match, or trigram `%`
  * - full-text `@@` on `material_search_view.weighted_vector`
+ *
+ * The prefix half exists because trigrams cannot see it: "eth" shares three
+ * of the sixteen trigrams it and "Ethyl vanillin" have between them, a
+ * similarity of 0.19, so without its own leg rule 3's prefix match could never fire on a short
+ * prefix of a long name — the ranker can only promote what SQL returned.
+ * `ILIKE 'eth%'` is served by the same trigram GIN indexes (migration 0001)
+ * from three characters up; one or two characters scan the published rows,
+ * which stays cheap at the corpus sizes this project plans for.
  *
  * The trigram legs filter to published materials themselves. The view leg
  * does not (the view predates the review gate and knows only `deleted_at`),
  * so the final `WHERE` applies `materialIsPublished` to every candidate.
  *
- * The `%` operator uses `pg_trgm.similarity_threshold`, which we leave at the
- * Postgres default of 0.3 — the same value as `TRIGRAM_THRESHOLD` in
- * `lib/search/rank.ts`. The SQL threshold and the TS tier boundary MUST
- * agree: change one and change the other (see the comment on the constant).
+ * The `%` operator is what lets the GIN index answer, and it reads the
+ * session's `pg_trgm.similarity_threshold`. The explicit `similarity() >=`
+ * beside it pins the floor to `TRIGRAM_THRESHOLD` in `lib/search/rank.ts`, so
+ * the SQL admission rule and the TypeScript tier boundary are one constant,
+ * whatever a pooled session's setting happens to be. (A session threshold
+ * ABOVE 0.3 would still narrow the index's answer; nothing in this project
+ * sets one, and the Postgres default is 0.3.)
  *
  * The tsquery side parses the query under both configs the vector was built
  * with, OR-ed: 'simple' lexemes reach the name/synonym weights verbatim and
@@ -97,6 +110,8 @@ export async function fetchCandidates(
     WITH params AS (
       SELECT
         ${normalizedQuery}::text AS q,
+        ${likePrefixPattern(normalizedQuery)}::text AS prefix,
+        ${TRIGRAM_THRESHOLD}::float4 AS min_similarity,
         (
           plainto_tsquery('simple', ${normalizedQuery}) ||
           plainto_tsquery('english', ${normalizedQuery})
@@ -105,13 +120,21 @@ export async function fetchCandidates(
     candidate_ids AS (
       SELECT m.id
       FROM materials m, params p
-      WHERE ${materialIsPublishedAs('m')} AND m.canonical_name % p.q
+      WHERE ${materialIsPublishedAs('m')}
+        AND (
+          m.canonical_name ILIKE p.prefix
+          OR (
+            m.canonical_name % p.q
+            AND similarity(m.canonical_name, p.q) >= p.min_similarity
+          )
+        )
       UNION
       SELECT s.material_id
       FROM material_synonyms s
       JOIN materials m ON m.id = s.material_id AND ${materialIsPublishedAs('m')}
       CROSS JOIN params p
-      WHERE s.name % p.q
+      WHERE s.name ILIKE p.prefix
+        OR (s.name % p.q AND similarity(s.name, p.q) >= p.min_similarity)
       UNION
       SELECT v.id
       FROM material_search_view v, params p
@@ -124,6 +147,7 @@ export async function fetchCandidates(
       m.cas_number,
       coalesce(syn.exact_match, false) AS exact_synonym_match,
       syn.matched_name AS matched_synonym,
+      coalesce(syn.prefix_match, false) AS synonym_prefix_match,
       greatest(
         similarity(m.canonical_name, p.q),
         coalesce(syn.best_similarity, 0)
@@ -138,7 +162,9 @@ export async function fetchCandidates(
       -- whitespace) so "the same query string" means the same thing on both
       -- sides of the SQL/TS boundary. matched_name keeps the stored casing
       -- for the UI ("matched: OTNE"); min() makes the pick deterministic if
-      -- several synonyms normalize identically.
+      -- several synonyms normalize identically. prefix_match runs the same
+      -- normalization, so it agrees with rank.ts's canonical-name prefix
+      -- check (normalized name, then startsWith).
       SELECT
         bool_or(
           lower(regexp_replace(btrim(s.name), '[[:space:]]+', ' ', 'g')) = p.q
@@ -147,6 +173,10 @@ export async function fetchCandidates(
           WHERE
             lower(regexp_replace(btrim(s.name), '[[:space:]]+', ' ', 'g')) = p.q
         ) AS matched_name,
+        bool_or(
+          lower(regexp_replace(btrim(s.name), '[[:space:]]+', ' ', 'g'))
+            LIKE p.prefix
+        ) AS prefix_match,
         max(similarity(s.name, p.q)) AS best_similarity
       FROM material_synonyms s
       WHERE s.material_id = m.id
@@ -176,6 +206,7 @@ function toCandidate(row: CandidateRow): SearchCandidate {
     // The contract: null whenever exactSynonymMatch is false. The FILTER
     // clause already guarantees it; the guard keeps the invariant local.
     matchedSynonym: row.exact_synonym_match ? row.matched_synonym : null,
+    synonymPrefixMatch: row.synonym_prefix_match,
     trigramSimilarity: Number(row.trigram_similarity),
     tsRank: Number(row.ts_rank),
     updatedAt:
@@ -183,6 +214,16 @@ function toCandidate(row: CandidateRow): SearchCandidate {
         ? row.updated_at.toISOString()
         : String(row.updated_at),
   }
+}
+
+/**
+ * `q%` as a LIKE pattern that matches `q` literally. A query is user input,
+ * so `%` and `_` in it are characters to find, not wildcards: "50%" must not
+ * mean "starts with 50". Backslash is LIKE's default escape character, so it
+ * is escaped first.
+ */
+function likePrefixPattern(normalizedQuery: string): string {
+  return `${normalizedQuery.replace(/[\\%_]/g, '\\$&')}%`
 }
 
 /**

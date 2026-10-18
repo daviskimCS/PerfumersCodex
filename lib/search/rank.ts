@@ -83,9 +83,10 @@ function assignTier(
   if (candidate.exactSynonymMatch) return 2
 
   // Rule 3 — prefix or trigram. The canonical-name prefix is checked here
-  // because it is exact and free; synonym-side prefixes and typos arrive as
-  // trigram similarity, which is what the pg_trgm indexes exist for.
-  if (isPrefixMatch(candidate, normalizedQuery)) return 3
+  // because it is exact and free; the synonym-side prefix arrives as a flag,
+  // because only SQL sees the synonyms. Typos arrive as trigram similarity,
+  // which is what the pg_trgm indexes exist for.
+  if (prefixStrength(candidate, normalizedQuery) > 0) return 3
   if (candidate.trigramSimilarity >= TRIGRAM_THRESHOLD) return 3
 
   // Rule 4 — the remainder: matched the weighted tsvector.
@@ -107,20 +108,30 @@ function scoreFor(
       return 1
     case 3:
       // A prefix hit is stronger evidence than a fuzzy one, so it takes the
-      // top of the tier ahead of trigram-only matches.
-      return isPrefixMatch(candidate, normalizedQuery)
-        ? 1
-        : candidate.trigramSimilarity
+      // top of the tier ahead of trigram-only matches (similarity is at most
+      // 1), and a canonical-name prefix leads a synonym prefix, as rule 1
+      // leads rule 2.
+      return (
+        prefixStrength(candidate, normalizedQuery) ||
+        candidate.trigramSimilarity
+      )
     case 4:
       return candidate.tsRank
   }
 }
 
-function isPrefixMatch(
+/**
+ * Rule 3's prefix evidence as a tier-3 score: 3 for the canonical name, 2 for
+ * a synonym, 0 for neither. Both sit above any trigram similarity (0–1).
+ */
+function prefixStrength(
   candidate: SearchCandidate,
   normalizedQuery: string
-): boolean {
-  return normalizeQuery(candidate.canonicalName).startsWith(normalizedQuery)
+): number {
+  if (normalizeQuery(candidate.canonicalName).startsWith(normalizedQuery)) {
+    return 3
+  }
+  return candidate.synonymPrefixMatch ? 2 : 0
 }
 
 /** Sort order: tier asc, score desc, `updatedAt` desc (rule 5), then id. */
