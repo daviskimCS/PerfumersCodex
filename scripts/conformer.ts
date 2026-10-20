@@ -28,7 +28,10 @@
  *   and double bond the SMILES specifies is read back from the stored 3D
  *   coordinates and compared; a mismatch would show the wrong isomer, so it
  *   is a failure. An unspecified centre gets whichever configuration the
- *   search found, which is as true as the SMILES.
+ *   search found. That is a choice the SMILES does not make: Iso E Super's
+ *   flat SMILES comes out as the cis diastereomer, while PubChem's one
+ *   stereo-defined Iso E Super record (CID 1808124) is trans. The viewer's
+ *   caption says the model shows one stereoisomer of what may be a mixture.
  * - **A failure is a warning, not an abort.** Unlike the drawing, the model
  *   is an optional extra beneath it: a molecule OpenChemLib cannot embed
  *   loses its button and the seed says so, rather than refusing the corpus.
