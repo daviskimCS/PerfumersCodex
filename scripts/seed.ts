@@ -891,11 +891,15 @@ async function writeMaterial(
     if (classification !== null) {
       const classSlugs =
         classification.classesByMaterial.get(material.slug) ?? []
+      const atomsByClass = classification.atomsByMaterial.get(material.slug)
       if (classSlugs.length > 0) {
         await tx.insert(materialChemicalClasses).values(
           classSlugs.map((classSlug) => ({
             materialId: id,
             classSlug,
+            // The atoms that earned the class, for the page's highlight
+            // toggles. Never empty for a class the material belongs to.
+            matchedAtoms: atomsByClass?.get(classSlug) ?? [],
             rdkitVersion: classification.rdkitVersion,
           }))
         )

@@ -63,6 +63,7 @@ function detail(): MaterialDetail {
       svg: "<svg viewBox='0 0 640 480'><path d='M 0,0 L 1,1' /></svg>",
       rdkitVersion: 'test',
     },
+    classMatches: [{ slug: 'ester', atoms: [1, 2, 3], rdkitVersion: 'test' }],
     similar: [
       {
         slug: 'test-material-beta',
@@ -132,6 +133,7 @@ describe('materialFingerprint', () => {
   // them can change without the material's own file changing.
   const changes: Array<[string, (d: MaterialDetail) => void]> = [
     ['the name', (d) => (d.canonicalName = 'Test Material Alpha II')],
+    ['the atoms a class tints', (d) => d.classMatches[0].atoms.push(4)],
     ['the CAS number', (d) => (d.casNumber = '000-00-1')],
     ['a synonym', (d) => (d.synonyms[0].name = 'Renamed')],
     ['synonym order', (d) => d.synonyms.reverse()],

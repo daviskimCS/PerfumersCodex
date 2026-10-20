@@ -1,0 +1,11 @@
+-- Class highlights (2026-10-20). Each chemical-class membership keeps the
+-- atoms its SMARTS matched (RDKit atom indices, every match unioned), so the
+-- material page can tint the part of the stored 2D drawing a class names.
+-- Computed by scripts/classify.ts in the same pass as the row; derived, not
+-- cited, and stamped with the row's existing rdkit_version.
+--
+-- ORDER: apply this BEFORE deploying the code that reads it, or every
+-- material page fails. The new MaterialDetail field changes every material's
+-- review fingerprint, so re-seed after deploying (the default below only
+-- covers rows written before this migration) and review again.
+ALTER TABLE "material_chemical_classes" ADD COLUMN "matched_atoms" smallint[] DEFAULT '{}'::smallint[] NOT NULL;

@@ -2,14 +2,14 @@
   {
     "slug": "ester",
     "name": "Ester",
-    "smarts": "[CX3](=O)[OX2H0][#6]",
+    "smarts": "[#6X3](=O)[#8X2H0][#6]",
     "description": "A carbonyl carbon joined to an oxygen that carries another carbon — the linkage left behind when an acid meets an alcohol.",
     "sort_order": 1
   },
   {
     "slug": "lactone",
     "name": "Lactone",
-    "smarts": "[CX3;R](=O)[OX2;R][#6;R]",
+    "smarts": "[#6X3;R](=O)[#8X2;R][#6;R]",
     "description": "An ester whose linkage is closed inside a ring instead of joining two open chains.",
     "sort_order": 2
   },

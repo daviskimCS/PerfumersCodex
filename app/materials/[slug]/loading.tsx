@@ -45,8 +45,17 @@ export default function MaterialLoading() {
           </div>
         </div>
         {/* Structure plate — same box the viewer reserves, so the hero does
-            not reflow whether or not this material has a SMILES string. */}
-        <Skeleton className="aspect-4/3 w-full rounded-xl sm:w-80 md:w-72 lg:w-80" />
+            not reflow whether or not this material has a SMILES string —
+            and the chemical-class toggles under it (label text-xs, chips
+            h-8; components/material/class-highlights.tsx). */}
+        <div className="w-full shrink-0 sm:w-80 md:w-72 lg:w-80">
+          <Skeleton className="aspect-4/3 w-full rounded-xl" />
+          <Skeleton className="mt-4 h-4 w-32" />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Skeleton className="h-8 w-20 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
       </div>
 
       {/* Names and identifiers: one folded summary row between rules */}

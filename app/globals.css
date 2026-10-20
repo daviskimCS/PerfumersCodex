@@ -788,6 +788,65 @@
   }
 
   /* ==========================================================================
+     CLASS HIGHLIGHTS — a chemical-class chip tints the atoms that earned it
+
+     components/material/class-highlights.tsx marks the drawing's paths with
+     `data-highlighted` (lib/structure/highlight.ts picks them) and the
+     wrapper with `data-highlighting`. The class's bonds and atom labels take
+     the brand colour, its bonds at about twice their weight, and the rest of
+     the molecule steps back to half opacity. `!important` is the only way
+     past the inline `style` RDKit writes on each bond; display only, the
+     stored markup and its review fingerprint are untouched.
+
+     The tint is --brand, the hue every active state on the site uses, and
+     the chip's swatch is the same token, so the word and the atoms match.
+     WCAG contrast over the plate (--surface), computed from the tokens:
+
+                                     light    dark
+       tint (--brand)                7.54     8.95
+       dimmed skeleton (ink at 0.5)  3.40     4.70    (SC 1.4.11, needs 3.0)
+       dimmed red O label            2.43     1.88
+
+     The skeleton stays readable while dimmed. Heteroatom labels outside the
+     class drop under 3:1 until the chip is released, on purpose: that is
+     what keeps the class in front. Tint against dimmed ink is only about
+     2:1 (2.21 light, 1.91 dark), so the class is also told apart by hue and
+     by its doubled stroke, never by lightness alone.
+     ========================================================================== */
+
+  .class-highlights[data-highlighting] svg path:not([data-highlighted]) {
+    opacity: 0.5;
+  }
+
+  .class-highlights[data-highlighting]
+    svg
+    path[data-highlighted][class^='bond-'] {
+    stroke: var(--brand) !important;
+  }
+
+  .class-highlights[data-highlighting]
+    svg
+    path[data-highlighted][class^='bond-'][style*='stroke-width:1.4px'] {
+    stroke-width: 3px !important;
+  }
+
+  /* Atom labels (a `fill` attribute) and filled wedge bonds. */
+  .class-highlights[data-highlighting]
+    svg
+    path[data-highlighted]:not([style*='fill:none']) {
+    fill: var(--brand) !important;
+  }
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    .class-highlights svg path {
+      transition:
+        opacity 0.2s ease-out,
+        stroke 0.2s ease-out,
+        fill 0.2s ease-out;
+    }
+  }
+
+  /* ==========================================================================
      REVEAL — a section rises into place as it scrolls into view
 
      Driven by the section's own position in the viewport (a view() scroll
