@@ -89,6 +89,15 @@ const cases: { name: string; smiles: string; classes: string[] }[] = [
     classes: ['ester', 'lactone'],
   },
   {
+    // The lactone perfumers know best, and the reason the ester and lactone
+    // patterns name their atoms by element (#6, #8) rather than as aliphatic
+    // C and O: RDKit perceives coumarin's pyranone ring as aromatic, and
+    // `[CX3](=O)[OX2]` matched nothing in it.
+    name: 'coumarin',
+    smiles: 'C1=CC=C2C(=C1)C=CC(=O)O2',
+    classes: ['ester', 'lactone', 'aromatic'],
+  },
+  {
     // An open-chain ester: proves `lactone` requires the ring, not just the
     // ester linkage.
     name: 'ethyl acetate',
@@ -332,5 +341,62 @@ describe('the fixture corpus', () => {
     ])
     expect(result.classesByMaterial.get('test-material-gamma')).toEqual([])
     expect(result.classesByMaterial.get('test-material-delta')).toEqual([])
+  })
+})
+
+/**
+ * The atoms behind each class, which the material page tints when a reader
+ * presses the class (lib/structure/highlight.ts). Indices are RDKit's, in
+ * SMILES order, so each expectation below can be read off the string.
+ */
+describe('matched atoms', () => {
+  it('unions every match of a pattern, ascending', () => {
+    // CCOC(C)=O: the ester is C1–O2–C3(=O5); its methyl C4 is not in it.
+    const result = classifyMaterials(
+      rdkit,
+      [{ slug: 'ethyl-acetate', smiles: 'CCOC(C)=O' }],
+      CLASSES
+    )
+    expect([...(result.atomsByMaterial.get('ethyl-acetate') ?? [])]).toEqual([
+      ['ester', [1, 2, 3, 5]],
+    ])
+  })
+
+  it('has an entry for exactly the classes a material belongs to', () => {
+    const corpus = cases.map(({ name, smiles }) => ({ slug: name, smiles }))
+    const result = classifyMaterials(rdkit, corpus, CLASSES)
+    for (const { name } of cases) {
+      const atoms = result.atomsByMaterial.get(name)
+      expect([...(atoms?.keys() ?? [])]).toEqual(
+        result.classesByMaterial.get(name)
+      )
+      for (const indices of atoms?.values() ?? []) {
+        expect(indices.length).toBeGreaterThan(0)
+        expect(indices).toEqual([...indices].sort((a, b) => a - b))
+      }
+    }
+  })
+
+  it("covers civetone's whole ring for a one-atom ring pattern", () => {
+    // Seventeen ring carbons; atom 14 is the carbonyl oxygen, outside it.
+    const result = classifyMaterials(
+      rdkit,
+      [{ slug: 'civetone', smiles: 'C1CCC/C=C\\CCCCCCCC(=O)CCC1' }],
+      CLASSES
+    )
+    const atoms = result.atomsByMaterial.get('civetone')
+    expect(atoms?.get('macrocycle')).toEqual(
+      [...Array(18).keys()].filter((index) => index !== 14)
+    )
+    expect(atoms?.get('ketone')).toEqual([12, 13, 14, 15])
+  })
+
+  it('gives a NULL-SMILES material an empty map', () => {
+    const result = classifyMaterials(
+      rdkit,
+      [{ slug: 'a-natural', smiles: null }],
+      CLASSES
+    )
+    expect(result.atomsByMaterial.get('a-natural')?.size).toBe(0)
   })
 })

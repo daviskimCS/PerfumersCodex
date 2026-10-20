@@ -177,6 +177,20 @@ export interface StructureConformer {
   openchemlibVersion: string // provenance, shown with the model
 }
 
+/**
+ * Where one of a material's chemical classes sits in its 2D drawing
+ * (migration 0013): the atoms the class SMARTS matched, every match unioned,
+ * as RDKit atom indices. They are the indices the stored drawing tags its
+ * paths with (`atom-N`), because the seed classifies and draws the same
+ * SMILES with the same RDKit; `rdkitVersion` lets the page check that before
+ * it tints anything (`lib/structure/highlight.ts`).
+ */
+export interface ChemicalClassMatch {
+  slug: string // a slug in `chemicalClasses`
+  atoms: number[] // ascending, never empty
+  rdkitVersion: string // provenance — computed, not a cited fact
+}
+
 export interface SimilarMaterial {
   slug: string
   canonicalName: string
@@ -212,6 +226,12 @@ export interface MaterialDetail extends MaterialSummary {
    * molecules (one shape would mislead), and for one not yet computed.
    */
   conformer: StructureConformer | null
+  /**
+   * The matched atoms of each entry in `chemicalClasses`, in the same order.
+   * Empty for NULL-SMILES materials. A class seeded before migration 0013 has
+   * no entry until the next seed.
+   */
+  classMatches: ChemicalClassMatch[]
   similar: SimilarMaterial[]
   odorPredictions: OdorPrediction[] // renders ONLY in the labeled experimental module
   /**

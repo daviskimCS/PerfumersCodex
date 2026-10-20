@@ -119,12 +119,13 @@ This is a **structural** axis, not an olfactive one — `families` remains the o
 
 Which materials belong to which class.
 
-| Column                                | Type                                | Notes                                                                              |
-| ------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
-| material_id                           | uuid FK → materials NOT NULL        |                                                                                    |
-| class_slug                            | text FK → chemical_classes NOT NULL |                                                                                    |
-| rdkit_version                         | text NOT NULL                       | Provenance, exactly as on `material_computed_properties` and `material_similarity` |
-| PRIMARY KEY (material_id, class_slug) |                                     |                                                                                    |
+| Column                                | Type                                | Notes                                                                                                                                                                                                                                      |
+| ------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| material_id                           | uuid FK → materials NOT NULL        |                                                                                                                                                                                                                                            |
+| class_slug                            | text FK → chemical_classes NOT NULL |                                                                                                                                                                                                                                            |
+| matched_atoms                         | smallint[] NOT NULL DEFAULT '{}'    | The atoms the class SMARTS matched, every match unioned, as RDKit atom indices (migration `0013`). The material page tints them on the stored drawing when the reader presses the class; the default only covers rows seeded before `0013` |
+| rdkit_version                         | text NOT NULL                       | Provenance, exactly as on `material_computed_properties` and `material_similarity`                                                                                                                                                         |
+| PRIMARY KEY (material_id, class_slug) |                                     |                                                                                                                                                                                                                                            |
 
 Index: `(class_slug)`, for the `/materials?class=…` filter.
 

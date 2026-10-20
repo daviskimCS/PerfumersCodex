@@ -37,7 +37,12 @@ NULL-SMILES material rather than erroring.
   its structure does not support. Two measured traps: an empty pattern
   compiles to a valid query that matches nothing, so validation rejects it;
   ring-size queries (`[r{12-}]`) do work in RDKit.js, which is what makes
-  "macrocyclic" expressible.
+  "macrocyclic" expressible. The seed also keeps the atoms each class
+  matched, so on a material page each class under the drawing is a toggle
+  that tints the bonds and labels that earned it (`lib/structure/highlight.ts`);
+  the stored drawing never changes. Ester and lactone name their atoms by
+  element (`#6`, `#8`), because RDKit perceives coumarin's pyranone ring as
+  aromatic and an aliphatic `C`/`O` pattern missed it.
 - **Arbitrary SMARTS search.** `/structure` lazy-loads RDKit.js in the
   browser for a pattern the reader types, the one case that cannot be
   precomputed. Without scripting or the WebAssembly it falls back to the

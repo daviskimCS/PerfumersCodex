@@ -37,6 +37,7 @@ import { db } from '@/lib/db'
 import { materialIsPublished } from '@/lib/db/published'
 import { materialFingerprint } from '@/lib/review/fingerprint'
 import type {
+  ChemicalClassMatch,
   ChemicalClassRef,
   Citation,
   FamilyRef,
@@ -554,7 +555,12 @@ export async function loadMaterialForReview(
     // same curated order. Membership is computed, so nothing here is cited
     // and nothing here joins the citation walk below.
     db
-      .select({ slug: chemicalClasses.slug, name: chemicalClasses.name })
+      .select({
+        slug: chemicalClasses.slug,
+        name: chemicalClasses.name,
+        matchedAtoms: materialChemicalClasses.matchedAtoms,
+        rdkitVersion: materialChemicalClasses.rdkitVersion,
+      })
       .from(materialChemicalClasses)
       .innerJoin(
         chemicalClasses,
@@ -798,7 +804,10 @@ export async function loadMaterialForReview(
     materialType: material.materialType,
     casNumber: material.casNumber,
     families: familyRows,
-    chemicalClasses: classRows,
+    chemicalClasses: classRows.map((row): ChemicalClassRef => ({
+      slug: row.slug,
+      name: row.name,
+    })),
     iupacName: material.iupacName,
     smiles: material.smiles,
     molecularFormula: material.molecularFormula,
@@ -851,6 +860,15 @@ export async function loadMaterialForReview(
       : null,
     structure,
     conformer,
+    // Rows seeded before migration 0013 carry no atoms; they stay plain
+    // chips until the next seed fills them.
+    classMatches: classRows
+      .filter((row) => row.matchedAtoms.length > 0)
+      .map((row): ChemicalClassMatch => ({
+        slug: row.slug,
+        atoms: row.matchedAtoms,
+        rdkitVersion: row.rdkitVersion,
+      })),
     similar: similarRows.map((row) => ({
       slug: row.slug,
       canonicalName: row.canonicalName,

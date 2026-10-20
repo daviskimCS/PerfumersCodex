@@ -405,6 +405,18 @@ export const materialChemicalClasses = pgTable(
     classSlug: text('class_slug')
       .notNull()
       .references(() => chemicalClasses.slug),
+    /**
+     * The atoms the class SMARTS matched, every match unioned, as RDKit atom
+     * indices into `materials.smiles` (migration 0013). They are the indices
+     * the stored drawing tags its paths with (`atom-N`), so the material page
+     * can tint the part of the structure a class names. Computed by the same
+     * RDKit pass as the row itself; the default only covers rows written
+     * before 0013, which the next seed replaces.
+     */
+    matchedAtoms: smallint('matched_atoms')
+      .array()
+      .notNull()
+      .default(sql`'{}'::smallint[]`),
     rdkitVersion: text('rdkit_version').notNull(),
   },
   (t) => [

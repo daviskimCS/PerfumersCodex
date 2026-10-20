@@ -12,7 +12,7 @@ import { OlfactivePanel } from '@/components/material/olfactive-panel'
 import { SafetyPanel } from '@/components/material/safety-panel'
 import { SimilarMaterialsModule } from '@/components/material/similar-materials'
 import { SourcesPanel } from '@/components/material/sources-panel'
-import { MaterialStructure } from '@/components/material/structure'
+import { MaterialStructureFigure } from '@/components/material/structure-figure'
 import { MaterialSections } from '@/components/material/sections'
 import { UsagePanel } from '@/components/material/usage-panel'
 import {
@@ -171,15 +171,11 @@ export default async function MaterialPage({ params }: MaterialRouteProps) {
             </div>
           </div>
 
-          {/* Drawn at seed time and inlined here, with a "View in 3D"
-              button when the seed stored a conformer; nothing renders at all
-              when the material has no SMILES. */}
-          <MaterialStructure
-            smiles={material.smiles}
-            structure={material.structure}
-            conformer={material.conformer}
-            name={material.canonicalName}
-          />
+          {/* Drawn at seed time and inlined here, with the chemical classes
+              under it as highlight toggles and a "View in 3D" button when the
+              seed stored a conformer; nothing renders at all when the
+              material has no SMILES. */}
+          <MaterialStructureFigure material={material} />
         </div>
       </header>
 

@@ -85,7 +85,11 @@ function printDetail(detail: MaterialDetail, unpublished: Set<string>): void {
   )
   section(
     'Structural classes (computed)',
-    detail.chemicalClasses.map((c) => `${c.name}  (${c.slug})`)
+    detail.chemicalClasses.map((c) => {
+      // The atoms its chip tints on the page, as RDKit numbers them.
+      const atoms = detail.classMatches.find((m) => m.slug === c.slug)?.atoms
+      return `${c.name}  (${c.slug})  ${atoms ? `tints atoms ${atoms.join(', ')}` : 'no highlight'}`
+    })
   )
   section(
     'Synonyms',

@@ -85,7 +85,7 @@ export function Structure3d({
   }
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:w-80 md:w-72 lg:w-80">
+    <div className="flex flex-col gap-3">
       <div hidden={showing3d}>{children}</div>
 
       <div hidden={!showing3d}>

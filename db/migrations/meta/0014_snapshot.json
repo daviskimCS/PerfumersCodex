@@ -1,6 +1,6 @@
 {
-  "id": "9ea7dde5-fe02-4004-aa5a-8d69870364f8",
-  "prevId": "8c729041-39b3-494e-a18b-513073d55e88",
+  "id": "392cf2db-febf-4fbb-b970-611ffede3f6d",
+  "prevId": "58796d06-e928-4ef9-ac5f-cd4bd32720f6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -326,6 +326,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "matched_atoms": {
+          "name": "matched_atoms",
+          "type": "smallint[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::smallint[]"
         },
         "rdkit_version": {
           "name": "rdkit_version",
