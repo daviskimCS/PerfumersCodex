@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react'
 
 import { isSafeStructureSvg, withDrawOrder } from '@/lib/structure/svg'
-import type { StructureDrawing } from '@/lib/types'
+import type { StructureConformer, StructureDrawing } from '@/lib/types'
 
+import { Structure3d } from './structure-3d'
 import { StructurePlate } from './structure-plate'
 
 /**
@@ -15,13 +16,41 @@ import { StructurePlate } from './structure-plate'
  * the HTML: no client JavaScript, no loading state, no layout shift, and it
  * works with scripting off. RDKit.js is still used on `/structure`, where a
  * reader types a pattern no seed could precompute.
+ *
+ * When the seed also stored a 3D conformer, the plate gets a "View in 3D"
+ * button beneath it (`structure-3d.tsx`); the drawing stays the primary
+ * picture, and the 3D viewer downloads only when the button is pressed.
  */
 export function MaterialStructure({
   smiles,
   structure,
+  conformer,
   name,
 }: {
   /** `null` for naturals and other mixtures — see `lib/types.ts`. */
+  smiles: string | null
+  structure: StructureDrawing | null
+  conformer: StructureConformer | null
+  name: string
+}) {
+  // A NULL-SMILES material renders no structure UI at all (below), so a
+  // conformer without a SMILES, which the seed never writes, shows nothing.
+  const plate = (
+    <StructurePlate2d smiles={smiles} structure={structure} name={name} />
+  )
+  if (smiles === null || conformer === null) return plate
+  return (
+    <Structure3d conformer={conformer} name={name}>
+      {plate}
+    </Structure3d>
+  )
+}
+
+function StructurePlate2d({
+  smiles,
+  structure,
+  name,
+}: {
   smiles: string | null
   structure: StructureDrawing | null
   name: string

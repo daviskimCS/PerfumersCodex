@@ -167,6 +167,16 @@ export interface StructureDrawing {
   rdkitVersion: string // provenance — the drawing is a recomputation, not a cited fact
 }
 
+/**
+ * One computed low-energy 3D shape of the molecule, for the "View in 3D"
+ * model (migration 0014). Computed once at seed time with OpenChemLib, not a
+ * cited fact and not the only shape the molecule takes.
+ */
+export interface StructureConformer {
+  molfile: string // V2000, explicit hydrogens, coordinates in ångströms
+  openchemlibVersion: string // provenance, shown with the model
+}
+
 export interface SimilarMaterial {
   slug: string
   canonicalName: string
@@ -197,6 +207,11 @@ export interface MaterialDetail extends MaterialSummary {
   computed: ComputedProperties | null
   /** null for every NULL-SMILES material, and for one the seed has not drawn yet. */
   structure: StructureDrawing | null
+  /**
+   * null for every NULL-SMILES material, for macrocycles and very flexible
+   * molecules (one shape would mislead), and for one not yet computed.
+   */
+  conformer: StructureConformer | null
   similar: SimilarMaterial[]
   odorPredictions: OdorPrediction[] // renders ONLY in the labeled experimental module
   /**

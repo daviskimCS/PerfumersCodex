@@ -151,10 +151,12 @@ export default function TermsPage() {
       {/* Only what this site serves to a browser, each with its licence text
           under public/licenses/ (both licences ask that the notice travel with
           the copy). The .txt files are copies of
-          node_modules/@rdkit/rdkit/LICENSE, assets/fonts/jetbrains-mono/OFL.txt
-          and Google Fonts' ofl/roboto/OFL.txt: refresh them when a version
-          bump changes the upstream file. Structure drawings are not here:
-          RDKit's output is this project's own work, not a copy of RDKit. */}
+          node_modules/@rdkit/rdkit/LICENSE, node_modules/3dmol/LICENSE,
+          assets/fonts/jetbrains-mono/OFL.txt and Google Fonts'
+          ofl/roboto/OFL.txt: refresh them when a version bump changes the
+          upstream file. Structure drawings and 3D models are not here: RDKit's
+          and OpenChemLib's output is this project's own work, and OpenChemLib
+          itself runs only in the seed, never in a browser. */}
       <LegalSection id="credits" heading="Credits and licences">
         <LegalList>
           <li>
@@ -166,6 +168,18 @@ export default function TermsPage() {
             Landrum, Paolo Tosco and other RDKit contributors, under the{' '}
             <a
               href="/licenses/rdkit-js.txt"
+              rel="license"
+              className={LEGAL_LINK_CLASSNAME}
+            >
+              BSD 3-Clause License
+            </a>
+            .
+          </li>
+          <li>
+            The “View in 3D” model on material pages is drawn by 3Dmol.js, ©
+            the University of Pittsburgh and contributors, under the{' '}
+            <a
+              href="/licenses/3dmol-js.txt"
               rel="license"
               className={LEGAL_LINK_CLASSNAME}
             >

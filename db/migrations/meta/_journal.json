@@ -92,6 +92,13 @@
       "when": 1792304192628,
       "tag": "0012_ifra-category-codes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792458843460,
+      "tag": "0014_structure-conformers",
+      "breakpoints": true
     }
   ]
 }

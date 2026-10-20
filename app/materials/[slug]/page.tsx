@@ -171,11 +171,13 @@ export default async function MaterialPage({ params }: MaterialRouteProps) {
             </div>
           </div>
 
-          {/* Drawn at seed time and inlined here; nothing renders at all
+          {/* Drawn at seed time and inlined here, with a "View in 3D"
+              button when the seed stored a conformer; nothing renders at all
               when the material has no SMILES. */}
           <MaterialStructure
             smiles={material.smiles}
             structure={material.structure}
+            conformer={material.conformer}
             name={material.canonicalName}
           />
         </div>

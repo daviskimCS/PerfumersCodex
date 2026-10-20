@@ -267,6 +267,19 @@ The 2D structure diagram, drawn by the seed (`scripts/draw.ts`) and inlined by t
 | rdkit_version | text NOT NULL           | Provenance                                                                                     |
 | drawn_at      | timestamptz NOT NULL    |                                                                                                |
 
+### `material_conformers`
+
+One computed low-energy 3D conformer per material, for the "View in 3D" model (migration 0014). Computed by the seed (`scripts/conformer.ts`) with OpenChemLib from `materials.smiles`, never authored. Mixtures, macrocycles and molecules with more than five rotatable bonds have no row. Part of `MaterialDetail` (`conformer`), so it is covered by the review fingerprint, except that a material with no conformer hashes as it did before the field existed (`lib/review/fingerprint.ts`).
+
+| Column              | Type                    | Notes                                                                       |
+| ------------------- | ----------------------- | --------------------------------------------------------------------------- |
+| material_id         | uuid PK, FK → materials | One row per material with a model                                           |
+| molfile             | text NOT NULL           | V2000, explicit hydrogens, ångströms; CHECK contains `V2000` and `M  END`   |
+| smiles              | text NOT NULL           | The SMILES it was computed from; the seed recomputes when it changes        |
+| openchemlib_version | text NOT NULL           | Provenance; the seed recomputes when it changes                             |
+| method              | text NOT NULL           | Search and force field (`METHOD` in the script); recomputed when it changes |
+| computed_at         | timestamptz NOT NULL    |                                                                             |
+
 ### `material_similarity`
 
 Precomputed top-N (N≈10) Tanimoto neighbors per material, refreshed by the seed pipeline.

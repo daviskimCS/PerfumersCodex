@@ -85,6 +85,15 @@
  *   redraw it on every visit. A SMILES RDKit cannot draw stops the run before
  *   anything is written.
  *
+ * - **`material_conformers` is derived too, but after the connection
+ *   opens.** `scripts/conformer.ts` computes one low-energy 3D shape per
+ *   material with OpenChemLib, for the "View in 3D" model. It needs the rows
+ *   already stored, because it keeps a stored conformer whose SMILES,
+ *   OpenChemLib version and method are unchanged rather than recomputing it.
+ *   Macrocycles and very flexible molecules are skipped by rule, and a
+ *   molecule OpenChemLib cannot embed is a warning, not an abort: the model
+ *   is an extra beneath the drawing, not part of the record.
+ *
  * - **This file imports `db/schema.ts` directly**, which architecture D1
  *   otherwise reserves for `lib/db/`. D1 governs app code — pages and
  *   components go through `lib/db/` and receive `lib/types.ts` shapes. This is
@@ -109,6 +118,7 @@ import {
   landmarkUses,
   materialChemicalClasses,
   materialComputedProperties,
+  materialConformers,
   materialDescriptions,
   materialFamilies,
   materialHazards,
@@ -154,6 +164,11 @@ import {
   loadRdkit,
   type MaterialClassification,
 } from '@/scripts/classify'
+import {
+  conformerFor,
+  OPENCHEMLIB_VERSION,
+  type StoredConformer,
+} from '@/scripts/conformer'
 import {
   DrawingError,
   drawMaterials,
@@ -695,6 +710,62 @@ interface MaterialWriteReport {
 }
 
 /**
+ * Material slug → the 3D conformer to store (`scripts/conformer.ts`). Reads
+ * the conformers already stored, so one whose inputs are unchanged is kept as
+ * it is; computes the rest. Skipped and failed molecules are absent from the
+ * map, and their pages show no "View in 3D" button.
+ */
+async function computeConformers(
+  list: readonly MaterialFile[]
+): Promise<Map<string, StoredConformer>> {
+  const result = new Map<string, StoredConformer>()
+  if (!list.some((material) => material.smiles !== null)) return result
+
+  const storedRows = await db
+    .select({
+      slug: materials.slug,
+      smiles: materialConformers.smiles,
+      molfile: materialConformers.molfile,
+      openchemlibVersion: materialConformers.openchemlibVersion,
+      method: materialConformers.method,
+    })
+    .from(materialConformers)
+    .innerJoin(materials, eq(materials.id, materialConformers.materialId))
+    .where(isNull(materials.deletedAt))
+  const stored = new Map(storedRows.map(({ slug, ...row }) => [slug, row]))
+
+  let computed = 0
+  let reused = 0
+  const notes: string[] = []
+  for (const material of list) {
+    const outcome = conformerFor(material, stored.get(material.slug))
+    if (outcome === null) continue
+    switch (outcome.kind) {
+      case 'computed':
+      case 'reused':
+        result.set(material.slug, outcome.conformer)
+        if (outcome.kind === 'computed') computed += 1
+        else reused += 1
+        break
+      case 'skipped':
+        notes.push(`  no 3D model for ${material.slug}: ${outcome.reason}`)
+        break
+      case 'failed':
+        notes.push(
+          `  WARNING: no 3D model for ${material.slug}: ${outcome.reason}`
+        )
+        break
+    }
+  }
+  log(
+    `3D conformers with OpenChemLib ${OPENCHEMLIB_VERSION}: ` +
+      `${computed} computed, ${reused} kept unchanged`
+  )
+  for (const note of notes) log(note)
+  return result
+}
+
+/**
  * One material, one transaction: its sources, the material row, and a
  * wholesale replacement of every child collection. Sources go first because
  * the row itself now cites one of them (`identity_source_id`) — the only
@@ -706,7 +777,8 @@ async function writeMaterial(
   material: MaterialFile,
   familyIdBySlug: Map<string, string>,
   classification: MaterialClassification | null,
-  drawings: MaterialDrawings | null
+  drawings: MaterialDrawings | null,
+  conformers: ReadonlyMap<string, StoredConformer>
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
     const sourceIdByKey = await writeSources(tx, material.sources)
@@ -748,6 +820,10 @@ async function writeMaterial(
     await tx
       .delete(materialStructureDrawings)
       .where(eq(materialStructureDrawings.materialId, id))
+    // And a withdrawn SMILES, or one that became a macrocycle, loses its model.
+    await tx
+      .delete(materialConformers)
+      .where(eq(materialConformers.materialId, id))
 
     let childRows = 0
 
@@ -897,6 +973,14 @@ async function writeMaterial(
         svg,
         rdkitVersion: drawings.rdkitVersion,
       })
+      childRows += 1
+    }
+
+    const conformer = conformers.get(material.slug)
+    if (conformer !== undefined) {
+      await tx
+        .insert(materialConformers)
+        .values({ materialId: id, ...conformer })
       childRows += 1
     }
 
@@ -1086,6 +1170,8 @@ async function main(): Promise<void> {
     )
   }
 
+  const conformers = await computeConformers(bundle.materials)
+
   const familyIdBySlug = await writeFamilies(bundle.families)
   await writeUsageCategories(bundle.usageCategories)
   await writeHazardCodes(bundle.hazardCodes)
@@ -1104,7 +1190,8 @@ async function main(): Promise<void> {
       material,
       familyIdBySlug,
       classification,
-      drawings
+      drawings,
+      conformers
     )
     materialIdBySlug.set(report.slug, report.id)
     log(
