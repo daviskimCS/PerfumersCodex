@@ -219,6 +219,11 @@ export default async function MaterialPage({ params }: MaterialRouteProps) {
       <ComputedPropertiesModule
         computed={material.computed}
         smiles={material.smiles}
+        mapHref={
+          material.molecularWeight !== null && material.computed?.logp != null
+            ? `/volatility?highlight=${encodeURIComponent(material.slug)}`
+            : null
+        }
       />
       <SimilarMaterialsModule
         similar={material.similar}

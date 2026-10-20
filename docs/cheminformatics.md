@@ -46,17 +46,33 @@ NULL-SMILES material rather than erroring.
   Morgan fingerprints, and logP, TPSA and heavy-atom count as
   volatility-adjacent context (never presented as measured fact). The page
   hides matches below 0.3 as noise and says so.
+- **Volatility map.** `/volatility` plots every published material with a
+  structure by molecular weight (cited, from the identity record) against
+  computed logP: a server-rendered SVG, no chart library, no script, with a
+  table of the same points. The copy calls it a proxy for top, heart and
+  base, not a measurement. Each plotted value is already in its own
+  material's reviewed record, so the page adds no fingerprint field; for the
+  same reason it is linked from a material page (`?highlight=<slug>`), never
+  embedded in one.
 
 ## Provenance
 
 Computed values carry the RDKit version that produced them instead of a
 citation: they are deterministic recomputations, not cited facts.
 
-Similarity and computed properties arrive precomputed in the data files; the
-seed only writes them. They were produced with RDKit.js 2025.03.4 in Node
-(Crippen logP, TPSA, heavy atoms, Tanimoto over folded 2048-bit Morgan
-fingerprints) by a research script that is **not in either repository**, and
-only Iso E Super, Javanol and Civetone have them so far. The version stamp
+Computed properties (Crippen logP, TPSA, heavy atoms) are derived by the
+seed for every material with a SMILES (`scripts/properties.ts`), from the same
+RDKit load that classifies and draws. logP is rounded to four places and TPSA
+to two, which reproduces exactly the values the old research script wrote for
+Iso E Super, Javanol and Civetone, so a re-seed leaves their reviewed
+fingerprints unchanged (`scripts/properties.test.ts` holds that). A data file
+may still carry a `computed_properties` block; the seed refuses one that
+disagrees with what it computes.
+
+Similarity still arrives precomputed in the data files; the seed only writes
+it. It was produced with RDKit.js 2025.03.4 in Node (Tanimoto over folded
+2048-bit Morgan fingerprints) by a research script that is **not in either
+repository**, and only Iso E Super, Javanol and Civetone have it so far. The version stamp
 alone does not record fingerprint parameters, so a regeneration with
 different settings would produce different numbers under the same stamp. The
 fix, when this is rebuilt: commit the script and record the fingerprint
