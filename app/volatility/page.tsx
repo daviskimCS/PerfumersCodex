@@ -76,8 +76,10 @@ export default async function VolatilityPage({
       <p className="mt-3 max-w-measure text-sm text-muted-foreground">
         A proxy, not a measurement. Vapour pressure, odour threshold and the
         rest of the formula decide how long a material actually lasts on a
-        blotter or on skin. Molecular weight comes from each material&rsquo;s
-        cited identity record; logP is calculated from the structure
+        blotter or on skin, and polar molecules that hydrogen-bond can linger
+        far longer than their weight suggests. Molecular weight comes from each
+        material&rsquo;s cited identity record; logP is calculated from the
+        structure
         {rdkitVersions.length === 0 ? null : (
           <> with RDKit {rdkitVersions.join(', ')}</>
         )}

@@ -99,11 +99,12 @@ export interface PlacedLabel {
 
 /**
  * Greedy placement in input order, so the caller decides priority (the
- * highlighted material first). Each label tries right, left, above, below
- * its dot and takes the first spot that stays inside `bounds` and clears
- * every dot and every label already placed. One that fits nowhere keeps the
- * right-hand position but is marked not visible: the chart shows it only on
- * hover, and the table under the chart names every point anyway.
+ * highlighted material first). Each label tries right, left, above and
+ * below its dot, then above and below flush to either side, and takes the
+ * first spot that stays inside `bounds` and clears every dot and every label
+ * already placed. One that fits nowhere keeps the right-hand position but is
+ * marked not visible: the chart shows it only on hover, and the table under
+ * the chart names every point anyway.
  */
 export function placeLabels(
   points: readonly LabelInput[],
@@ -175,6 +176,42 @@ export function placeLabels(
           y1: point.y + point.r + gap + ascent + descent,
         },
       },
+      // Above and below again, flush to one side of the dot instead of
+      // centred: what lets a point near the plot's edge keep its label.
+      ...(['above', 'below'] as const).flatMap((side) => {
+        const baseline =
+          side === 'above'
+            ? point.y - point.r - gap - descent
+            : point.y + point.r + gap + ascent
+        const y0 = baseline - ascent
+        const y1 = baseline + descent
+        return [
+          {
+            x: point.x + point.r,
+            y: baseline,
+            anchor: 'end' as const,
+            visible: true,
+            box: {
+              x0: point.x + point.r - width,
+              y0,
+              x1: point.x + point.r,
+              y1,
+            },
+          },
+          {
+            x: point.x - point.r,
+            y: baseline,
+            anchor: 'start' as const,
+            visible: true,
+            box: {
+              x0: point.x - point.r,
+              y0,
+              x1: point.x - point.r + width,
+              y1,
+            },
+          },
+        ]
+      }),
     ]
 
     const fits = candidates.find(

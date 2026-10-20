@@ -150,6 +150,18 @@ function ScatterSvg({
   const titleId = `${idPrefix}-title`
   const descId = `${idPrefix}-desc`
   const highlighted = points.find((point) => point.slug === highlight)
+  const title = `Molecular weight against computed logP for ${points.length} published ${
+    points.length === 1 ? 'material' : 'materials'
+  }`
+  const description = [
+    `Scatter plot. Molecular weight in grams per mole runs from ${formatTick(x.min)} to ${formatTick(x.max)} across; computed logP runs from ${formatTick(y.min)} to ${formatTick(y.max)} up.`,
+    highlighted === undefined
+      ? null
+      : `${highlighted.canonicalName} is highlighted at ${highlighted.molecularWeight} g/mol, logP ${highlighted.logp}.`,
+    'The table after the chart lists every point.',
+  ]
+    .filter((sentence) => sentence !== null)
+    .join(' ')
 
   return (
     <svg
@@ -159,19 +171,10 @@ function ScatterSvg({
       className={cn('h-auto w-full overflow-visible', className)}
       style={{ maxWidth: width }}
     >
-      <title id={titleId}>
-        Molecular weight against computed logP for {points.length} published{' '}
-        {points.length === 1 ? 'material' : 'materials'}
-      </title>
-      <desc id={descId}>
-        Scatter plot. Molecular weight in grams per mole runs from{' '}
-        {formatTick(x.min)} to {formatTick(x.max)} across; computed logP runs
-        from {formatTick(y.min)} to {formatTick(y.max)} up.
-        {highlighted === undefined
-          ? null
-          : ` ${highlighted.canonicalName} is highlighted at ${highlighted.molecularWeight} g/mol, logP ${highlighted.logp}.`}{' '}
-        The table after the chart lists every point.
-      </desc>
+      {/* Single strings: React renders an SVG <title> only from one text
+          child, not from JSX fragments. */}
+      <title id={titleId}>{title}</title>
+      <desc id={descId}>{description}</desc>
 
       {/* Grid: hairline, solid, recessive. */}
       <g className="stroke-border" strokeWidth={1} shapeRendering="crispEdges">
