@@ -58,6 +58,15 @@ export interface MaterialClassification {
    * empty array — "classified, matched nothing" — never a missing entry.
    */
   classesByMaterial: Map<string, string[]>
+  /**
+   * Material slug → class slug → the atoms that earned it: every match of
+   * the class SMARTS, unioned, as ascending RDKit atom indices. These are the
+   * indices `scripts/draw.ts` tags the drawing with (`atom-N`), because both
+   * passes parse the same SMILES with the same RDKit, so the page can tint
+   * the part of the drawing a class names (`lib/structure/highlight.ts`).
+   * Exactly the classes in `classesByMaterial` have an entry, never empty.
+   */
+  atomsByMaterial: Map<string, Map<string, number[]>>
   /** `RDKit.version()`, e.g. "2025.03.4" — the provenance stamp on every row. */
   rdkitVersion: string
 }
@@ -108,22 +117,32 @@ export function isValidSmarts(rdkit: RDKitModule, smarts: string): boolean {
 }
 
 /**
- * True when `molecule` contains `query` as a substructure.
+ * The atoms of `molecule` that match `query`, every match unioned, ascending.
+ * Empty when there is no match.
  *
- * `get_substruct_match` returns a JSON object, `{}` when there is no match.
- * The match is read through its `atoms` array rather than through the object
- * being nonempty, so a degenerate zero-atom query can never be read as a hit.
+ * `get_substruct_matches` returns `{}` when nothing matches and an array of
+ * `{ atoms, bonds }` otherwise. Membership is read through the atoms rather
+ * than through the result being nonempty, so a degenerate zero-atom query can
+ * never be read as a hit.
  */
-function matches(molecule: JSMol, query: JSMol): boolean {
-  const raw = molecule.get_substruct_match(query)
+function matchedAtoms(molecule: JSMol, query: JSMol): number[] {
+  const raw = molecule.get_substruct_matches(query)
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return false
+    return []
   }
-  const atoms = (parsed as { atoms?: unknown }).atoms
-  return Array.isArray(atoms) && atoms.length > 0
+  if (!Array.isArray(parsed)) return []
+  const atoms = new Set<number>()
+  for (const match of parsed) {
+    const indices = (match as { atoms?: unknown }).atoms
+    if (!Array.isArray(indices)) continue
+    for (const index of indices) {
+      if (Number.isInteger(index)) atoms.add(index as number)
+    }
+  }
+  return [...atoms].sort((a, b) => a - b)
 }
 
 /**
@@ -165,6 +184,7 @@ export function classifyMaterials(
     }
 
     const classesByMaterial = new Map<string, string[]>()
+    const atomsByMaterial = new Map<string, Map<string, number[]>>()
     const unparseable: string[] = []
 
     for (const material of materials) {
@@ -172,6 +192,7 @@ export function classifyMaterials(
       // — this is the expected shape of every natural in the corpus.
       if (material.smiles === null) {
         classesByMaterial.set(material.slug, [])
+        atomsByMaterial.set(material.slug, new Map())
         continue
       }
 
@@ -183,12 +204,13 @@ export function classifyMaterials(
         continue
       }
       try {
-        classesByMaterial.set(
-          material.slug,
-          compiled
-            .filter((entry) => matches(molecule, entry.query))
-            .map((entry) => entry.slug)
-        )
+        const atomsByClass = new Map<string, number[]>()
+        for (const entry of compiled) {
+          const atoms = matchedAtoms(molecule, entry.query)
+          if (atoms.length > 0) atomsByClass.set(entry.slug, atoms)
+        }
+        classesByMaterial.set(material.slug, [...atomsByClass.keys()])
+        atomsByMaterial.set(material.slug, atomsByClass)
       } finally {
         molecule.delete()
       }
@@ -200,7 +222,11 @@ export function classifyMaterials(
       )
     }
 
-    return { classesByMaterial, rdkitVersion: rdkit.version() }
+    return {
+      classesByMaterial,
+      atomsByMaterial,
+      rdkitVersion: rdkit.version(),
+    }
   } finally {
     for (const entry of compiled) entry.query.delete()
   }
