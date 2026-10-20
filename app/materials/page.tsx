@@ -135,6 +135,16 @@ export default function MaterialsPage({
         — type a SMARTS query and match it against every material with a known
         structure.
       </p>
+      <p className="mt-3 max-w-measure text-sm text-muted-foreground">
+        Or see them side by side on the{' '}
+        <Link
+          href="/volatility"
+          className="text-brand underline underline-offset-4 hover:no-underline"
+        >
+          volatility map
+        </Link>
+        , by molecular weight and computed logP.
+      </p>
 
       {/*
         The data-dependent half sits behind its own boundary rather than
