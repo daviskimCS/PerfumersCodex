@@ -157,8 +157,10 @@ export function Structure3d({
           id={helpId}
           className="text-xs leading-relaxed text-muted-foreground"
         >
-          One computed low-energy shape, not the only one. Drag to rotate; arrow
-          keys and + or − also work. Computed with OpenChemLib{' '}
+          One computed low-energy shape, not the only one. Where the drawing
+          leaves a stereocentre open, the model has to pick one arrangement, so
+          it shows one stereoisomer of what may be a mixture. Drag to rotate;
+          arrow keys and + or − also work. Computed with OpenChemLib{' '}
           {conformer.openchemlibVersion}.
         </p>
       ) : null}
