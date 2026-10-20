@@ -11,6 +11,22 @@ NULL-SMILES material rather than erroring.
   its `rdkit_version`, and the material page inlines it in the server render.
   Readers never download the 6.6 MB WebAssembly to see a picture that only
   changes when the seed runs.
+- **3D model ("View in 3D").** The seed computes one low-energy conformer per
+  material in Node with OpenChemLib (`scripts/conformer.ts`: up to 20
+  candidates from its torsion database with a fixed seed, each minimised with
+  MMFF94s+, lowest energy kept, explicit hydrogens, turned broadside to the
+  reader) and stores the molfile in `material_conformers` with its
+  `openchemlib_version`. Every stereocentre and double bond the SMILES
+  specifies is read back from the 3D coordinates and compared before the
+  model is stored, so it can never show the wrong isomer. A stored conformer is
+  kept, not recomputed, while its SMILES, toolkit version and method are
+  unchanged, so a Node upgrade cannot move a coordinate and hide a reviewed
+  page. Macrocycles (a ring of 12 or more atoms, such as Civetone) and
+  molecules with more than five rotatable bonds get no model: one shape of a
+  floppy molecule would mislead, so their pages show no button. The page
+  loads 3Dmol.js only when the reader presses the button and labels the model
+  "one computed low-energy shape, not the only one". OpenChemLib is a
+  development dependency of the seed and never reaches a browser.
 - **Structural classes.** "Ester", "macrocyclic ketone", "contains a lactone
   ring". Each class is a SMARTS pattern in the data repo's
   `chemical-classes.json`; the seed computes membership

@@ -18,6 +18,7 @@ import {
   landmarkUses,
   materialChemicalClasses,
   materialComputedProperties,
+  materialConformers,
   materialDescriptions,
   materialFamilies,
   materialHazards,
@@ -43,6 +44,7 @@ import type {
   IfraAbsence,
   MaterialDetail,
   MaterialSummary,
+  StructureConformer,
   StructureDrawing,
 } from '@/lib/types'
 
@@ -492,18 +494,25 @@ export async function getRandomDrawnMaterialSlug(): Promise<string | null> {
 export async function loadMaterialForReview(
   slug: string
 ): Promise<MaterialForReview | null> {
-  // The drawing rides on the first round trip as a left join rather than
-  // joining the parallel fan-out below, which already outnumbers the pool.
+  // The drawing and the conformer ride on the first round trip as left joins
+  // rather than joining the parallel fan-out below, which already outnumbers
+  // the pool. Both are one-to-one with the material.
   const materialRows = await db
     .select({
       material: materials,
       structureSvg: materialStructureDrawings.svg,
       structureRdkitVersion: materialStructureDrawings.rdkitVersion,
+      conformerMolfile: materialConformers.molfile,
+      conformerOpenchemlibVersion: materialConformers.openchemlibVersion,
     })
     .from(materials)
     .leftJoin(
       materialStructureDrawings,
       eq(materialStructureDrawings.materialId, materials.id)
+    )
+    .leftJoin(
+      materialConformers,
+      eq(materialConformers.materialId, materials.id)
     )
     .where(and(eq(materials.slug, slug), isNull(materials.deletedAt)))
     .limit(1)
@@ -513,6 +522,13 @@ export async function loadMaterialForReview(
   const structure: StructureDrawing | null =
     row.structureSvg !== null && row.structureRdkitVersion !== null
       ? { svg: row.structureSvg, rdkitVersion: row.structureRdkitVersion }
+      : null
+  const conformer: StructureConformer | null =
+    row.conformerMolfile !== null && row.conformerOpenchemlibVersion !== null
+      ? {
+          molfile: row.conformerMolfile,
+          openchemlibVersion: row.conformerOpenchemlibVersion,
+        }
       : null
 
   const [
@@ -843,6 +859,7 @@ export async function loadMaterialForReview(
         }
       : null,
     structure,
+    conformer,
     // Rows seeded before migration 0013 carry no atoms; they stay plain
     // chips until the next seed fills them.
     classMatches: classRows

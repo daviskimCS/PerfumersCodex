@@ -63,6 +63,11 @@ function detail(): MaterialDetail {
       svg: "<svg viewBox='0 0 640 480'><path d='M 0,0 L 1,1' /></svg>",
       rdkitVersion: 'test',
     },
+    conformer: {
+      molfile:
+        '\n  OpenChemLib\n\n  1  0  0  0  0  0  0  0  0  0999 V2000\nM  END\n',
+      openchemlibVersion: 'test',
+    },
     classMatches: [{ slug: 'ester', atoms: [1, 2, 3], rdkitVersion: 'test' }],
     similar: [
       {
@@ -121,6 +126,19 @@ describe('materialFingerprint', () => {
     ).toBe(true)
   })
 
+  // Migration 0014 added `conformer`. A material without one must keep the
+  // fingerprint the maker approved before the field existed, or deploying
+  // the field would have hidden every published page at once.
+  it('hashes a material with no conformer as if the field did not exist', () => {
+    const without = detail()
+    without.conformer = null
+    const legacy: Partial<MaterialDetail> = { ...without }
+    delete legacy.conformer
+    expect(materialFingerprint(without)).toBe(
+      materialFingerprint(legacy as MaterialDetail)
+    )
+  })
+
   it('ignores key order', () => {
     const reordered = Object.fromEntries(
       Object.entries(detail()).reverse()
@@ -173,6 +191,15 @@ describe('materialFingerprint', () => {
       (d) => (d.structure!.rdkitVersion = 'next'),
     ],
     ['the structure drawing going missing', (d) => (d.structure = null)],
+    [
+      'the 3D conformer (derived)',
+      (d) => (d.conformer!.molfile = d.conformer!.molfile.replace('1', '2')),
+    ],
+    [
+      'the OpenChemLib version that computed the conformer',
+      (d) => (d.conformer!.openchemlibVersion = 'next'),
+    ],
+    ['the 3D conformer going missing', (d) => (d.conformer = null)],
   ]
 
   it.each(changes)('changes when %s changes', (_name, mutate) => {

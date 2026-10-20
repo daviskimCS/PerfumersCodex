@@ -165,6 +165,16 @@ function printDetail(detail: MaterialDetail, unpublished: Set<string>): void {
           `drawn by RDKit ${detail.structure.rdkitVersion} (${detail.structure.svg.length} bytes of SVG)`,
         ]
   )
+  // Coordinates are not reviewable as text either. The model on the page is
+  // this molfile; look at it there before publishing.
+  section(
+    '3D model (computed from the SMILES)',
+    detail.conformer === null
+      ? []
+      : [
+          `one low-energy conformer, ${conformerAtomCount(detail.conformer.molfile)} atoms including hydrogens, computed by OpenChemLib ${detail.conformer.openchemlibVersion}: press "View in 3D" on the page to check it`,
+        ]
+  )
   section(
     'Similar materials',
     detail.similar.map(
@@ -265,3 +275,8 @@ main()
     process.exitCode = 1
     await closeConnection()
   })
+
+/** The atom count from a V2000 molfile's counts line (line 4). */
+function conformerAtomCount(molfile: string): number {
+  return Number.parseInt(molfile.split('\n')[3]?.slice(0, 3) ?? '', 10)
+}

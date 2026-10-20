@@ -168,6 +168,16 @@ export interface StructureDrawing {
 }
 
 /**
+ * One computed low-energy 3D shape of the molecule, for the "View in 3D"
+ * model (migration 0014). Computed once at seed time with OpenChemLib, not a
+ * cited fact and not the only shape the molecule takes.
+ */
+export interface StructureConformer {
+  molfile: string // V2000, explicit hydrogens, coordinates in ångströms
+  openchemlibVersion: string // provenance, shown with the model
+}
+
+/**
  * Where one of a material's chemical classes sits in its 2D drawing
  * (migration 0013): the atoms the class SMARTS matched, every match unioned,
  * as RDKit atom indices. They are the indices the stored drawing tags its
@@ -211,6 +221,11 @@ export interface MaterialDetail extends MaterialSummary {
   computed: ComputedProperties | null
   /** null for every NULL-SMILES material, and for one the seed has not drawn yet. */
   structure: StructureDrawing | null
+  /**
+   * null for every NULL-SMILES material, for macrocycles and very flexible
+   * molecules (one shape would mislead), and for one not yet computed.
+   */
+  conformer: StructureConformer | null
   /**
    * The matched atoms of each entry in `chemicalClasses`, in the same order.
    * Empty for NULL-SMILES materials. A class seeded before migration 0013 has

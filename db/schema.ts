@@ -685,6 +685,38 @@ export const materialStructureDrawings = pgTable(
   ]
 ).enableRLS()
 
+/**
+ * One computed low-energy 3D conformer per material, for the "View in 3D"
+ * model (migration 0014). Computed by the seed (`scripts/conformer.ts`) with
+ * OpenChemLib from `materials.smiles`: never authored, never cited. `smiles`
+ * and `method` record the inputs, so a later seed can keep this row instead
+ * of recomputing it while they and `openchemlib_version` are unchanged. A
+ * mixture, a macrocycle and a very flexible molecule have no row. Editorial
+ * table: RLS enabled, no policies; the app reads it through Drizzle.
+ */
+export const materialConformers = pgTable(
+  'material_conformers',
+  {
+    materialId: uuid('material_id')
+      .primaryKey()
+      .references(() => materials.id),
+    /** V2000 molfile with explicit hydrogens, coordinates in ångströms. */
+    molfile: text('molfile').notNull(),
+    smiles: text('smiles').notNull(),
+    openchemlibVersion: text('openchemlib_version').notNull(),
+    method: text('method').notNull(),
+    computedAt: timestamp('computed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      'material_conformers_molfile_check',
+      sql`${t.molfile} LIKE '%V2000%' AND ${t.molfile} LIKE '%M  END%'`
+    ),
+  ]
+).enableRLS()
+
 /** Precomputed top-N (N≈10) Tanimoto neighbors, refreshed by the seed pipeline. */
 export const materialSimilarity = pgTable(
   'material_similarity',

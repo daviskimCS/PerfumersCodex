@@ -25,6 +25,9 @@ export async function HomeStructure({ slug }: { slug: string }) {
       <MaterialStructure
         smiles={material.smiles}
         structure={material.structure}
+        // The 3D model is a material-page feature; the homepage stays a
+        // picture with no client JavaScript.
+        conformer={null}
         name={material.canonicalName}
       />
       <figcaption className="mt-2 font-mono text-xs text-muted-foreground">

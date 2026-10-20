@@ -99,6 +99,13 @@
       "when": 1792458688091,
       "tag": "0013_class-matched-atoms",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792466561523,
+      "tag": "0014_structure-conformers",
+      "breakpoints": true
     }
   ]
 }

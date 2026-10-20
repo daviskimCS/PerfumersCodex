@@ -33,6 +33,7 @@ export function MaterialStructureFigure({
         <MaterialStructure
           smiles={material.smiles}
           structure={material.structure}
+          conformer={material.conformer}
           name={material.canonicalName}
         />
       </ClassHighlights>

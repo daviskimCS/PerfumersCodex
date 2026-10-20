@@ -172,7 +172,8 @@ export default async function MaterialPage({ params }: MaterialRouteProps) {
           </div>
 
           {/* Drawn at seed time and inlined here, with the chemical classes
-              under it as highlight toggles; nothing renders at all when the
+              under it as highlight toggles and a "View in 3D" button when the
+              seed stored a conformer; nothing renders at all when the
               material has no SMILES. */}
           <MaterialStructureFigure material={material} />
         </div>

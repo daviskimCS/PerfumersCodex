@@ -37,9 +37,18 @@ export const FINGERPRINT_VERSION = 'v2'
 export const SHORT_FINGERPRINT_LENGTH = 16
 
 export function materialFingerprint(detail: MaterialDetail): string {
-  // stableStringify drops keys whose value is undefined.
+  // stableStringify drops keys whose value is undefined. A material with no
+  // 3D conformer hashes exactly as it did before `conformer` joined
+  // `MaterialDetail` (migration 0014), so adding the field hid no page; one
+  // that has a conformer hashes it like any other field.
   const digest = createHash('sha256')
-    .update(stableStringify({ ...detail, similar: undefined }))
+    .update(
+      stableStringify({
+        ...detail,
+        similar: undefined,
+        conformer: detail.conformer ?? undefined,
+      })
+    )
     .digest('hex')
   return `${FINGERPRINT_VERSION}:sha256:${digest}`
 }
