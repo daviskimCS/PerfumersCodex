@@ -85,6 +85,11 @@
  *   redraw it on every visit. A SMILES RDKit cannot draw stops the run before
  *   anything is written.
  *
+ * - **`material_computed_properties` is derived the same way** (logP, TPSA,
+ *   heavy atoms, `scripts/properties.ts`). A data file may still carry a
+ *   `computed_properties` block from before; the seed refuses one that
+ *   disagrees with what RDKit computes, and otherwise writes its own values.
+ *
  * - **This file imports `db/schema.ts` directly**, which architecture D1
  *   otherwise reserves for `lib/db/`. D1 governs app code — pages and
  *   components go through `lib/db/` and receive `lib/types.ts` shapes. This is
@@ -159,6 +164,12 @@ import {
   drawMaterials,
   type MaterialDrawings,
 } from '@/scripts/draw'
+import {
+  computeProperties,
+  PropertiesError,
+  suppliedPropertyConflicts,
+  type MaterialProperties,
+} from '@/scripts/properties'
 
 const USAGE = `usage: npm run db:seed -- <data-directory> [--prune [--force-prune]]`
 
@@ -706,7 +717,8 @@ async function writeMaterial(
   material: MaterialFile,
   familyIdBySlug: Map<string, string>,
   classification: MaterialClassification | null,
-  drawings: MaterialDrawings | null
+  drawings: MaterialDrawings | null,
+  properties: MaterialProperties | null
 ): Promise<MaterialWriteReport> {
   return db.transaction(async (tx) => {
     const sourceIdByKey = await writeSources(tx, material.sources)
@@ -846,14 +858,17 @@ async function writeMaterial(
       childRows += 1
     }
 
-    if (material.computed_properties !== null) {
-      const computed = material.computed_properties
+    // Derived, not read from the file (`scripts/properties.ts`); a file's
+    // own block was already checked against these values before the
+    // connection opened. A NULL-SMILES material has no entry and no row.
+    const computed = properties?.valuesByMaterial.get(material.slug)
+    if (properties !== null && computed !== undefined) {
       await tx.insert(materialComputedProperties).values({
         materialId: id,
         logp: numericValue(computed.logp),
         tpsa: numericValue(computed.tpsa),
-        heavyAtomCount: computed.heavy_atom_count,
-        rdkitVersion: computed.rdkit_version,
+        heavyAtomCount: computed.heavyAtomCount,
+        rdkitVersion: properties.rdkitVersion,
       })
       childRows += 1
     }
@@ -977,9 +992,10 @@ async function main(): Promise<void> {
   const input = readInput(options.directory)
 
   // RDKit is loaded here, once for the whole run, and only when there is
-  // something to classify. It has three jobs downstream: compiling every
+  // something to classify. It has four jobs downstream: compiling every
   // class SMARTS as part of validation, matching them against every
-  // structure, and drawing every structure's 2D diagram.
+  // structure, drawing every structure's 2D diagram, and computing its
+  // logP, TPSA and heavy atoms.
   // A corpus of nothing but naturals does none, so it does not pay 6.6 MB
   // of WebAssembly to write zero rows.
   const rdkit = inputHasSmiles(input) ? await loadRdkit() : null
@@ -1016,10 +1032,12 @@ async function main(): Promise<void> {
   // structure RDKit cannot read is one this seed refuses to write at all.
   let classification: MaterialClassification | null = null
   let drawings: MaterialDrawings | null = null
+  let properties: MaterialProperties | null = null
   if (rdkit === null) {
     log(
       'no material in the input carries a SMILES: RDKit not loaded, ' +
-        'no chemical-class rows or structure drawings, SMARTS patterns not compiled'
+        'no chemical-class rows, structure drawings or computed properties, ' +
+        'SMARTS patterns not compiled'
     )
   } else {
     try {
@@ -1054,6 +1072,25 @@ async function main(): Promise<void> {
     }
     log(
       `drew ${plural(drawings.svgByMaterial.size, 'structure diagram')} with RDKit ${drawings.rdkitVersion}`
+    )
+
+    try {
+      properties = computeProperties(rdkit, bundle.materials)
+    } catch (cause) {
+      if (cause instanceof PropertiesError) {
+        throw new SeedAbort(`${cause.message}; nothing was written.`)
+      }
+      throw cause
+    }
+    const conflicts = suppliedPropertyConflicts(bundle.materials, properties)
+    if (conflicts.length > 0) {
+      throw new SeedAbort(
+        `${plural(conflicts.length, 'computed-properties conflict')}; nothing was written.\n` +
+          conflicts.map((conflict) => `  ${conflict}`).join('\n')
+      )
+    }
+    log(
+      `computed properties for ${plural(properties.valuesByMaterial.size, 'material')} with RDKit ${properties.rdkitVersion}`
     )
   }
 
@@ -1104,7 +1141,8 @@ async function main(): Promise<void> {
       material,
       familyIdBySlug,
       classification,
-      drawings
+      drawings,
+      properties
     )
     materialIdBySlug.set(report.slug, report.id)
     log(

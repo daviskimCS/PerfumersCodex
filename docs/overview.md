@@ -45,6 +45,7 @@ What sets this one apart:
 | Browse by olfactive family and by structural class                                     | Built                                                               |
 | 2D structures, similar materials, computed properties                                  | Built                                                               |
 | Arbitrary SMARTS search (`/structure`)                                                 | Built                                                               |
+| Volatility map: molecular weight against computed logP (`/volatility`)                 | Built                                                               |
 | Accounts: bookmarks, private notes, export, change email/password, deletion            | Built                                                               |
 | Google sign-in                                                                         | Built, dormant until the provider is configured                     |
 | Privacy policy and terms                                                               | Drafts awaiting the maker's values                                  |

@@ -88,12 +88,6 @@
       "source_key": "test-source-2"
     }
   ],
-  "computed_properties": {
-    "logp": 1.5,
-    "tpsa": 20,
-    "heavy_atom_count": 10,
-    "rdkit_version": "0000.00.0-test"
-  },
   "similarity": [
     {
       "similar_slug": "test-material-beta",

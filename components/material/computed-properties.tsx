@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Calculator } from 'lucide-react'
 
 import type { ComputedProperties } from '@/lib/types'
@@ -16,13 +17,20 @@ import { Field, FieldList, PanelSection } from './section'
  *
  * Renders nothing without a SMILES string — a mixture has no structure to
  * compute from, so any value sitting against one would be meaningless.
+ *
+ * `mapHref` links to the volatility map with this material highlighted. A
+ * link, never the chart itself: the map shows other materials' data, which
+ * this page's review fingerprint does not cover.
  */
 export function ComputedPropertiesModule({
   computed,
   smiles,
+  mapHref,
 }: {
   computed: ComputedProperties | null
   smiles: string | null
+  /** Null when the material is not plotted (no molecular weight or logP). */
+  mapHref: string | null
 }) {
   if (smiles === null || computed === null) return null
   if (
@@ -75,6 +83,16 @@ export function ComputedPropertiesModule({
         />
         <Field term="Heavy atoms" value={computed.heavyAtomCount} mono />
       </FieldList>
+      {mapHref === null ? null : (
+        <p className="mt-4 text-sm">
+          <Link
+            href={mapHref}
+            className="text-brand underline underline-offset-4 hover:no-underline"
+          >
+            See where it sits on the volatility map
+          </Link>
+        </p>
+      )}
     </PanelSection>
   )
 }
