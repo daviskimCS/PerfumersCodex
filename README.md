@@ -4,24 +4,30 @@ A curated, citation-driven aromachemical reference for working perfumers.
 
 Checking one material means switching between IFRA Standards, supplier pages, safety data sheets and scent databases. Perfumers Codex aims to put that in one searchable reference. Identity, IFRA usage limits, GHS hazards and landmark uses each cite a source. Olfactive descriptions and usage guidance, as they are written, come from bench experience.
 
-**Status:** live at [perfumerscodex.com](https://perfumerscodex.com), open to the public since October 2026. The database holds drafts researched by AI agents from primary sources, plus four synthetic test fixtures. Every one stays hidden from readers until the maker reviews it (see the review gate below), and the first real materials are going through that review now.
+**Status:** live at [perfumerscodex.com](https://perfumerscodex.com), open to the public since October 2026. The database holds drafts researched by AI agents from primary sources, plus four synthetic test fixtures. Each one stays hidden from readers until the maker reviews it (see the review gate below). The first materials have been reviewed and published; the rest are waiting for that review.
 
 ## What exists today
 
 - **Search:** a Cmd/Ctrl-K palette and a `/search` page. Exact CAS numbers short-circuit to their material. Names, synonyms and trade names match from their first letter, and trigram similarity tolerates typos.
-- **Material pages:** citations as numbered superscripts that link to their sources, a 2D structure drawn once at seed time and inlined as SVG (no WebAssembly on the page), structurally similar materials scored by Tanimoto similarity (matches below 0.3 are hidden, and the page says so), and computed properties. Long synonym lists fold away, and the IFRA table stays readable on a phone. A clearly labeled experimental odor-prediction module is in place, but no model exists yet.
+- **Material pages:** citations as numbered superscripts that link to their sources, and an "On this page" list that marks the section being read.
+  - **Structure:** a 2D drawing made once at seed time and inlined as SVG (no WebAssembly on the page). The material's structural classes sit under it as chips; pressing one tints the atoms and bonds that earned the class.
+  - **View in 3D:** one low-energy conformer, computed at seed time with OpenChemLib and drawn by 3Dmol.js, which loads only when the button is pressed. Naturals (no single structure), macrocycles and molecules with more than five rotatable bonds get no model and no button.
+  - **Data:** IFRA limits listed by IFRA's own category codes and readable on a phone, GHS hazards, landmark uses, structurally similar materials scored by Tanimoto similarity (matches below 0.3 are hidden, and the page says so), and computed properties (logP, TPSA, heavy atoms) that the seed derives from each structure. Long synonym lists fold away.
+  - A clearly labeled experimental odor-prediction module is in place, but no model exists yet.
+- **Volatility map:** `/volatility` plots every published material that has a structure, molecular weight against computed logP, as a server-rendered SVG with a table of the same points. A material page links to it with its own point marked; the chart is never embedded in a material page.
 - **Browsing:** by olfactive family and by structural class (for example macrocyclic ketone or lactone). `/structure` accepts an arbitrary SMARTS pattern and loads RDKit's WebAssembly build only there.
-- **Accounts:** email/password sign-in, password reset, bookmarks, private per-material notes, changing email or password, a self-serve export of everything the account holds (`/account/export`), and account deletion that removes every row the account owns. A "Continue with Google" button is built but dormant: until the provider is configured, it shows an "unavailable" notice.
-- **Draft privacy policy and terms**, pending review.
-- **Production basics:** security headers on every response, `robots.txt`, and a sitemap that lists published materials only.
-- **CI:** typecheck, lint and unit tests on every pull request and every push to `main`, plus an integration job that runs the real account actions against a local Supabase stack.
+- **About:** `/about` explains how to read a material page.
+- **Accounts:** email/password sign-in, password reset, bookmarks, private per-material notes, changing email or password, a self-serve export of everything the account holds (`/account/export`), and account deletion that first re-checks the password (or, for a Google-only account, a Google sign-in within the last ten minutes) and then removes every row the account owns. A "Continue with Google" button is built but dormant: until the provider is configured, it shows an "unavailable" notice.
+- **Draft privacy policy and terms**, with a few values left for the maker to fill in.
+- **Production basics:** security headers on every response, including a per-request nonce script policy with no `'unsafe-inline'` (only `/structure` allows `'unsafe-eval'`, which RDKit needs); `robots.txt`; a sitemap that lists published materials only; a daily Vercel Cron call that keeps the free Supabase project from pausing; and cookieless Vercel Web Analytics.
+- **CI:** typecheck, lint, unit tests and a production build on every pull request and every push to `main`, plus an integration job that runs the real account actions and the search SQL against a local Supabase stack.
 
 ## Design principles
 
 - **Citations required by the schema.** Material identity, synonyms, IFRA limits, verified IFRA absences, GHS hazards and landmark uses each require a source (`NOT NULL` foreign keys). Olfactive descriptions and usage guidance may be uncited by design.
 - **"No IFRA Standard" is its own fact.** A verified absence is a cited row, so the page can tell "checked: no Standard exists" apart from "not yet researched".
 - **Amendment-stamped regulatory data.** Each IFRA limit row carries an amendment label and a verification timestamp, and rows for different amendments can sit side by side.
-- **Computed values carry provenance, not citations.** Structural classes, similarity scores and computed properties are recomputed from each structure and stamped with the RDKit version that produced them.
+- **Computed values carry provenance, not citations.** Structural classes, similarity scores, computed properties, 2D drawings and 3D conformers are derived from each structure and stamped with the toolkit version that produced them (RDKit, or OpenChemLib for conformers). The browser never recomputes them.
 - **Model output stays separate.** Odor predictions live in their own table with a model version, render only in the labeled experimental module, and never mix with editorial descriptions.
 - **Row-level security on every table.** User-owned data (bookmarks, notes) is only read through the RLS-enforced client. A materialized view cannot carry row-level security, so views are closed to the public Data API by revoking access instead (migration `0007`).
 - **Nothing is published unreviewed.** A material reaches readers only after the maker reviews everything its page would show (`npm run db:review show`) and publishes that exact version. Any later change to what the page shows, including shared data such as family names, IFRA category names, hazard statements or a citation, hides it again until it is re-reviewed. Families with no published material are hidden too.
@@ -38,6 +44,7 @@ What is not built or not yet verified:
 - **Search-log retention:** rows are kept indefinitely; the planned purge job is not built.
 - **Search is tested against Postgres on synthetic rows, not the real corpus.** The ranking tests run on synthetic evidence and the integration job runs the search SQL on fixture materials. One gold-set case (the odour phrase "amber wood") depends on description text the live corpus does not contain, so it would not pass against it.
 - **The structure–odor experiment is not built.**
+- **A 3D model shows one stereoisomer.** Where a material's SMILES leaves a stereocentre open (Iso E Super, for example), the conformer search has to pick one arrangement, so the model shows one isomer of what may be a mixture. The viewer's caption says so.
 - **Similarity scores are not reproducible from the repositories yet.** They arrive precomputed in the data files (three materials so far), produced by a research script that is not committed, and the RDKit version stamp does not record the fingerprint parameters. Computed properties are: the seed derives them from each structure.
 - **The review gate has edges.** It lives in app code, so an older deployment pointed at the live database would show unreviewed material. List entries rely on a stored fingerprint that the seed refreshes, so a writer that skips that refresh can leave a list entry stale until the next refresh; detail pages re-check on every request. Structural-class names and descriptions are shown on the class filter and `/structure` without review. The open engineering findings are ranked in [`docs/engineering-backlog.md`](./docs/engineering-backlog.md).
 
@@ -49,7 +56,7 @@ Work ships as reviewed pull requests with CI green (typecheck, lint, unit and in
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui · Postgres on Supabase · Drizzle ORM · Supabase Auth (`@supabase/ssr`) · Postgres full-text search + pg_trgm · RDKit (WebAssembly) · Vitest · Vercel
+Node 24 · Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 + shadcn/ui · Postgres on Supabase · Drizzle ORM · Supabase Auth (`@supabase/ssr`) · Postgres full-text search + pg_trgm · RDKit (WebAssembly) · OpenChemLib (seed only) · 3Dmol.js · Zod · Vitest · Vercel
 
 Design documents live in [`docs/`](./docs/); start with [`docs/architecture.md`](./docs/architecture.md).
 
@@ -74,14 +81,32 @@ npm run dev
 | `npm run db:review <verb>` | Review gate: `list`, `show <slug>`, `publish <slug> <fingerprint>`, `revoke <slug>`, `refresh`                  |
 | `npm run db:studio`        | Drizzle Studio against `DIRECT_URL`                                                                             |
 
-Note: the app runtime uses the pooled transaction-mode connection (`DATABASE_URL`, port 6543). Migrations use `DIRECT_URL` on port 5432; prefer Supabase's session pooler there, because the true direct host is IPv6-only. Both are required in `.env.local`.
+Environment variables (`.env.example` explains each one; server code reads them only through `lib/env.ts`):
 
-Seeding replaces each material's fact rows with what its data file says, so keep superseded IFRA amendments in the file if their history should stay in the database. `scripts/fixtures` is for empty databases only: it overwrites reference rows such as IFRA category names by id.
+| Variable                                                            | Needed for                                                                                           |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`  | Supabase Auth and user data. New-style `sb_publishable_` key only                                    |
+| `SUPABASE_SECRET_KEY`                                               | Account deletion and the sign-in calls that forward the reader's IP. New-style `sb_secret_` key only |
+| `DATABASE_URL`                                                      | The app's database connection: the pooled, transaction-mode string on port 6543                      |
+| `DIRECT_URL`                                                        | Migrations and Drizzle Studio, on port 5432                                                          |
+| `NEXT_PUBLIC_SITE_URL`                                              | Canonical and Open Graph URLs; falls back to `http://localhost:3000`                                 |
+| `CRON_SECRET` (optional)                                            | The daily keep-alive cron; the route refuses every call while it is unset                            |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` (optional) | The bot check on the sign-in forms. Set both or neither                                              |
+
+For `DIRECT_URL`, prefer Supabase's session pooler (same host as `DATABASE_URL`, port 5432): the true direct host is IPv6-only.
+
+Seeding validates the whole data directory first, then replaces each material's fact rows with what its data file says, so keep superseded IFRA amendments in the file if their history should stay in the database. The seed also draws each 2D structure, computes each 3D conformer (reusing a stored one while its SMILES, OpenChemLib version and method are unchanged) and derives the computed properties. `scripts/fixtures` is for empty databases only: it overwrites reference rows such as IFRA category names.
+
+### Deploying
+
+- **Migrations do not run on deploy.** Apply them with `npm run db:migrate` before merging code that reads a new table or column; material pages fail until every migration they read (currently through `0014`) is applied.
+- **Old preview deployments.** Branches cut before October 17, 2026 still carry the removed pre-launch password gate, and their Vercel previews read the live database, so keep `SITE_GATE_PASSWORD` set on the Preview environment.
 
 ## Licensing
 
 - **Code:** [MIT](./LICENSE)
-- **Material data published by this project:** [CC BY-SA 4.0](./LICENSE-DATA) — attribute and share-alike. The source dataset lives in a separate `perfumers-codex-data` repository.
+- **Material data published by this project:** [CC BY-SA 4.0](./LICENSE-DATA): attribute and share-alike. The source dataset lives in a separate repository, `PerfumersCodexData`.
+- **Third-party code and fonts served to browsers:** RDKit.js and 3Dmol.js (BSD 3-Clause) and the JetBrains Mono and Roboto fonts (SIL OFL 1.1). Their licence texts are in [`public/licenses/`](./public/licenses/) and credited on `/terms`.
 
 Security reports: see [`SECURITY.md`](./SECURITY.md).
 

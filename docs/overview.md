@@ -44,13 +44,14 @@ What sets this one apart:
 | Material pages: identity, safety (IFRA, GHS), olfactive, usage, landmark uses, sources | Built                                                               |
 | Browse by olfactive family and by structural class                                     | Built                                                               |
 | 2D structures, similar materials, computed properties                                  | Built                                                               |
+| Class highlights on the 2D drawing; View in 3D (conformer computed at seed time)       | Built                                                               |
 | Arbitrary SMARTS search (`/structure`)                                                 | Built                                                               |
 | Volatility map: molecular weight against computed logP (`/volatility`)                 | Built                                                               |
 | Accounts: bookmarks, private notes, export, change email/password, deletion            | Built                                                               |
 | Google sign-in                                                                         | Built, dormant until the provider is configured                     |
 | Privacy policy and terms                                                               | Drafts awaiting the maker's values                                  |
 | Review gate (nothing public until the maker publishes it)                              | Built                                                               |
-| Rate limiting on sign-up, sign-in and search                                           | Not built                                                           |
+| Rate limiting on sign-up, sign-in and search                                           | Sign-in forms: built, dormant until configured. Search: not built   |
 | Structure–odor experiment (labelled, model-versioned predictions)                      | Not built; the table and the labelled module exist                  |
 | Admin dashboard, submit-a-correction form                                              | Not built; the tables exist                                         |
 | Error monitoring                                                                       | Not built                                                           |
